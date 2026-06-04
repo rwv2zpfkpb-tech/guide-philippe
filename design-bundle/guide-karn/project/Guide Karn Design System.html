@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guide Philippe — Design System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================================
+       GUIDE PHILIPPE — DESIGN TOKENS
+    ============================================================ */
+    :root {
+      /* — Core Colors — */
+      --c-bg:          oklch(97.5% 0.008 78);   /* warm ivory */
+      --c-ink:         oklch(13%  0.012 255);   /* deep charcoal */
+      --c-gold:        oklch(58%  0.070 72);    /* muted gold */
+      --c-gold-light:  oklch(91%  0.032 76);    /* gold tint */
+      --c-gold-mid:    oklch(72%  0.050 74);    /* gold mid */
+      --c-burg:        oklch(31%  0.080 17);    /* dark burgundy */
+      --c-burg-light:  oklch(93%  0.016 17);    /* burgundy tint */
+
+      /* — Neutral Scale (warm-tinted grays) — */
+      --c-n50:  oklch(95.5% 0.006 78);
+      --c-n100: oklch(92%   0.007 78);
+      --c-n200: oklch(86%   0.008 78);
+      --c-n300: oklch(76%   0.008 78);
+      --c-n400: oklch(63%   0.007 78);
+      --c-n500: oklch(52%   0.007 78);
+      --c-n600: oklch(41%   0.007 78);
+      --c-n700: oklch(30%   0.008 78);
+
+      /* — Typography — */
+      --f-display: 'Cormorant Garamond', Georgia, serif;
+      --f-body:    'DM Sans', system-ui, sans-serif;
+
+      /* — Type Scale — */
+      --t-11: 0.6875rem;
+      --t-12: 0.75rem;
+      --t-14: 0.875rem;
+      --t-16: 1rem;
+      --t-18: 1.125rem;
+      --t-20: 1.25rem;
+      --t-24: 1.5rem;
+      --t-32: 2rem;
+      --t-40: 2.5rem;
+      --t-56: 3.5rem;
+      --t-80: 5rem;
+      --t-hero: 7.5rem;
+
+      /* — Radii — */
+      --r-sm:  4px;
+      --r-md:  8px;
+      --r-lg:  14px;
+      --r-xl:  22px;
+      --r-pill: 9999px;
+
+      /* — Shadows — */
+      --s-xs: 0 1px 2px oklch(0% 0 0 / 0.05);
+      --s-sm: 0 1px 4px oklch(0% 0 0 / 0.06), 0 1px 2px oklch(0% 0 0 / 0.04);
+      --s-md: 0 4px 14px oklch(0% 0 0 / 0.08), 0 2px 4px oklch(0% 0 0 / 0.04);
+      --s-lg: 0 14px 36px oklch(0% 0 0 / 0.10), 0 4px 8px oklch(0% 0 0 / 0.05);
+      --s-focus: 0 0 0 3px oklch(91% 0.032 76);
+
+      /* — Motion — */
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* ============================================================
+       BASE RESET
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      background: var(--c-bg);
+      color: var(--c-ink);
+      font-family: var(--f-body);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      text-wrap: pretty;
+    }
+
+    /* ============================================================
+       PAGE LAYOUT
+    ============================================================ */
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 0 48px; }
+
+    .section {
+      padding: 80px 0;
+      border-bottom: 1px solid var(--c-n100);
+    }
+
+    .section-tag {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: var(--t-11);
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--c-n400);
+      margin-bottom: 10px;
+    }
+
+    .section-tag::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--c-n100);
+    }
+
+    .section-heading {
+      font-family: var(--f-display);
+      font-size: var(--t-40);
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+
+    .section-sub {
+      font-size: var(--t-14);
+      color: var(--c-n500);
+      line-height: 1.65;
+      max-width: 500px;
+      margin-bottom: 48px;
+    }
+
+    .subsection-label {
+      font-size: var(--t-11);
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--c-n400);
+      margin-bottom: 16px;
+      margin-top: 40px;
+    }
+
+    .subsection-label:first-of-type { margin-top: 0; }
+
+    /* ============================================================
+       STICKY TOP NAV
+    ============================================================ */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: oklch(97.5% 0.008 78 / 0.88);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--c-n100);
+    }
+
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 48px;
+      max-width: 1160px;
+      margin: 0 auto;
+    }
+
+    .topbar-brand {
+      font-family: var(--f-display);
+      font-size: var(--t-18);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--c-ink);
+    }
+
+    .topbar-brand span { color: var(--c-gold); }
+
+    .topbar-nav {
+      display: flex;
+      gap: 28px;
+      list-style: none;
+    }
+
+    .topbar-nav a {
+      font-size: var(--t-11);
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--c-n400);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .topbar-nav a:hover { color: var(--c-ink); }
+
+    .topbar-tag {
+      font-size: var(--t-11);
+      color: var(--c-n400);
+      letter-spacing: 0.06em;
+    }
+
+    /* ============================================================
+       HERO
+    ============================================================ */
+    .hero {
+      padding: 100px 0 80px;
+      position: relative;
+      overflow: hidden;
+      border-bottom: 1px solid var(--c-n100);
+    }
+
+    .hero-watermark {
+      position: absolute;
+      right: 40px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: var(--f-display);
+      font-size: 26rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.05em;
+      color: var(--c-n100);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .hero-eyebrow {
+      font-size: var(--t-11);
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--c-gold);
+      margin-bottom: 24px;
+    }
+
+    .hero-brand {
+      font-family: var(--f-display);
+      font-size: var(--t-hero);
+      font-weight: 700;
+      line-height: 0.88;
+      letter-spacing: -0.03em;
+      color: var(--c-ink);
+      margin-bottom: 28px;
+    }
+
+    .hero-brand em {
+      color: var(--c-gold);
+      font-style: normal;
+    }
+
+    .hero-tagline {
+      font-family: var(--f-display);
+      font-size: var(--t-24);
+      font-weight: 300;
+      font-style: italic;
+      color: var(--c-n500);
+      margin-bottom: 48px;
+    }
+
+    .hero-meta {
+      display: flex;
+      gap: 32px;
+      font-size: var(--t-12);
+      color: var(--c-n400);
+      letter-spacing: 0.04em;
+    }
+
+    .hero-meta strong { color: var(--c-ink); font-weight: 500; }
+
+    /* ============================================================
+       COLORS
+    ============================================================ */
+    .color-strip {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+
+    .swatch {
+      flex: 1;
+      min-width: 100px;
+    }
+
+    .swatch-block {
+      height: 72px;
+      border-radius: var(--r-md);
+      margin-bottom: 10px;
+      border: 1px solid oklch(0% 0 0 / 0.05);
+    }
+
+    .swatch-name {
+      font-size: var(--t-12);
+      font-weight: 500;
+      color: var(--c-ink);
+      margin-bottom: 2px;
+    }
+
+    .swatch-value {
+      font-size: 10px;
+      color: var(--c-n400);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      line-height: 1.5;
+    }
+
+    .neutral-row {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .neutral-block {
+      height: 40px;
+      border-radius: var(--r-sm);
+      border: 1px solid oklch(0% 0 0 / 0.04);
+    }
+
+    .neutral-labels {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 8px;
+    }
+
+    .neutral-label {
+      font-size: 10px;
+      color: var(--c-n400);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      text-align: center;
+    }
+
+    /* ============================================================
+       TYPOGRAPHY
+    ============================================================ */
+    .type-table { display: flex; flex-direction: column; }
+
+    .type-row {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 32px;
+      align-items: center;
+      padding: 24px 0;
+      border-bottom: 1px solid var(--c-n100);
+    }
+
+    .type-row:last-child { border-bottom: none; }
+
+    .type-meta-name {
+      font-size: var(--t-12);
+      font-weight: 500;
+      color: var(--c-ink);
+      margin-bottom: 3px;
+    }
+
+    .type-meta-detail {
+      font-size: 10px;
+      color: var(--c-n400);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      line-height: 1.6;
+    }
+
+    /* ============================================================
+       SPACING & SURFACES
+    ============================================================ */
+    .surfaces-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; }
+
+    .spacing-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--c-n100);
+    }
+
+    .spacing-bar {
+      height: 3px;
+      background: var(--c-gold);
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .spacing-info {
+      font-size: 11px;
+      color: var(--c-n400);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    .spacing-info strong { color: var(--c-ink); }
+
+    .radii-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 40px; }
+
+    .radius-item { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+    .radius-block {
+      width: 56px;
+      height: 56px;
+      background: var(--c-n200);
+      border: 1.5px solid var(--c-n300);
+    }
+
+    .radius-caption {
+      font-size: 10px;
+      color: var(--c-n400);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .shadows-row { display: flex; gap: 32px; flex-wrap: wrap; }
+
+    .shadow-item { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+
+    .shadow-block {
+      width: 72px;
+      height: 72px;
+      background: white;
+      border-radius: var(--r-md);
+    }
+
+    .shadow-caption {
+      font-size: 10px;
+      color: var(--c-n400);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      text-align: center;
+    }
+
+    /* ============================================================
+       BUTTONS
+    ============================================================ */
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-family: var(--f-body);
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s var(--ease);
+      white-space: nowrap;
+    }
+
+    .btn-sm  { font-size: var(--t-12); padding:  7px 14px; border-radius: var(--r-sm); }
+    .btn-md  { font-size: var(--t-14); padding: 11px 22px; border-radius: var(--r-md); }
+    .btn-lg  { font-size: var(--t-16); padding: 14px 28px; border-radius: var(--r-md); }
+
+    .btn-ink {
+      background: var(--c-ink);
+      color: var(--c-bg);
+    }
+    .btn-ink:hover { background: var(--c-n700); box-shadow: var(--s-md); transform: translateY(-1px); }
+
+    .btn-gold {
+      background: var(--c-gold);
+      color: white;
+    }
+    .btn-gold:hover { opacity: 0.88; box-shadow: 0 4px 14px oklch(58% 0.070 72 / 0.28); transform: translateY(-1px); }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--c-ink);
+      border: 1px solid var(--c-n200);
+    }
+    .btn-outline:hover { background: var(--c-n50); border-color: var(--c-n300); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--c-n500);
+    }
+    .btn-ghost:hover { color: var(--c-ink); background: var(--c-n100); }
+
+    .btn-burg {
+      background: var(--c-burg);
+      color: oklch(93% 0.008 78);
+    }
+    .btn-burg:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    /* ============================================================
+       BADGES
+    ============================================================ */
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      padding: 4px 10px;
+      border-radius: var(--r-pill);
+    }
+
+    .badge-ink     { background: var(--c-ink);        color: var(--c-bg); }
+    .badge-gold    { background: var(--c-gold-light);  color: oklch(42% 0.065 72); }
+    .badge-burg    { background: var(--c-burg-light);  color: var(--c-burg); }
+    .badge-subtle  { background: var(--c-n100);        color: var(--c-n600); }
+    .badge-outline { background: transparent; border: 1px solid var(--c-n200); color: var(--c-n500); }
+
+    /* ============================================================
+       RESTAURANT CARDS — GRID
+    ============================================================ */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 48px;
+    }
+
+    .card {
+      background: white;
+      border-radius: var(--r-lg);
+      overflow: hidden;
+      border: 1px solid var(--c-n100);
+      box-shadow: var(--s-sm);
+      cursor: pointer;
+      transition: all 0.25s var(--ease);
+    }
+
+    .card:hover { box-shadow: var(--s-lg); transform: translateY(-3px); }
+
+    .card-thumb {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-thumb-fill {
+      width: 100%;
+      height: 100%;
+      background: repeating-linear-gradient(
+        -45deg,
+        var(--c-n100),
+        var(--c-n100) 1px,
+        var(--c-n50) 1px,
+        var(--c-n50) 14px
+      );
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .card-thumb-fill span {
+      font-size: 11px;
+      color: var(--c-n300);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      letter-spacing: 0.06em;
+    }
+
+    .card-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: white;
+      border-radius: var(--r-sm);
+      padding: 4px 9px;
+      font-size: 13px;
+      box-shadow: var(--s-sm);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .card-badge-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--c-ink);
+      letter-spacing: 0.04em;
+    }
+
+    .card-body { padding: 18px 20px 22px; }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 4px;
+    }
+
+    .card-name {
+      font-family: var(--f-display);
+      font-size: var(--t-20);
+      font-weight: 600;
+      color: var(--c-ink);
+      line-height: 1.15;
+    }
+
+    .card-price {
+      font-size: var(--t-14);
+      font-weight: 500;
+      margin-left: 12px;
+      flex-shrink: 0;
+      padding-top: 3px;
+    }
+
+    .price-on  { color: var(--c-ink); }
+    .price-off { color: var(--c-n200); }
+
+    .card-cuisine {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--c-gold);
+      margin-bottom: 10px;
+    }
+
+    .card-desc {
+      font-size: var(--t-14);
+      color: var(--c-n500);
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 14px;
+      border-top: 1px solid var(--c-n100);
+    }
+
+    .card-loc {
+      font-size: 11px;
+      color: var(--c-n400);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .card-chip {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 9px;
+      border-radius: var(--r-pill);
+      border: 1px solid var(--c-n200);
+      color: var(--c-n500);
+    }
+
+    /* ============================================================
+       RESTAURANT CARDS — LIST
+    ============================================================ */
+    .list-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .list-row {
+      background: white;
+      border: 1px solid var(--c-n100);
+      border-radius: var(--r-md);
+      padding: 16px 22px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s var(--ease);
+    }
+
+    .list-row:hover { background: var(--c-n50); border-color: var(--c-n200); box-shadow: var(--s-sm); }
+
+    .list-left { display: flex; flex-direction: column; gap: 4px; }
+
+    .list-name-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .list-emoji { font-size: 1.05rem; }
+
+    .list-name {
+      font-family: var(--f-display);
+      font-size: var(--t-18);
+      font-weight: 600;
+      color: var(--c-ink);
+    }
+
+    .list-meta {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .list-cuisine {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--c-n400);
+    }
+
+    .list-loc { font-size: 11px; color: var(--c-n400); }
+
+    .list-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+
+    /* ============================================================
+       RATING SYSTEM
+    ============================================================ */
+    .rating-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 40px;
+    }
+
+    .rating-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 28px 16px;
+      border-radius: var(--r-lg);
+      border: 1px solid var(--c-n100);
+      background: white;
+      gap: 12px;
+      transition: box-shadow 0.2s var(--ease);
+    }
+
+    .rating-card:hover { box-shadow: var(--s-md); }
+
+    .rating-card.top {
+      border-color: var(--c-gold-light);
+      background: oklch(97.5% 0.014 76);
+    }
+
+    .rating-emoji { font-size: 2rem; line-height: 1; }
+
+    .rating-pips {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .pip {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--c-n200);
+    }
+
+    .pip.on { background: var(--c-gold); }
+
+    .rating-name {
+      font-family: var(--f-display);
+      font-size: var(--t-16);
+      font-weight: 600;
+      color: var(--c-ink);
+      line-height: 1.25;
+    }
+
+    .rating-desc {
+      font-size: 12px;
+      color: var(--c-n400);
+      line-height: 1.55;
+      max-width: 130px;
+    }
+
+    /* Rating inline rows */
+    .rating-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 20px;
+      background: white;
+      border-radius: var(--r-md);
+      border: 1px solid var(--c-n100);
+      margin-bottom: 6px;
+    }
+
+    .rating-row.top { border-color: oklch(88% 0.04 76); }
+
+    .rating-row-emoji { font-size: 1.3rem; }
+
+    .rating-row-name {
+      font-size: var(--t-11);
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .rating-row-name.gold  { color: var(--c-gold); }
+    .rating-row-name.dark  { color: var(--c-n600); }
+    .rating-row-name.muted { color: var(--c-n400); }
+
+    .rating-row-desc { font-size: var(--t-14); color: var(--c-n500); }
+
+    /* ============================================================
+       PRICE RANGE
+    ============================================================ */
+    .price-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 580px;
+    }
+
+    .price-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 16px 22px;
+      background: white;
+      border-radius: var(--r-md);
+      border: 1px solid var(--c-n100);
+    }
+
+    .price-row.fine { border-color: var(--c-gold-light); }
+
+    .price-glyphs {
+      font-family: var(--f-display);
+      font-size: var(--t-20);
+      font-weight: 600;
+      min-width: 76px;
+      letter-spacing: 0.02em;
+    }
+
+    .price-rule { flex: 1; height: 1px; background: var(--c-n100); }
+
+    .price-tier {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--c-n400);
+      margin-bottom: 2px;
+    }
+
+    .price-tier.fine { color: var(--c-gold); }
+
+    .price-range { font-size: var(--t-14); color: var(--c-n500); }
+
+    /* ============================================================
+       FORMS
+    ============================================================ */
+    .form-group { display: flex; flex-direction: column; gap: 7px; margin-bottom: 20px; }
+
+    .form-label {
+      font-size: var(--t-11);
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--c-n500);
+    }
+
+    .form-input {
+      font-family: var(--f-body);
+      font-size: var(--t-16);
+      padding: 11px 18px;
+      border: 1px solid var(--c-n200);
+      border-radius: var(--r-md);
+      background: white;
+      color: var(--c-ink);
+      outline: none;
+      width: 100%;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-input::placeholder { color: var(--c-n300); }
+
+    .form-input:focus { border-color: var(--c-gold); box-shadow: var(--s-focus); }
+
+    .search-wrap { position: relative; }
+
+    .search-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 15px;
+      height: 15px;
+      color: var(--c-n400);
+      pointer-events: none;
+    }
+
+    .form-input.has-icon { padding-left: 42px; }
+
+    textarea.form-input { resize: vertical; min-height: 96px; }
+
+    /* ============================================================
+       NAV SAMPLE
+    ============================================================ */
+    .nav-sample {
+      background: white;
+      border: 1px solid var(--c-n100);
+      border-radius: var(--r-lg);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--s-sm);
+    }
+
+    .nav-brand {
+      font-family: var(--f-display);
+      font-size: var(--t-24);
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      color: var(--c-ink);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-link {
+      font-size: var(--t-14);
+      color: var(--c-n500);
+      text-decoration: none;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .nav-link.is-active { color: var(--c-ink); font-weight: 500; }
+    .nav-link:hover { color: var(--c-ink); }
+
+    .nav-actions { display: flex; gap: 10px; align-items: center; }
+
+    /* ============================================================
+       FOOTER ORNAMENT
+    ============================================================ */
+    .ornament {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin: 48px 0 0;
+    }
+
+    .ornament-line { flex: 1; height: 1px; background: var(--c-n100); }
+
+    .ornament-text {
+      font-size: var(--t-12);
+      color: var(--c-n400);
+      letter-spacing: 0.14em;
+      font-family: var(--f-display);
+      font-style: italic;
+    }
+
+    .ornament-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--c-gold);
+    }
+
+    /* ============================================================
+       FOOTER
+    ============================================================ */
+    .footer {
+      padding: 48px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-brand {
+      font-family: var(--f-display);
+      font-size: var(--t-32);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--c-n200);
+    }
+
+    .footer-meta { font-size: var(--t-12); color: var(--c-n400); letter-spacing: 0.04em; }
+  </style>
+</head>
+<body>
+
+<!-- ===== TOP BAR ===== -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="topbar-brand">Guide <span>Karn</span></div>
+    <nav>
+      <ul class="topbar-nav">
+        <li><a href="#colors">Colors</a></li>
+        <li><a href="#type">Type</a></li>
+        <li><a href="#surfaces">Surfaces</a></li>
+        <li><a href="#buttons">Buttons</a></li>
+        <li><a href="#cards">Cards</a></li>
+        <li><a href="#ratings">Ratings</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#forms">Forms</a></li>
+      </ul>
+    </nav>
+    <div class="topbar-tag">Design System · v1.0</div>
+  </div>
+</div>
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+  <div class="wrap">
+    <div class="hero-watermark" aria-hidden="true">GK</div>
+    <div class="hero-eyebrow">Design System &nbsp;·&nbsp; v1.0 &nbsp;·&nbsp; June 2026</div>
+    <div class="hero-brand">Guide<br><em>Karn.</em></div>
+    <div class="hero-tagline">A contemporary guide to exceptional dining.</div>
+    <div class="hero-meta">
+      <span><strong>Display</strong> &nbsp;Cormorant Garamond</span>
+      <span><strong>Body</strong> &nbsp;DM Sans</span>
+      <span><strong>Accent</strong> &nbsp;Muted Gold &amp; Burgundy</span>
+      <span><strong>Scale</strong> &nbsp;Base-4 spacing</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== COLORS ===== -->
+<section class="section" id="colors">
+  <div class="wrap">
+    <div class="section-tag">01 &nbsp; Colors</div>
+    <div class="section-heading">Color System</div>
+    <div class="section-sub">A restrained palette anchored in deep charcoal and warm ivory, lifted by muted gold and dark burgundy — the two accent axes of the brand.</div>
+
+    <div class="subsection-label">Brand palette</div>
+    <div class="color-strip">
+      <div class="swatch">
+        <div class="swatch-block" style="background: oklch(13% 0.012 255);"></div>
+        <div class="swatch-name">Charcoal</div>
+        <div class="swatch-value">--c-ink<br>oklch(13% 0.012 255)</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-block" style="background: oklch(97.5% 0.008 78); border: 1px solid oklch(0% 0 0 / 0.08);"></div>
+        <div class="swatch-name">Ivory</div>
+        <div class="swatch-value">--c-bg<br>oklch(97.5% 0.008 78)</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-block" style="background: oklch(58% 0.070 72);"></div>
+        <div class="swatch-name">Warm Gold</div>
+        <div class="swatch-value">--c-gold<br>oklch(58% 0.070 72)</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-block" style="background: oklch(72% 0.050 74);"></div>
+        <div class="swatch-name">Gold Mid</div>
+        <div class="swatch-value">--c-gold-mid<br>oklch(72% 0.050 74)</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-block" style="background: oklch(91% 0.032 76); border: 1px solid oklch(0% 0 0 / 0.05);"></div>
+        <div class="swatch-name">Gold Tint</div>
+        <div class="swatch-value">--c-gold-light<br>oklch(91% 0.032 76)</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-block" style="background: oklch(31% 0.080 17);"></div>
+        <div class="swatch-name">Burgundy</div>
+        <div class="swatch-value">--c-burg<br>oklch(31% 0.080 17)</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-block" style="background: oklch(93% 0.016 17); border: 1px solid oklch(0% 0 0 / 0.05);"></div>
+        <div class="swatch-name">Burg. Tint</div>
+        <div class="swatch-value">--c-burg-light<br>oklch(93% 0.016 17)</div>
+      </div>
+    </div>
+
+    <div class="subsection-label">Neutral scale — warm-tinted grays</div>
+    <div class="neutral-row">
+      <div class="neutral-block" style="background: oklch(95.5% 0.006 78); border: 1px solid oklch(0% 0 0 / 0.05);"></div>
+      <div class="neutral-block" style="background: oklch(92% 0.007 78);"></div>
+      <div class="neutral-block" style="background: oklch(86% 0.008 78);"></div>
+      <div class="neutral-block" style="background: oklch(76% 0.008 78);"></div>
+      <div class="neutral-block" style="background: oklch(63% 0.007 78);"></div>
+      <div class="neutral-block" style="background: oklch(52% 0.007 78);"></div>
+      <div class="neutral-block" style="background: oklch(41% 0.007 78);"></div>
+      <div class="neutral-block" style="background: oklch(30% 0.008 78);"></div>
+    </div>
+    <div class="neutral-labels">
+      <div class="neutral-label">N50</div>
+      <div class="neutral-label">N100</div>
+      <div class="neutral-label">N200</div>
+      <div class="neutral-label">N300</div>
+      <div class="neutral-label">N400</div>
+      <div class="neutral-label">N500</div>
+      <div class="neutral-label">N600</div>
+      <div class="neutral-label">N700</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TYPOGRAPHY ===== -->
+<section class="section" id="type">
+  <div class="wrap">
+    <div class="section-tag">02 &nbsp; Typography</div>
+    <div class="section-heading">Type System</div>
+    <div class="section-sub">Cormorant Garamond brings editorial authority to headlines and the brand mark. DM Sans handles body copy with quiet efficiency.</div>
+
+    <div class="type-table">
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Brand / Hero</div>
+          <div class="type-meta-detail">Cormorant Garamond 700<br>120px · ls −0.03em · lh 0.88</div>
+        </div>
+        <div style="font-family: var(--f-display); font-size: 5.5rem; font-weight: 700; line-height: 0.88; letter-spacing: -0.03em;">Guide<br><span style="color: var(--c-gold);">Karn.</span></div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Display</div>
+          <div class="type-meta-detail">Cormorant Garamond 600<br>56px · ls −0.02em · lh 1.0</div>
+        </div>
+        <div style="font-family: var(--f-display); font-size: var(--t-56); font-weight: 600; line-height: 1; letter-spacing: -0.02em;">The Art of Dining Well</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Heading 1</div>
+          <div class="type-meta-detail">Cormorant Garamond 500<br>40px · ls −0.01em · lh 1.1</div>
+        </div>
+        <div style="font-family: var(--f-display); font-size: var(--t-40); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em;">Exceptional Restaurants, Carefully Chosen</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Heading 2</div>
+          <div class="type-meta-detail">Cormorant Garamond 500<br>32px · lh 1.15</div>
+        </div>
+        <div style="font-family: var(--f-display); font-size: var(--t-32); font-weight: 500; line-height: 1.15;">Mediterranean, Paris</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Heading 3</div>
+          <div class="type-meta-detail">Cormorant Garamond 500<br>24px · lh 1.2</div>
+        </div>
+        <div style="font-family: var(--f-display); font-size: var(--t-24); font-weight: 500; line-height: 1.2;">Seasonal Tasting Menu</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Heading 4</div>
+          <div class="type-meta-detail">Cormorant Garamond 600<br>20px · lh 1.3</div>
+        </div>
+        <div style="font-family: var(--f-display); font-size: var(--t-20); font-weight: 600; line-height: 1.3;">Chef's Recommendations</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Italic Display</div>
+          <div class="type-meta-detail">Cormorant Garamond 300 italic<br>40px</div>
+        </div>
+        <div style="font-family: var(--f-display); font-size: var(--t-40); font-weight: 300; font-style: italic; color: var(--c-n400);">À table.</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Lead / Intro</div>
+          <div class="type-meta-detail">DM Sans 300<br>18px · lh 1.7</div>
+        </div>
+        <div style="font-size: var(--t-18); font-weight: 300; line-height: 1.7; color: var(--c-n600);">A curated selection of the city's most remarkable dining experiences — from hidden neighbourhood gems to celebrated gastronomic institutions.</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Body</div>
+          <div class="type-meta-detail">DM Sans 400<br>16px · lh 1.65</div>
+        </div>
+        <div style="font-size: var(--t-16); line-height: 1.65;">The kitchen approaches each dish with a reverence for seasonal produce and classical technique. The result is a menu that feels both familiar and entirely unexpected — a rare quality in contemporary dining.</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Body Small</div>
+          <div class="type-meta-detail">DM Sans 400<br>14px · lh 1.6</div>
+        </div>
+        <div style="font-size: var(--t-14); line-height: 1.6; color: var(--c-n500);">Reservations recommended. Smart casual dress code. Closed Tuesdays. Full bar available.</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Label / Overline</div>
+          <div class="type-meta-detail">DM Sans 500<br>11px · ls 0.14em · uppercase</div>
+        </div>
+        <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c-n500);">French Contemporary · Paris 8ème</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Caption</div>
+          <div class="type-meta-detail">DM Sans 400<br>11px · ls 0.04em</div>
+        </div>
+        <div style="font-size: 11px; letter-spacing: 0.04em; color: var(--c-n400);">Photography: Guide Philippe Studio · All rights reserved 2026</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SPACING & SURFACES ===== -->
+<section class="section" id="surfaces">
+  <div class="wrap">
+    <div class="section-tag">03 &nbsp; Spacing &amp; Surfaces</div>
+    <div class="section-heading">Spacing, Radii &amp; Shadows</div>
+    <div class="section-sub">A base-4 spatial rhythm. Softened corners throughout. Elevation expressed through shadow, not color.</div>
+
+    <div class="surfaces-grid">
+      <!-- Spacing -->
+      <div>
+        <div class="subsection-label">Spacing scale</div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:4px;"></div><div class="spacing-info"><strong>space-1</strong>&nbsp;&nbsp;4px · 0.25rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:8px;"></div><div class="spacing-info"><strong>space-2</strong>&nbsp;&nbsp;8px · 0.5rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:12px;"></div><div class="spacing-info"><strong>space-3</strong>&nbsp;&nbsp;12px · 0.75rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:16px;"></div><div class="spacing-info"><strong>space-4</strong>&nbsp;&nbsp;16px · 1rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:24px;"></div><div class="spacing-info"><strong>space-6</strong>&nbsp;&nbsp;24px · 1.5rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:32px;"></div><div class="spacing-info"><strong>space-8</strong>&nbsp;&nbsp;32px · 2rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:48px;"></div><div class="spacing-info"><strong>space-12</strong> 48px · 3rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:64px;"></div><div class="spacing-info"><strong>space-16</strong> 64px · 4rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:80px;"></div><div class="spacing-info"><strong>space-20</strong> 80px · 5rem</div></div>
+      </div>
+
+      <!-- Radii + Shadows -->
+      <div>
+        <div class="subsection-label">Border radii</div>
+        <div class="radii-row">
+          <div class="radius-item">
+            <div class="radius-block" style="border-radius:0;"></div>
+            <div class="radius-caption">none<br>0</div>
+          </div>
+          <div class="radius-item">
+            <div class="radius-block" style="border-radius:4px;"></div>
+            <div class="radius-caption">sm<br>4px</div>
+          </div>
+          <div class="radius-item">
+            <div class="radius-block" style="border-radius:8px;"></div>
+            <div class="radius-caption">md<br>8px</div>
+          </div>
+          <div class="radius-item">
+            <div class="radius-block" style="border-radius:14px;"></div>
+            <div class="radius-caption">lg<br>14px</div>
+          </div>
+          <div class="radius-item">
+            <div class="radius-block" style="border-radius:22px;"></div>
+            <div class="radius-caption">xl<br>22px</div>
+          </div>
+          <div class="radius-item">
+            <div class="radius-block" style="border-radius:9999px;"></div>
+            <div class="radius-caption">pill<br>∞</div>
+          </div>
+        </div>
+
+        <div class="subsection-label" style="margin-top:32px;">Shadows</div>
+        <div class="shadows-row">
+          <div class="shadow-item">
+            <div class="shadow-block" style="box-shadow: 0 1px 2px oklch(0% 0 0 / 0.05); border: 1px solid oklch(0% 0 0 / 0.04);"></div>
+            <div class="shadow-caption">s-xs</div>
+          </div>
+          <div class="shadow-item">
+            <div class="shadow-block" style="box-shadow: 0 1px 4px oklch(0% 0 0 / 0.06), 0 1px 2px oklch(0% 0 0 / 0.04);"></div>
+            <div class="shadow-caption">s-sm</div>
+          </div>
+          <div class="shadow-item">
+            <div class="shadow-block" style="box-shadow: 0 4px 14px oklch(0% 0 0 / 0.08), 0 2px 4px oklch(0% 0 0 / 0.04);"></div>
+            <div class="shadow-caption">s-md</div>
+          </div>
+          <div class="shadow-item">
+            <div class="shadow-block" style="box-shadow: 0 14px 36px oklch(0% 0 0 / 0.10), 0 4px 8px oklch(0% 0 0 / 0.05);"></div>
+            <div class="shadow-caption">s-lg</div>
+          </div>
+          <div class="shadow-item">
+            <div class="shadow-block" style="box-shadow: 0 0 0 3px oklch(91% 0.032 76);"></div>
+            <div class="shadow-caption">s-focus<br>(gold ring)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== BUTTONS ===== -->
+<section class="section" id="buttons">
+  <div class="wrap">
+    <div class="section-tag">04 &nbsp; Buttons</div>
+    <div class="section-heading">Buttons</div>
+    <div class="section-sub">Five variants across three sizes. Hover states carry a subtle lift — never jarring, always considered.</div>
+
+    <div class="subsection-label">Large</div>
+    <div class="btn-row" style="margin-bottom:28px;">
+      <button class="btn btn-ink btn-lg">Explore Restaurants</button>
+      <button class="btn btn-gold btn-lg">Make a Reservation</button>
+      <button class="btn btn-outline btn-lg">Browse Cuisines</button>
+      <button class="btn btn-burg btn-lg">Editors' Picks</button>
+      <button class="btn btn-ghost btn-lg">Learn More</button>
+    </div>
+
+    <div class="subsection-label">Medium</div>
+    <div class="btn-row" style="margin-bottom:28px;">
+      <button class="btn btn-ink btn-md">Explore Restaurants</button>
+      <button class="btn btn-gold btn-md">Make a Reservation</button>
+      <button class="btn btn-outline btn-md">Browse Cuisines</button>
+      <button class="btn btn-burg btn-md">Editors' Picks</button>
+      <button class="btn btn-ghost btn-md">Learn More</button>
+    </div>
+
+    <div class="subsection-label">Small</div>
+    <div class="btn-row">
+      <button class="btn btn-ink btn-sm">Explore</button>
+      <button class="btn btn-gold btn-sm">Reserve</button>
+      <button class="btn btn-outline btn-sm">Browse</button>
+      <button class="btn btn-burg btn-sm">Editors' Picks</button>
+      <button class="btn btn-ghost btn-sm">More</button>
+    </div>
+
+    <div class="subsection-label" style="margin-top:48px;">Badges &amp; Labels</div>
+    <div class="badge-row" style="margin-bottom: 10px;">
+      <span class="badge badge-ink">New</span>
+      <span class="badge badge-gold">⭑ &nbsp;Featured</span>
+      <span class="badge badge-burg">Editors' Pick</span>
+      <span class="badge badge-subtle">Seasonal</span>
+      <span class="badge badge-outline">Open Now</span>
+    </div>
+    <div class="badge-row">
+      <span class="badge badge-outline">French</span>
+      <span class="badge badge-outline">Japanese</span>
+      <span class="badge badge-outline">Mediterranean</span>
+      <span class="badge badge-outline">Italian</span>
+      <span class="badge badge-outline">Seafood</span>
+      <span class="badge badge-outline">Plant-based</span>
+      <span class="badge badge-outline">Tasting Menu</span>
+      <span class="badge badge-outline">Wine Bar</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CARDS ===== -->
+<section class="section" id="cards">
+  <div class="wrap">
+    <div class="section-tag">05 &nbsp; Cards</div>
+    <div class="section-heading">Restaurant Cards</div>
+    <div class="section-sub">Grid for discovery; list for search. Both carry the rating emoji and price indicator inline.</div>
+
+    <div class="subsection-label">Grid view — discovery</div>
+    <div class="cards-grid">
+
+      <!-- Card 1 -->
+      <div class="card">
+        <div class="card-thumb">
+          <div class="card-thumb-fill"><span>restaurant photo</span></div>
+          <div class="card-badge">
+            <span>🍽️</span>
+            <span class="card-badge-label">Absolute rec.</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-header">
+            <div class="card-name">Le Bernardin</div>
+            <div class="card-price">
+              <span class="price-on">€</span><span class="price-on">€</span><span class="price-on">€</span><span class="price-on">€</span>
+            </div>
+          </div>
+          <div class="card-cuisine">French · Seafood</div>
+          <div class="card-desc">Impeccable seafood cookery in a room that rewards stillness. The sole meunière alone justifies the visit.</div>
+          <div class="card-footer">
+            <div class="card-loc">📍 8ème, Paris</div>
+            <span class="card-chip">Tasting Menu</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="card">
+        <div class="card-thumb">
+          <div class="card-thumb-fill"><span>restaurant photo</span></div>
+          <div class="card-badge">
+            <span>🍴</span>
+            <span class="card-badge-label">Worth mentioning</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-header">
+            <div class="card-name">Noma</div>
+            <div class="card-price">
+              <span class="price-on">€</span><span class="price-on">€</span><span class="price-on">€</span><span class="price-off">€</span>
+            </div>
+          </div>
+          <div class="card-cuisine">Nordic · Fermentation</div>
+          <div class="card-desc">Foraging and fermentation elevated to art. A pilgrimage for the genuinely curious palate.</div>
+          <div class="card-footer">
+            <div class="card-loc">📍 Copenhagen</div>
+            <span class="card-chip">Seasonal</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="card">
+        <div class="card-thumb">
+          <div class="card-thumb-fill"><span>restaurant photo</span></div>
+          <div class="card-badge">
+            <span>🥄</span>
+            <span class="card-badge-label">Remembering</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-header">
+            <div class="card-name">Al Moro</div>
+            <div class="card-price">
+              <span class="price-on">€</span><span class="price-on">€</span><span class="price-off">€</span><span class="price-off">€</span>
+            </div>
+          </div>
+          <div class="card-cuisine">Italian · Roman</div>
+          <div class="card-desc">Classic Roman trattoria with an honest kitchen. The cacio e pepe is a quiet masterpiece.</div>
+          <div class="card-footer">
+            <div class="card-loc">📍 Trastevere, Rome</div>
+            <span class="card-chip">Classic</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="subsection-label">List view — search results</div>
+    <div class="list-card">
+
+      <div class="list-row">
+        <div class="list-left">
+          <div class="list-name-row">
+            <span class="list-emoji">🍽️</span>
+            <span class="list-name">Le Cinq</span>
+            <span class="badge badge-gold" style="font-size:10px; padding: 3px 8px;">Featured</span>
+          </div>
+          <div class="list-meta">
+            <span class="list-cuisine">French · Fine Dining</span>
+            <span class="list-loc">📍 8ème, Paris</span>
+          </div>
+        </div>
+        <div class="list-right">
+          <div class="card-price"><span class="price-on">€</span><span class="price-on">€</span><span class="price-on">€</span><span class="price-on">€</span></div>
+          <button class="btn btn-outline btn-sm">Reserve</button>
+        </div>
+      </div>
+
+      <div class="list-row">
+        <div class="list-left">
+          <div class="list-name-row">
+            <span class="list-emoji">🍴</span>
+            <span class="list-name">Septime</span>
+          </div>
+          <div class="list-meta">
+            <span class="list-cuisine">Bistro · Natural Wine</span>
+            <span class="list-loc">📍 11ème, Paris</span>
+          </div>
+        </div>
+        <div class="list-right">
+          <div class="card-price"><span class="price-on">€</span><span class="price-on">€</span><span class="price-off">€</span><span class="price-off">€</span></div>
+          <button class="btn btn-outline btn-sm">Reserve</button>
+        </div>
+      </div>
+
+      <div class="list-row">
+        <div class="list-left">
+          <div class="list-name-row">
+            <span class="list-emoji">🥄</span>
+            <span class="list-name">Café de Flore</span>
+          </div>
+          <div class="list-meta">
+            <span class="list-cuisine">Café · Brasserie</span>
+            <span class="list-loc">📍 Saint-Germain, Paris</span>
+          </div>
+        </div>
+        <div class="list-right">
+          <div class="card-price"><span class="price-on">€</span><span class="price-off">€</span><span class="price-off">€</span><span class="price-off">€</span></div>
+          <button class="btn btn-outline btn-sm">Reserve</button>
+        </div>
+      </div>
+
+      <div class="list-row">
+        <div class="list-left">
+          <div class="list-name-row">
+            <span class="list-emoji">🫗</span>
+            <span class="list-name" style="color: var(--c-n400);">La Brasserie du Midi</span>
+          </div>
+          <div class="list-meta">
+            <span class="list-cuisine">Brasserie · French</span>
+            <span class="list-loc">📍 Montparnasse, Paris</span>
+          </div>
+        </div>
+        <div class="list-right">
+          <div class="card-price"><span class="price-on">€</span><span class="price-on">€</span><span class="price-off">€</span><span class="price-off">€</span></div>
+          <button class="btn btn-ghost btn-sm" style="color: var(--c-n400); font-size: 11px; letter-spacing: 0.04em;">Not recommended</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ===== RATING SYSTEM ===== -->
+<section class="section" id="ratings">
+  <div class="wrap">
+    <div class="section-tag">06 &nbsp; Rating System</div>
+    <div class="section-heading">Guide Philippe Rating Scale</div>
+    <div class="section-sub">Four levels expressed through culinary iconography. Each carries editorial weight — bestowed rarely and deliberately.</div>
+
+    <div class="rating-grid">
+      <div class="rating-card top">
+        <div class="rating-emoji">🍽️</div>
+        <div class="rating-pips">
+          <div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div>
+        </div>
+        <div class="rating-name">Absolute<br>Recommendation</div>
+        <div class="rating-desc">A restaurant of exceptional merit. Do not miss under any circumstances.</div>
+      </div>
+
+      <div class="rating-card">
+        <div class="rating-emoji">🍴</div>
+        <div class="rating-pips">
+          <div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip"></div>
+        </div>
+        <div class="rating-name">Worth<br>Mentioning</div>
+        <div class="rating-desc">A genuinely good restaurant with clear strengths worth your attention.</div>
+      </div>
+
+      <div class="rating-card">
+        <div class="rating-emoji">🥄</div>
+        <div class="rating-pips">
+          <div class="pip on"></div><div class="pip on"></div><div class="pip"></div><div class="pip"></div>
+        </div>
+        <div class="rating-name">Remembering</div>
+        <div class="rating-desc">Pleasant, unremarkable. Fond memory; no urgency to return.</div>
+      </div>
+
+      <div class="rating-card">
+        <div class="rating-emoji">🫗</div>
+        <div class="rating-pips">
+          <div class="pip on"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div>
+        </div>
+        <div class="rating-name">Not<br>Recommended</div>
+        <div class="rating-desc">Falls short of the standard expected at this price or ambition.</div>
+      </div>
+    </div>
+
+    <div class="subsection-label">Inline rating rows</div>
+    <div style="max-width: 600px;">
+      <div class="rating-row top">
+        <div class="rating-row-emoji">🍽️</div>
+        <div>
+          <div class="rating-row-name gold">Absolute Recommendation</div>
+          <div class="rating-row-desc">A restaurant of exceptional merit. Do not miss.</div>
+        </div>
+      </div>
+      <div class="rating-row">
+        <div class="rating-row-emoji">🍴</div>
+        <div>
+          <div class="rating-row-name dark">Worth Mentioning</div>
+          <div class="rating-row-desc">Genuinely good, with clear strengths worth your attention.</div>
+        </div>
+      </div>
+      <div class="rating-row">
+        <div class="rating-row-emoji">🥄</div>
+        <div>
+          <div class="rating-row-name dark">Remembering</div>
+          <div class="rating-row-desc">Pleasant, unremarkable — worth a visit if nearby.</div>
+        </div>
+      </div>
+      <div class="rating-row">
+        <div class="rating-row-emoji">🫗</div>
+        <div>
+          <div class="rating-row-name muted">Not Recommended</div>
+          <div class="rating-row-desc" style="color: var(--c-n400);">Falls short of the expected standard at this price point.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PRICING ===== -->
+<section class="section" id="pricing">
+  <div class="wrap">
+    <div class="section-tag">07 &nbsp; Price Range</div>
+    <div class="section-heading">Price Indicators</div>
+    <div class="section-sub">Euro symbols as universal shorthand for cost. Active glyphs in charcoal; inactive in N200. Fine dining carries a gold accent.</div>
+
+    <div class="price-list">
+      <div class="price-row">
+        <div class="price-glyphs"><span style="color: var(--c-ink);">€</span><span style="color: var(--c-n200);">€€€</span></div>
+        <div class="price-rule"></div>
+        <div>
+          <div class="price-tier">Budget</div>
+          <div class="price-range">Under €25 per person</div>
+        </div>
+      </div>
+
+      <div class="price-row">
+        <div class="price-glyphs"><span style="color: var(--c-ink);">€€</span><span style="color: var(--c-n200);">€€</span></div>
+        <div class="price-rule"></div>
+        <div>
+          <div class="price-tier">Moderate</div>
+          <div class="price-range">€25 – €60 per person</div>
+        </div>
+      </div>
+
+      <div class="price-row">
+        <div class="price-glyphs"><span style="color: var(--c-ink);">€€€</span><span style="color: var(--c-n200);">€</span></div>
+        <div class="price-rule"></div>
+        <div>
+          <div class="price-tier">Upscale</div>
+          <div class="price-range">€60 – €120 per person</div>
+        </div>
+      </div>
+
+      <div class="price-row fine">
+        <div class="price-glyphs" style="color: var(--c-gold);">€€€€</div>
+        <div class="price-rule" style="background: var(--c-gold-light);"></div>
+        <div>
+          <div class="price-tier fine">Fine Dining</div>
+          <div class="price-range">€120+ · Tasting menus &amp; grand cuisine</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FORMS ===== -->
+<section class="section" id="forms">
+  <div class="wrap">
+    <div class="section-tag">08 &nbsp; Forms</div>
+    <div class="section-heading">Form Elements</div>
+    <div class="section-sub">Restrained inputs with a gold focus ring. Labels in subdued uppercase. Consistent with the overall tonal economy.</div>
+
+    <div style="max-width: 480px;">
+      <div class="form-group">
+        <label class="form-label">Search</label>
+        <div class="search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input type="text" class="form-input has-icon" placeholder="Restaurant, cuisine, or city…">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">City</label>
+        <input type="text" class="form-input" placeholder="Paris, Rome, Tokyo…">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Your notes</label>
+        <textarea class="form-input" placeholder="Describe your impressions of the meal…"></textarea>
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-ink btn-md" style="flex: 1;">Search</button>
+        <button class="btn btn-outline btn-md">Reset</button>
+      </div>
+    </div>
+
+    <!-- Nav below forms -->
+    <div class="subsection-label" style="margin-top: 64px;" id="nav">Navigation bar</div>
+    <div class="nav-sample">
+      <div class="nav-brand">Guide <span style="color:var(--c-burg)">Philippe</span></div>
+      <ul class="nav-links">
+        <li><a class="nav-link is-active">Discover</a></li>
+        <li><a class="nav-link">Cities</a></li>
+        <li><a class="nav-link">Cuisines</a></li>
+        <li><a class="nav-link">Editors' Picks</a></li>
+        <li><a class="nav-link">About</a></li>
+      </ul>
+      <div class="nav-actions">
+        <button class="btn btn-ghost btn-sm">Sign In</button>
+        <button class="btn btn-ink btn-sm">Join</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<div class="wrap">
+  <div class="ornament">
+    <div class="ornament-line"></div>
+    <div class="ornament-dot"></div>
+    <div class="ornament-text">Guide Philippe Design System · v1.0</div>
+    <div class="ornament-dot"></div>
+    <div class="ornament-line"></div>
+  </div>
+  <div class="footer">
+    <div class="footer-brand">Guide <span style="color:var(--c-burg)">Philippe</span>.</div>
+    <div class="footer-meta">Design System · v1.0 · June 2026</div>
+  </div>
+</div>
+
+</body>
+</html>

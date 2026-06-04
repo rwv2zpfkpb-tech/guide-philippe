@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guide Philippe — Design System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="components.css">
+</head>
+<body>
+
+<!-- ===== TOP BAR ===== -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="topbar-brand">Guide <span>Philippe</span></div>
+    <nav>
+      <ul class="topbar-nav">
+        <li><a href="#colors">Colors</a></li>
+        <li><a href="#type">Type</a></li>
+        <li><a href="#surfaces">Surfaces</a></li>
+        <li><a href="#buttons">Buttons</a></li>
+        <li><a href="#cards">Cards</a></li>
+        <li><a href="#ratings">Ratings</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#forms">Forms</a></li>
+      </ul>
+    </nav>
+    <div class="topbar-tag">Design System · v1.0</div>
+  </div>
+</div>
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+  <div class="wrap">
+    <div class="hero-watermark" aria-hidden="true">GP</div>
+    <div class="hero-eyebrow">Design System &nbsp;·&nbsp; v1.0 &nbsp;·&nbsp; June 2026</div>
+    <div class="hero-brand">Guide<br><em>Philippe.</em></div>
+    <div class="hero-tagline">A contemporary guide to exceptional dining.</div>
+    <div class="hero-meta">
+      <span><strong>Display</strong> &nbsp;Cormorant Garamond</span>
+      <span><strong>Body</strong> &nbsp;DM Sans</span>
+      <span><strong>Accent</strong> &nbsp;Muted Gold &amp; Burgundy</span>
+      <span><strong>Scale</strong> &nbsp;Base-4 spacing</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 01 COLORS ===== -->
+<section class="section" id="colors">
+  <div class="wrap">
+    <div class="section-tag">01 &nbsp; Colors</div>
+    <div class="section-heading">Color System</div>
+    <div class="section-sub">A restrained palette anchored in deep charcoal and warm ivory, lifted by muted gold and dark burgundy — the two accent axes of the brand.</div>
+
+    <div class="subsection-label">Brand palette</div>
+    <div class="color-strip">
+      <div class="swatch">
+        <div class="swatch-block" style="background: oklch(13% 0.012 255);"></div>
+        <div class="swatch-name">Charcoal</div>
+        <div class="swatch-value">--c-ink<br>oklch(13% 0.012 255)</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-block" style="background: oklch(97.5% 0.008 78); border: 1px solid oklch(0% 0 0 / 0.08);"></div>
+        <div class="swatch-name">Ivory</div>
+        <div class="swatch-value">--c-bg<br>oklch(97.5% 0.008 78)</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-block" style="background: oklch(58% 0.070 72);"></div>
+        <div class="swatch-name">Warm Gold</div>
+        <div class="swatch-value">--c-gold<br>oklch(58% 0.070 72)</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-block" style="background: oklch(72% 0.050 74);"></div>
+        <div class="swatch-name">Gold Mid</div>
+        <div class="swatch-value">--c-gold-mid<br>oklch(72% 0.050 74)</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-block" style="background: oklch(91% 0.032 76); border: 1px solid oklch(0% 0 0 / 0.05);"></div>
+        <div class="swatch-name">Gold Tint</div>
+        <div class="swatch-value">--c-gold-light<br>oklch(91% 0.032 76)</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-block" style="background: oklch(31% 0.080 17);"></div>
+        <div class="swatch-name">Burgundy</div>
+        <div class="swatch-value">--c-burg<br>oklch(31% 0.080 17)</div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-block" style="background: oklch(93% 0.016 17); border: 1px solid oklch(0% 0 0 / 0.05);"></div>
+        <div class="swatch-name">Burg. Tint</div>
+        <div class="swatch-value">--c-burg-light<br>oklch(93% 0.016 17)</div>
+      </div>
+    </div>
+
+    <div class="subsection-label">Neutral scale — warm-tinted grays</div>
+    <div class="neutral-row">
+      <div class="neutral-block" style="background: oklch(95.5% 0.006 78); border: 1px solid oklch(0% 0 0 / 0.05);"></div>
+      <div class="neutral-block" style="background: oklch(92% 0.007 78);"></div>
+      <div class="neutral-block" style="background: oklch(86% 0.008 78);"></div>
+      <div class="neutral-block" style="background: oklch(76% 0.008 78);"></div>
+      <div class="neutral-block" style="background: oklch(63% 0.007 78);"></div>
+      <div class="neutral-block" style="background: oklch(52% 0.007 78);"></div>
+      <div class="neutral-block" style="background: oklch(41% 0.007 78);"></div>
+      <div class="neutral-block" style="background: oklch(30% 0.008 78);"></div>
+    </div>
+    <div class="neutral-labels">
+      <div class="neutral-label">N50</div>
+      <div class="neutral-label">N100</div>
+      <div class="neutral-label">N200</div>
+      <div class="neutral-label">N300</div>
+      <div class="neutral-label">N400</div>
+      <div class="neutral-label">N500</div>
+      <div class="neutral-label">N600</div>
+      <div class="neutral-label">N700</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 02 TYPOGRAPHY ===== -->
+<section class="section" id="type">
+  <div class="wrap">
+    <div class="section-tag">02 &nbsp; Typography</div>
+    <div class="section-heading">Type System</div>
+    <div class="section-sub">Cormorant Garamond brings editorial authority to headlines and the brand mark. DM Sans handles body copy with quiet efficiency.</div>
+
+    <div class="type-table">
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Brand / Hero</div>
+          <div class="type-meta-detail">Cormorant Garamond 700<br>120px · ls −0.03em · lh 0.88</div>
+        </div>
+        <div style="font-family: var(--f-display); font-size: 5.5rem; font-weight: 700; line-height: 0.88; letter-spacing: -0.03em;">
+          Guide<br><span style="color: var(--c-burg);">Philippe.</span>
+        </div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Display</div>
+          <div class="type-meta-detail">Cormorant Garamond 600<br>56px · ls −0.02em · lh 1.0</div>
+        </div>
+        <div style="font-family: var(--f-display); font-size: var(--t-56); font-weight: 600; line-height: 1; letter-spacing: -0.02em;">The Art of Dining Well</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Heading 1</div>
+          <div class="type-meta-detail">Cormorant Garamond 500<br>40px · ls −0.01em · lh 1.1</div>
+        </div>
+        <div style="font-family: var(--f-display); font-size: var(--t-40); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em;">Exceptional Restaurants, Carefully Chosen</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Heading 2</div>
+          <div class="type-meta-detail">Cormorant Garamond 500<br>32px · lh 1.15</div>
+        </div>
+        <div style="font-family: var(--f-display); font-size: var(--t-32); font-weight: 500; line-height: 1.15;">Mediterranean, Paris</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Heading 3</div>
+          <div class="type-meta-detail">Cormorant Garamond 500<br>24px · lh 1.2</div>
+        </div>
+        <div style="font-family: var(--f-display); font-size: var(--t-24); font-weight: 500; line-height: 1.2;">Seasonal Tasting Menu</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Heading 4</div>
+          <div class="type-meta-detail">Cormorant Garamond 600<br>20px · lh 1.3</div>
+        </div>
+        <div style="font-family: var(--f-display); font-size: var(--t-20); font-weight: 600; line-height: 1.3;">Chef's Recommendations</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Italic Display</div>
+          <div class="type-meta-detail">Cormorant Garamond 300 italic<br>40px</div>
+        </div>
+        <div style="font-family: var(--f-display); font-size: var(--t-40); font-weight: 300; font-style: italic; color: var(--c-n400);">À table.</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Lead / Intro</div>
+          <div class="type-meta-detail">DM Sans 300<br>18px · lh 1.7</div>
+        </div>
+        <div style="font-size: var(--t-18); font-weight: 300; line-height: 1.7; color: var(--c-n600);">A curated selection of the city's most remarkable dining experiences — from hidden neighbourhood gems to celebrated gastronomic institutions.</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Body</div>
+          <div class="type-meta-detail">DM Sans 400<br>16px · lh 1.65</div>
+        </div>
+        <div style="font-size: var(--t-16); line-height: 1.65;">The kitchen approaches each dish with a reverence for seasonal produce and classical technique. The result is a menu that feels both familiar and entirely unexpected — a rare quality in contemporary dining.</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Body Small</div>
+          <div class="type-meta-detail">DM Sans 400<br>14px · lh 1.6</div>
+        </div>
+        <div style="font-size: var(--t-14); line-height: 1.6; color: var(--c-n500);">Reservations recommended. Smart casual dress code. Closed Tuesdays. Full bar available.</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Label / Overline</div>
+          <div class="type-meta-detail">DM Sans 500<br>11px · ls 0.14em · uppercase</div>
+        </div>
+        <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c-n500);">French Contemporary · Paris 8ème</div>
+      </div>
+
+      <div class="type-row">
+        <div>
+          <div class="type-meta-name">Caption</div>
+          <div class="type-meta-detail">DM Sans 400<br>11px · ls 0.04em</div>
+        </div>
+        <div style="font-size: 11px; letter-spacing: 0.04em; color: var(--c-n400);">Photography: Guide Philippe Studio · All rights reserved 2026</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 03 SPACING & SURFACES ===== -->
+<section class="section" id="surfaces">
+  <div class="wrap">
+    <div class="section-tag">03 &nbsp; Spacing &amp; Surfaces</div>
+    <div class="section-heading">Spacing, Radii &amp; Shadows</div>
+    <div class="section-sub">A base-4 spatial rhythm. Softened corners throughout. Elevation expressed through shadow, not color.</div>
+
+    <div class="surfaces-grid">
+      <!-- Spacing -->
+      <div>
+        <div class="subsection-label">Spacing scale</div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:4px;"></div><div class="spacing-info"><strong>space-1</strong>&nbsp;&nbsp;4px · 0.25rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:8px;"></div><div class="spacing-info"><strong>space-2</strong>&nbsp;&nbsp;8px · 0.5rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:12px;"></div><div class="spacing-info"><strong>space-3</strong>&nbsp;&nbsp;12px · 0.75rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:16px;"></div><div class="spacing-info"><strong>space-4</strong>&nbsp;&nbsp;16px · 1rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:24px;"></div><div class="spacing-info"><strong>space-6</strong>&nbsp;&nbsp;24px · 1.5rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:32px;"></div><div class="spacing-info"><strong>space-8</strong>&nbsp;&nbsp;32px · 2rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:48px;"></div><div class="spacing-info"><strong>space-12</strong> 48px · 3rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:64px;"></div><div class="spacing-info"><strong>space-16</strong> 64px · 4rem</div></div>
+        <div class="spacing-item"><div class="spacing-bar" style="width:80px;"></div><div class="spacing-info"><strong>space-20</strong> 80px · 5rem</div></div>
+      </div>
+
+      <!-- Radii + Shadows -->
+      <div>
+        <div class="subsection-label">Border radii</div>
+        <div class="radii-row">
+          <div class="radius-item">
+            <div class="radius-block" style="border-radius:0;"></div>
+            <div class="radius-caption">none<br>0</div>
+          </div>
+          <div class="radius-item">
+            <div class="radius-block" style="border-radius:var(--r-sm);"></div>
+            <div class="radius-caption">sm<br>4px</div>
+          </div>
+          <div class="radius-item">
+            <div class="radius-block" style="border-radius:var(--r-md);"></div>
+            <div class="radius-caption">md<br>8px</div>
+          </div>
+          <div class="radius-item">
+            <div class="radius-block" style="border-radius:var(--r-lg);"></div>
+            <div class="radius-caption">lg<br>14px</div>
+          </div>
+          <div class="radius-item">
+            <div class="radius-block" style="border-radius:var(--r-xl);"></div>
+            <div class="radius-caption">xl<br>22px</div>
+          </div>
+          <div class="radius-item">
+            <div class="radius-block" style="border-radius:var(--r-pill);"></div>
+            <div class="radius-caption">pill<br>∞</div>
+          </div>
+        </div>
+
+        <div class="subsection-label" style="margin-top:32px;">Shadows</div>
+        <div class="shadows-row">
+          <div class="shadow-item">
+            <div class="shadow-block" style="box-shadow: var(--s-xs); border: 1px solid oklch(0% 0 0 / 0.04);"></div>
+            <div class="shadow-caption">s-xs</div>
+          </div>
+          <div class="shadow-item">
+            <div class="shadow-block" style="box-shadow: var(--s-sm);"></div>
+            <div class="shadow-caption">s-sm</div>
+          </div>
+          <div class="shadow-item">
+            <div class="shadow-block" style="box-shadow: var(--s-md);"></div>
+            <div class="shadow-caption">s-md</div>
+          </div>
+          <div class="shadow-item">
+            <div class="shadow-block" style="box-shadow: var(--s-lg);"></div>
+            <div class="shadow-caption">s-lg</div>
+          </div>
+          <div class="shadow-item">
+            <div class="shadow-block" style="box-shadow: var(--s-focus);"></div>
+            <div class="shadow-caption">s-focus<br>(gold ring)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 04 BUTTONS ===== -->
+<section class="section" id="buttons">
+  <div class="wrap">
+    <div class="section-tag">04 &nbsp; Buttons</div>
+    <div class="section-heading">Buttons</div>
+    <div class="section-sub">Five variants across three sizes. Hover states carry a subtle lift — never jarring, always considered.</div>
+
+    <div class="subsection-label">Large</div>
+    <div class="btn-row" style="margin-bottom:28px;">
+      <button class="btn btn-ink btn-lg">Explore Restaurants</button>
+      <button class="btn btn-gold btn-lg">Make a Reservation</button>
+      <button class="btn btn-outline btn-lg">Browse Cuisines</button>
+      <button class="btn btn-burg btn-lg">Editors' Picks</button>
+      <button class="btn btn-ghost btn-lg">Learn More</button>
+    </div>
+
+    <div class="subsection-label">Medium</div>
+    <div class="btn-row" style="margin-bottom:28px;">
+      <button class="btn btn-ink btn-md">Explore Restaurants</button>
+      <button class="btn btn-gold btn-md">Make a Reservation</button>
+      <button class="btn btn-outline btn-md">Browse Cuisines</button>
+      <button class="btn btn-burg btn-md">Editors' Picks</button>
+      <button class="btn btn-ghost btn-md">Learn More</button>
+    </div>
+
+    <div class="subsection-label">Small</div>
+    <div class="btn-row">
+      <button class="btn btn-ink btn-sm">Explore</button>
+      <button class="btn btn-gold btn-sm">Reserve</button>
+      <button class="btn btn-outline btn-sm">Browse</button>
+      <button class="btn btn-burg btn-sm">Editors' Picks</button>
+      <button class="btn btn-ghost btn-sm">More</button>
+    </div>
+
+    <div class="subsection-label" style="margin-top:48px;">Badges &amp; Labels</div>
+    <div class="badge-row" style="margin-bottom: 10px;">
+      <span class="badge badge-ink">New</span>
+      <span class="badge badge-gold">⭑ &nbsp;Featured</span>
+      <span class="badge badge-burg">Editors' Pick</span>
+      <span class="badge badge-subtle">Seasonal</span>
+      <span class="badge badge-outline">Open Now</span>
+    </div>
+    <div class="badge-row">
+      <span class="badge badge-outline">French</span>
+      <span class="badge badge-outline">Japanese</span>
+      <span class="badge badge-outline">Mediterranean</span>
+      <span class="badge badge-outline">Italian</span>
+      <span class="badge badge-outline">Seafood</span>
+      <span class="badge badge-outline">Plant-based</span>
+      <span class="badge badge-outline">Tasting Menu</span>
+      <span class="badge badge-outline">Wine Bar</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 05 CARDS ===== -->
+<section class="section" id="cards">
+  <div class="wrap">
+    <div class="section-tag">05 &nbsp; Cards</div>
+    <div class="section-heading">Restaurant Cards</div>
+    <div class="section-sub">Grid for discovery; list for search. Both carry the rating emoji and price indicator inline.</div>
+
+    <div class="subsection-label">Grid view — discovery</div>
+    <div class="cards-grid">
+
+      <!-- Card 1: Absolute Recommendation -->
+      <div class="card">
+        <div class="card-thumb">
+          <div class="card-thumb-fill"><span>restaurant photo</span></div>
+          <div class="card-badge">
+            <span>🍽️</span>
+            <span class="card-badge-label">Absolute rec.</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-header">
+            <div class="card-name">Le Bernardin</div>
+            <div class="card-price">
+              <span class="price-on">€</span><span class="price-on">€</span><span class="price-on">€</span><span class="price-on">€</span>
+            </div>
+          </div>
+          <div class="card-cuisine">French · Seafood</div>
+          <div class="card-desc">Impeccable seafood cookery in a room that rewards stillness. The sole meunière alone justifies the visit.</div>
+          <div class="card-footer">
+            <div class="card-loc">📍 8ème, Paris</div>
+            <span class="card-chip">Tasting Menu</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Worth Mentioning -->
+      <div class="card">
+        <div class="card-thumb">
+          <div class="card-thumb-fill"><span>restaurant photo</span></div>
+          <div class="card-badge">
+            <span>🍴</span>
+            <span class="card-badge-label">Worth mentioning</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-header">
+            <div class="card-name">Noma</div>
+            <div class="card-price">
+              <span class="price-on">€</span><span class="price-on">€</span><span class="price-on">€</span><span class="price-off">€</span>
+            </div>
+          </div>
+          <div class="card-cuisine">Nordic · Fermentation</div>
+          <div class="card-desc">Foraging and fermentation elevated to art. A pilgrimage for the genuinely curious palate.</div>
+          <div class="card-footer">
+            <div class="card-loc">📍 Copenhagen</div>
+            <span class="card-chip">Seasonal</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Remembering -->
+      <div class="card">
+        <div class="card-thumb">
+          <div class="card-thumb-fill"><span>restaurant photo</span></div>
+          <div class="card-badge">
+            <span>🥄</span>
+            <span class="card-badge-label">Remembering</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-header">
+            <div class="card-name">Al Moro</div>
+            <div class="card-price">
+              <span class="price-on">€</span><span class="price-on">€</span><span class="price-off">€</span><span class="price-off">€</span>
+            </div>
+          </div>
+          <div class="card-cuisine">Italian · Roman</div>
+          <div class="card-desc">Classic Roman trattoria with an honest kitchen. The cacio e pepe is a quiet masterpiece.</div>
+          <div class="card-footer">
+            <div class="card-loc">📍 Trastevere, Rome</div>
+            <span class="card-chip">Classic</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="subsection-label">List view — search results</div>
+    <div class="list-card">
+
+      <div class="list-row">
+        <div class="list-left">
+          <div class="list-name-row">
+            <span class="list-emoji">🍽️</span>
+            <span class="list-name">Le Cinq</span>
+            <span class="badge badge-gold" style="font-size:10px; padding: 3px 8px;">Featured</span>
+          </div>
+          <div class="list-meta">
+            <span class="list-cuisine">French · Fine Dining</span>
+            <span class="list-loc">📍 8ème, Paris</span>
+          </div>
+        </div>
+        <div class="list-right">
+          <div class="card-price"><span class="price-on">€</span><span class="price-on">€</span><span class="price-on">€</span><span class="price-on">€</span></div>
+          <button class="btn btn-outline btn-sm">Reserve</button>
+        </div>
+      </div>
+
+      <div class="list-row">
+        <div class="list-left">
+          <div class="list-name-row">
+            <span class="list-emoji">🍴</span>
+            <span class="list-name">Septime</span>
+          </div>
+          <div class="list-meta">
+            <span class="list-cuisine">Bistro · Natural Wine</span>
+            <span class="list-loc">📍 11ème, Paris</span>
+          </div>
+        </div>
+        <div class="list-right">
+          <div class="card-price"><span class="price-on">€</span><span class="price-on">€</span><span class="price-off">€</span><span class="price-off">€</span></div>
+          <button class="btn btn-outline btn-sm">Reserve</button>
+        </div>
+      </div>
+
+      <div class="list-row">
+        <div class="list-left">
+          <div class="list-name-row">
+            <span class="list-emoji">🥄</span>
+            <span class="list-name">Café de Flore</span>
+          </div>
+          <div class="list-meta">
+            <span class="list-cuisine">Café · Brasserie</span>
+            <span class="list-loc">📍 Saint-Germain, Paris</span>
+          </div>
+        </div>
+        <div class="list-right">
+          <div class="card-price"><span class="price-on">€</span><span class="price-off">€</span><span class="price-off">€</span><span class="price-off">€</span></div>
+          <button class="btn btn-outline btn-sm">Reserve</button>
+        </div>
+      </div>
+
+      <div class="list-row">
+        <div class="list-left">
+          <div class="list-name-row">
+            <span class="list-emoji">🫗</span>
+            <span class="list-name" style="color: var(--c-n400);">La Brasserie du Midi</span>
+          </div>
+          <div class="list-meta">
+            <span class="list-cuisine">Brasserie · French</span>
+            <span class="list-loc">📍 Montparnasse, Paris</span>
+          </div>
+        </div>
+        <div class="list-right">
+          <div class="card-price"><span class="price-on">€</span><span class="price-on">€</span><span class="price-off">€</span><span class="price-off">€</span></div>
+          <button class="btn btn-ghost btn-sm" style="color: var(--c-n400); font-size: 11px; letter-spacing: 0.04em;">Not recommended</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ===== 06 RATING SYSTEM ===== -->
+<section class="section" id="ratings">
+  <div class="wrap">
+    <div class="section-tag">06 &nbsp; Rating System</div>
+    <div class="section-heading">Guide Philippe Rating Scale</div>
+    <div class="section-sub">Four levels expressed through culinary iconography. Each carries editorial weight — bestowed rarely and deliberately.</div>
+
+    <div class="rating-grid">
+      <!-- Absolute Recommendation -->
+      <div class="rating-card top">
+        <div class="rating-emoji">🍽️</div>
+        <div class="rating-pips">
+          <div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div>
+        </div>
+        <div class="rating-name">Absolute<br>Recommendation</div>
+        <div class="rating-desc">A restaurant of exceptional merit. Do not miss under any circumstances.</div>
+      </div>
+
+      <!-- Worth Mentioning -->
+      <div class="rating-card">
+        <div class="rating-emoji">🍴</div>
+        <div class="rating-pips">
+          <div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip"></div>
+        </div>
+        <div class="rating-name">Worth<br>Mentioning</div>
+        <div class="rating-desc">A genuinely good restaurant with clear strengths worth your attention.</div>
+      </div>
+
+      <!-- Remembering -->
+      <div class="rating-card">
+        <div class="rating-emoji">🥄</div>
+        <div class="rating-pips">
+          <div class="pip on"></div><div class="pip on"></div><div class="pip"></div><div class="pip"></div>
+        </div>
+        <div class="rating-name">Remembering</div>
+        <div class="rating-desc">Pleasant, unremarkable. Fond memory; no urgency to return.</div>
+      </div>
+
+      <!-- Not Recommended -->
+      <div class="rating-card">
+        <div class="rating-emoji">🫗</div>
+        <div class="rating-pips">
+          <div class="pip on"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div>
+        </div>
+        <div class="rating-name">Not<br>Recommended</div>
+        <div class="rating-desc">Falls short of the standard expected at this price or ambition.</div>
+      </div>
+    </div>
+
+    <div class="subsection-label">Inline rating rows</div>
+    <div style="max-width: 600px;">
+      <div class="rating-row top">
+        <div class="rating-row-emoji">🍽️</div>
+        <div>
+          <div class="rating-row-name gold">Absolute Recommendation</div>
+          <div class="rating-row-desc">A restaurant of exceptional merit. Do not miss.</div>
+        </div>
+      </div>
+      <div class="rating-row">
+        <div class="rating-row-emoji">🍴</div>
+        <div>
+          <div class="rating-row-name dark">Worth Mentioning</div>
+          <div class="rating-row-desc">Genuinely good, with clear strengths worth your attention.</div>
+        </div>
+      </div>
+      <div class="rating-row">
+        <div class="rating-row-emoji">🥄</div>
+        <div>
+          <div class="rating-row-name dark">Remembering</div>
+          <div class="rating-row-desc">Pleasant, unremarkable — worth a visit if nearby.</div>
+        </div>
+      </div>
+      <div class="rating-row">
+        <div class="rating-row-emoji">🫗</div>
+        <div>
+          <div class="rating-row-name muted">Not Recommended</div>
+          <div class="rating-row-desc" style="color: var(--c-n400);">Falls short of the expected standard at this price point.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 07 PRICING ===== -->
+<section class="section" id="pricing">
+  <div class="wrap">
+    <div class="section-tag">07 &nbsp; Price Range</div>
+    <div class="section-heading">Price Indicators</div>
+    <div class="section-sub">Euro symbols as universal shorthand for cost. Active glyphs in charcoal; inactive in N200. Fine dining carries a gold accent.</div>
+
+    <div class="price-list">
+      <div class="price-row">
+        <div class="price-glyphs">
+          <span style="color: var(--c-ink);">€</span><span style="color: var(--c-n200);">€€€</span>
+        </div>
+        <div class="price-rule"></div>
+        <div>
+          <div class="price-tier">Budget</div>
+          <div class="price-range">Under €25 per person</div>
+        </div>
+      </div>
+
+      <div class="price-row">
+        <div class="price-glyphs">
+          <span style="color: var(--c-ink);">€€</span><span style="color: var(--c-n200);">€€</span>
+        </div>
+        <div class="price-rule"></div>
+        <div>
+          <div class="price-tier">Moderate</div>
+          <div class="price-range">€25 – €60 per person</div>
+        </div>
+      </div>
+
+      <div class="price-row">
+        <div class="price-glyphs">
+          <span style="color: var(--c-ink);">€€€</span><span style="color: var(--c-n200);">€</span>
+        </div>
+        <div class="price-rule"></div>
+        <div>
+          <div class="price-tier">Upscale</div>
+          <div class="price-range">€60 – €120 per person</div>
+        </div>
+      </div>
+
+      <div class="price-row fine">
+        <div class="price-glyphs" style="color: var(--c-gold);">€€€€</div>
+        <div class="price-rule" style="background: var(--c-gold-light);"></div>
+        <div>
+          <div class="price-tier fine">Fine Dining</div>
+          <div class="price-range">€120+ · Tasting menus &amp; grand cuisine</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 08 FORMS ===== -->
+<section class="section" id="forms">
+  <div class="wrap">
+    <div class="section-tag">08 &nbsp; Forms</div>
+    <div class="section-heading">Form Elements</div>
+    <div class="section-sub">Restrained inputs with a gold focus ring. Labels in subdued uppercase. Consistent with the overall tonal economy.</div>
+
+    <div style="max-width: 480px;">
+      <div class="form-group">
+        <label class="form-label" for="search-input">Search</label>
+        <div class="search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input id="search-input" type="text" class="form-input has-icon" placeholder="Restaurant, cuisine, or city…">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="city-input">City</label>
+        <input id="city-input" type="text" class="form-input" placeholder="Paris, Rome, Tokyo…">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="notes-input">Your notes</label>
+        <textarea id="notes-input" class="form-input" placeholder="Describe your impressions of the meal…"></textarea>
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-ink btn-md" style="flex: 1;">Search</button>
+        <button class="btn btn-outline btn-md">Reset</button>
+      </div>
+    </div>
+
+    <!-- Navigation bar example -->
+    <div class="subsection-label" style="margin-top: 64px;" id="nav">Navigation bar</div>
+    <div class="nav-sample">
+      <div class="nav-brand">Guide <span style="color:var(--c-burg)">Philippe</span></div>
+      <ul class="nav-links">
+        <li><a class="nav-link is-active" href="#">Discover</a></li>
+        <li><a class="nav-link" href="#">Cities</a></li>
+        <li><a class="nav-link" href="#">Cuisines</a></li>
+        <li><a class="nav-link" href="#">Editors' Picks</a></li>
+        <li><a class="nav-link" href="#">About</a></li>
+      </ul>
+      <div class="nav-actions">
+        <button class="btn btn-ghost btn-sm">Sign In</button>
+        <button class="btn btn-ink btn-sm">Join</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<div class="wrap">
+  <div class="ornament">
+    <div class="ornament-line"></div>
+    <div class="ornament-dot"></div>
+    <div class="ornament-text">Guide Philippe Design System · v1.0</div>
+    <div class="ornament-dot"></div>
+    <div class="ornament-line"></div>
+  </div>
+  <div class="footer">
+    <div class="footer-brand">Guide <span style="color:var(--c-burg)">Philippe</span>.</div>
+    <div class="footer-meta">Design System · v1.0 · June 2026</div>
+  </div>
+</div>
+
+</body>
+</html>

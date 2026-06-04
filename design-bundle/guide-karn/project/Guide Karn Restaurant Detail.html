@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Le Bernardin — Guide Philippe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
+  <style>
+    /* ── TOKENS ───────────────────────────────────────── */
+    :root {
+      --c-bg:          oklch(97.5% 0.008 78);
+      --c-ink:         oklch(13%   0.012 255);
+      --c-gold:        oklch(58%   0.070 72);
+      --c-gold-light:  oklch(91%   0.032 76);
+      --c-gold-mid:    oklch(72%   0.050 74);
+      --c-burg:        oklch(31%   0.080 17);
+      --c-burg-light:  oklch(93%   0.016 17);
+      --c-n50:   oklch(95.5% 0.006 78);
+      --c-n100:  oklch(92%   0.007 78);
+      --c-n200:  oklch(86%   0.008 78);
+      --c-n300:  oklch(76%   0.008 78);
+      --c-n400:  oklch(63%   0.007 78);
+      --c-n500:  oklch(52%   0.007 78);
+      --c-n600:  oklch(41%   0.007 78);
+      --c-n700:  oklch(30%   0.008 78);
+      --f-display: 'Cormorant Garamond', Georgia, serif;
+      --f-body:    'DM Sans', system-ui, sans-serif;
+      --r-sm: 4px; --r-md: 8px; --r-lg: 14px; --r-xl: 22px; --r-pill: 9999px;
+      --s-sm:    0 1px 4px oklch(0% 0 0/.06), 0 1px 2px oklch(0% 0 0/.04);
+      --s-md:    0 4px 16px oklch(0% 0 0/.08), 0 2px 4px oklch(0% 0 0/.04);
+      --s-lg:    0 16px 40px oklch(0% 0 0/.10), 0 4px 8px oklch(0% 0 0/.05);
+      --s-focus: 0 0 0 3px oklch(91% 0.032 76);
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+      --hdr: 64px;
+    }
+
+    /* ── RESET ────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { background: var(--c-bg); color: var(--c-ink); font-family: var(--f-body);
+           -webkit-font-smoothing: antialiased; text-wrap: pretty; }
+    button { font-family: var(--f-body); cursor: pointer; }
+    a { text-decoration: none; color: inherit; }
+
+    /* ── HEADER ───────────────────────────────────────── */
+    .header {
+      position: sticky; top: 0; z-index: 300; height: var(--hdr);
+      border-top: 3px solid var(--c-burg);
+      background: oklch(97.5% 0.008 78 / 0.94);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--c-n100); box-shadow: var(--s-sm);
+    }
+    .header-inner {
+      height: 100%; max-width: 1240px; margin: 0 auto; padding: 0 40px;
+      display: flex; align-items: center; gap: 20px;
+    }
+    .logo { font-family: var(--f-display); font-size: 1.5rem; font-weight: 700;
+            letter-spacing: -0.025em; color: var(--c-ink); text-decoration: none; }
+    .logo-accent { color: var(--c-burg); }
+    .hdr-search {
+      flex: 1; max-width: 380px; display: flex; align-items: center; gap: 10px;
+      background: white; border: 1px solid var(--c-n200); border-radius: var(--r-pill);
+      padding: 7px 14px; box-shadow: var(--s-sm);
+    }
+    .hdr-search svg { color: var(--c-n400); flex-shrink: 0; }
+    .hdr-search input { flex: 1; border: none; background: transparent; outline: none;
+                        font-size: .875rem; color: var(--c-ink); min-width: 0;
+                        font-family: var(--f-body); }
+    .hdr-search input::placeholder { color: var(--c-n300); }
+    .hdr-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .icon-btn { width: 36px; height: 36px; border: none; border-radius: var(--r-pill);
+                background: transparent; color: var(--c-n500);
+                display: flex; align-items: center; justify-content: center;
+                transition: background .18s, color .18s; }
+    .icon-btn:hover { background: var(--c-n100); color: var(--c-ink); }
+    .btn-login { font-size: .8125rem; font-weight: 500; padding: 7px 18px;
+                 border-radius: var(--r-md); border: 1px solid var(--c-n200);
+                 background: white; color: var(--c-ink);
+                 transition: background .2s var(--ease), color .2s, border-color .2s; }
+    .btn-login:hover { background: var(--c-ink); color: var(--c-bg); border-color: var(--c-ink); }
+    .user-avatar { width: 36px; height: 36px; border-radius: var(--r-pill);
+                   background: var(--c-ink); color: var(--c-bg); border: none;
+                   font-size: .75rem; font-weight: 600; letter-spacing: .06em;
+                   display: flex; align-items: center; justify-content: center; }
+
+    /* ── BREADCRUMB ───────────────────────────────────── */
+    /* ── BACK BAR ──────────────────────────────────── */
+    .back-bar {
+      max-width: 1100px; margin: 0 auto; padding: 16px 40px 0;
+    }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-size: .8125rem; font-weight: 500; color: var(--c-n500);
+      border: 1px solid var(--c-n200); border-radius: var(--r-pill);
+      padding: 6px 16px 6px 12px; background: white; text-decoration: none;
+      transition: color .15s, border-color .15s, box-shadow .15s;
+      box-shadow: var(--s-sm);
+    }
+    .back-btn:hover { color: var(--c-ink); border-color: var(--c-n400); box-shadow: var(--s-md); }
+    .back-btn svg { flex-shrink: 0; }
+
+    .breadcrumb {
+      max-width: 1100px; margin: 0 auto; padding: 18px 40px 0;
+      display: flex; align-items: center; gap: 7px;
+      font-size: .75rem; color: var(--c-n400); letter-spacing: .04em;
+    }
+    .breadcrumb a { color: var(--c-n400); transition: color .15s; }
+    .breadcrumb a:hover { color: var(--c-gold); }
+    .bc-sep { color: var(--c-n300); font-size: .625rem; }
+
+    /* ── HERO IMAGE ───────────────────────────────────── */
+    .hero-wrap { max-width: 1100px; margin: 18px auto 0; padding: 0 40px; }
+    .hero-img {
+      width: 100%; aspect-ratio: 16 / 6; border-radius: var(--r-xl);
+      overflow: hidden; position: relative;
+      background: repeating-linear-gradient(
+        -45deg, var(--c-n100), var(--c-n100) 1px, var(--c-n50) 1px, var(--c-n50) 18px
+      );
+      border: 1px solid var(--c-n100);
+    }
+    .hero-placeholder {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px;
+      color: var(--c-n300); letter-spacing: .1em;
+    }
+    .hero-badge {
+      position: absolute; top: 18px; left: 18px; background: white;
+      border-radius: var(--r-sm); padding: 6px 12px; box-shadow: var(--s-sm);
+      display: flex; align-items: center; gap: 7px;
+      font-size: 11px; font-weight: 500; letter-spacing: .06em;
+      color: var(--c-burg);
+    }
+    .hero-badge-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--c-burg);
+      flex-shrink: 0;
+    }
+    .photo-credit {
+      position: absolute; bottom: 14px; right: 18px;
+      font-size: 10px; color: var(--c-n400); letter-spacing: .06em;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    /* ── RESTAURANT IDENTITY ──────────────────────────── */
+    .identity-wrap {
+      max-width: 1100px; margin: 0 auto; padding: 36px 40px 32px;
+    }
+    .identity-inner {
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 48px;
+    }
+    .identity-left { flex: 1; }
+    .cuisine-overline {
+      font-size: 10px; font-weight: 500; letter-spacing: .22em; text-transform: uppercase;
+      color: var(--c-gold); margin-bottom: 10px; display: flex; align-items: center; gap: 10px;
+    }
+    .cuisine-overline::before { content: ''; width: 24px; height: 1px; background: var(--c-gold-light); }
+    .restaurant-name {
+      font-family: var(--f-display); font-size: 4rem; font-weight: 600;
+      line-height: 1.0; letter-spacing: -0.02em; color: var(--c-ink); margin-bottom: 18px;
+    }
+    .restaurant-meta {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      font-size: .8125rem; color: var(--c-n500); line-height: 1;
+    }
+    .meta-icon { color: var(--c-n400); display: flex; align-items: center; }
+    .meta-sep { color: var(--c-n300); user-select: none; }
+    .meta-price .on  { color: var(--c-ink); font-weight: 500; }
+    .meta-price .off { color: var(--c-n200); font-weight: 500; }
+
+    /* Spoon verdict card */
+    .identity-right { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 16px; }
+    .spoon-verdict {
+      background: var(--c-burg-light); border: 1px solid oklch(83% 0.030 17);
+      border-radius: var(--r-lg); padding: 22px 28px;
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      min-width: 190px; text-align: center;
+    }
+    .verdict-emoji { font-size: 2.75rem; line-height: 1; }
+    .verdict-pips { display: flex; gap: 7px; }
+    .pip { width: 8px; height: 8px; border-radius: 50%; background: var(--c-n200); }
+    .pip.on { background: var(--c-gold); }
+    .verdict-label { font-size: 10px; font-weight: 600; letter-spacing: .16em;
+                     text-transform: uppercase; color: var(--c-gold); }
+    .verdict-sub { font-size: 10px; color: var(--c-n400); letter-spacing: .06em; }
+    .btn-reserve {
+      font-size: .875rem; font-weight: 500; padding: 11px 26px;
+      border-radius: var(--r-md); border: none;
+      background: var(--c-burg); color: white;
+      transition: background .2s var(--ease), transform .2s, box-shadow .2s;
+      letter-spacing: .01em;
+    }
+    .btn-reserve:hover { background: oklch(26% .080 17); transform: translateY(-1px); box-shadow: var(--s-md); }
+
+    /* ── FULL-WIDTH DIVIDER ───────────────────────────── */
+    .page-rule { height: 1px; background: var(--c-n100); }
+
+    /* ── CONTENT COLUMN ───────────────────────────────── */
+    .content-col { max-width: 760px; margin: 0 auto; padding: 0 40px; }
+
+    /* ── EDITOR'S REVIEW ──────────────────────────────── */
+    .editors-review { padding: 64px 0 56px; }
+
+    .review-overline {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 22px;
+      font-size: 10px; font-weight: 500; letter-spacing: .22em; text-transform: uppercase;
+      color: var(--c-burg);
+    }
+    .review-overline::before,
+    .review-overline::after { content: ''; flex: 1; height: 1px; background: oklch(83% 0.030 17); }
+
+    .review-verdict {
+      font-family: var(--f-display); font-size: 2.625rem; font-weight: 500;
+      line-height: 1.08; letter-spacing: -0.01em; color: var(--c-ink);
+      margin-bottom: 40px;
+    }
+
+    .review-body > p {
+      font-size: 1.0625rem; line-height: 1.78; color: var(--c-ink);
+      margin-bottom: 1.45em;
+    }
+    .review-body > p:last-child { margin-bottom: 0; }
+
+    /* Drop cap on the very first paragraph */
+    .review-body > p.lead::first-letter {
+      font-family: var(--f-display);
+      font-size: 5.2em;
+      font-weight: 700;
+      line-height: .80;
+      color: var(--c-gold);
+      float: left;
+      margin-right: .075em;
+      margin-top: .06em;
+    }
+
+    /* Pull quote */
+    .pull-quote {
+      margin: 44px 0; padding: 26px 32px;
+      border-left: 3px solid var(--c-gold);
+      background: oklch(97.5% 0.018 76);
+      border-radius: 0 var(--r-md) var(--r-md) 0;
+    }
+    .pull-quote p {
+      font-family: var(--f-display); font-size: 1.6rem; font-weight: 300;
+      font-style: italic; line-height: 1.45; color: var(--c-n600);
+      margin-bottom: 0;
+    }
+
+    /* Byline */
+    .review-byline {
+      display: flex; align-items: center; gap: 16px;
+      padding-top: 36px; margin-top: 40px;
+      border-top: 1px solid var(--c-n100);
+    }
+    .byline-avatar {
+      width: 46px; height: 46px; border-radius: var(--r-pill); flex-shrink: 0;
+      background: var(--c-ink); color: var(--c-bg);
+      font-size: .8125rem; font-weight: 600; letter-spacing: .08em;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .byline-name { font-family: var(--f-display); font-size: 1.0625rem; font-weight: 600;
+                   color: var(--c-ink); margin-bottom: 2px; }
+    .byline-role { font-size: .75rem; color: var(--c-n400); letter-spacing: .04em; }
+
+    /* ── SECTION ORNAMENT ─────────────────────────────── */
+    .ornament {
+      display: flex; align-items: center; gap: 16px;
+      margin: 0 0 56px;
+    }
+    .orn-line { flex: 1; height: 1px; background: var(--c-n100); }
+    .orn-dot  { width: 4px; height: 4px; border-radius: 50%; background: var(--c-gold); flex-shrink: 0; }
+    .orn-text {
+      font-family: var(--f-display); font-size: .875rem; font-style: italic;
+      color: var(--c-n400); white-space: nowrap; letter-spacing: .04em;
+    }
+
+    /* ── COMMUNITY ────────────────────────────────────── */
+    .community-header {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .community-title {
+      font-family: var(--f-display); font-size: 2rem; font-weight: 500; color: var(--c-ink);
+    }
+    .community-meta { display: flex; align-items: center; gap: 10px; }
+    .community-avg {
+      font-size: .875rem; font-weight: 600; color: var(--c-gold); letter-spacing: .04em;
+    }
+    .community-count { font-size: .8125rem; color: var(--c-n400); }
+
+    /* LOGIN PROMPT */
+    .login-prompt {
+      border: 1px solid var(--c-n100); border-radius: var(--r-lg);
+      padding: 40px 36px; text-align: center; margin-bottom: 44px; background: white;
+      box-shadow: var(--s-sm);
+    }
+    .login-prompt-icon {
+      font-size: 2rem; line-height: 1; margin-bottom: 16px; opacity: .6;
+    }
+    .login-prompt-title {
+      font-family: var(--f-display); font-size: 1.5rem; font-weight: 500;
+      color: var(--c-ink); margin-bottom: 10px;
+    }
+    .login-prompt-sub {
+      font-size: .9375rem; color: var(--c-n500); line-height: 1.65;
+      max-width: 340px; margin: 0 auto 28px;
+    }
+    .login-prompt-ctas { display: flex; align-items: center; justify-content: center; gap: 12px; }
+    .btn-outline-gold {
+      font-size: .875rem; font-weight: 500; padding: 10px 24px;
+      border-radius: var(--r-md); border: 1.5px solid var(--c-burg);
+      background: transparent; color: var(--c-gold); letter-spacing: .01em;
+      transition: background .2s, color .2s;
+    }
+    .btn-outline-gold:hover { background: var(--c-burg); color: white; }
+    .btn-ghost-sm {
+      font-size: .875rem; color: var(--c-n400); background: none; border: none;
+      letter-spacing: .02em; transition: color .15s;
+    }
+    .btn-ghost-sm:hover { color: var(--c-ink); }
+
+    /* COMMENT FORM */
+    .comment-form {
+      background: white; border: 1px solid var(--c-n100);
+      border-radius: var(--r-lg); padding: 26px; margin-bottom: 44px;
+      box-shadow: var(--s-sm);
+    }
+    .form-user-row { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+    .form-avatar {
+      width: 40px; height: 40px; border-radius: var(--r-pill); flex-shrink: 0;
+      background: var(--c-ink); color: var(--c-bg);
+      font-size: .75rem; font-weight: 600; letter-spacing: .08em;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .form-user-name { font-size: .9375rem; font-weight: 500; color: var(--c-ink); }
+    .form-user-sub  { font-size: .75rem; color: var(--c-n400); margin-top: 1px; }
+
+    .star-picker { display: flex; align-items: center; gap: 3px; margin-bottom: 16px; }
+    .star-btn {
+      font-size: 1.375rem; line-height: 1; background: none; border: none;
+      color: var(--c-n200); padding: 2px 3px;
+      transition: color .1s, transform .1s var(--ease);
+    }
+    .star-btn:hover { transform: scale(1.15); }
+    .star-label {
+      font-size: .75rem; color: var(--c-n400); margin-left: 10px;
+      letter-spacing: .04em; transition: color .15s;
+    }
+
+    .form-textarea {
+      width: 100%; font-family: var(--f-body); font-size: .9375rem; line-height: 1.65;
+      padding: 14px 16px; border: 1px solid var(--c-n200); border-radius: var(--r-md);
+      background: var(--c-bg); color: var(--c-ink); outline: none; resize: vertical;
+      min-height: 112px; transition: border-color .2s, box-shadow .2s;
+    }
+    .form-textarea::placeholder { color: var(--c-n300); }
+    .form-textarea:focus { border-color: var(--c-gold); box-shadow: var(--s-focus); }
+
+    .form-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; margin-top: 16px;
+    }
+    .form-note { font-size: .75rem; color: var(--c-n400); line-height: 1.5; flex: 1; }
+    .form-note em { font-style: normal; color: var(--c-gold); }
+    .btn-post {
+      font-size: .875rem; font-weight: 500; padding: 10px 24px; flex-shrink: 0;
+      border-radius: var(--r-md); border: none; background: var(--c-ink); color: var(--c-bg);
+      transition: background .2s, transform .2s, box-shadow .2s;
+    }
+    .btn-post:hover { background: var(--c-n700); transform: translateY(-1px); box-shadow: var(--s-sm); }
+
+    /* COMMENTS */
+    .comment-item {
+      display: flex; gap: 16px; padding: 26px 0;
+      border-bottom: 1px solid var(--c-n100);
+    }
+    .comment-item:last-child { border-bottom: none; padding-bottom: 80px; }
+    .comment-avatar {
+      width: 40px; height: 40px; border-radius: var(--r-pill); flex-shrink: 0;
+      font-size: .8125rem; font-weight: 600; letter-spacing: .06em; color: white;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .comment-body { flex: 1; min-width: 0; }
+    .comment-top {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 6px; gap: 12px;
+    }
+    .comment-name { font-size: .9375rem; font-weight: 500; color: var(--c-ink); }
+    .comment-date { font-size: .75rem; color: var(--c-n400); letter-spacing: .03em; white-space: nowrap; }
+    .comment-stars { display: flex; gap: 2px; margin-bottom: 12px; }
+    .c-star { font-size: 1rem; color: var(--c-n200); line-height: 1; }
+    .c-star.on { color: var(--c-gold); }
+    .comment-text {
+      font-size: .9375rem; line-height: 1.70; color: var(--c-ink); margin-bottom: 14px;
+    }
+    .comment-actions { display: flex; align-items: center; gap: 8px; }
+    .btn-helpful {
+      font-size: .75rem; color: var(--c-n400); background: none;
+      border: 1px solid var(--c-n200); border-radius: var(--r-pill);
+      padding: 4px 12px; letter-spacing: .04em;
+      transition: color .15s, border-color .15s, background .15s;
+    }
+    .btn-helpful:hover { color: var(--c-ink); border-color: var(--c-n300); background: var(--c-n50); }
+    .btn-helpful.marked { color: var(--c-gold); border-color: var(--c-gold-light); background: oklch(97.5% 0.018 76); }
+    .helpful-count { font-size: .75rem; color: var(--c-n400); }
+
+    /* ── AUTH MODAL ───────────────────────────────────── */
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 500;
+      background: oklch(10% 0.008 255 / .52);
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+      opacity: 0; pointer-events: none;
+      transition: opacity .28s var(--ease);
+    }
+    .modal-backdrop.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: white; border-radius: var(--r-xl); padding: 40px;
+      max-width: 400px; width: 100%; box-shadow: var(--s-lg);
+      position: relative;
+      transform: translateY(14px) scale(.97);
+      transition: transform .32s var(--ease);
+    }
+    .modal-backdrop.open .modal { transform: translateY(0) scale(1); }
+    .modal-close {
+      position: absolute; top: 14px; right: 14px; width: 32px; height: 32px;
+      border: none; border-radius: var(--r-pill); background: transparent;
+      color: var(--c-n400); display: flex; align-items: center; justify-content: center;
+      font-size: 1.0625rem; transition: background .15s, color .15s;
+    }
+    .modal-close:hover { background: var(--c-n100); color: var(--c-ink); }
+    .modal-logo { font-family: var(--f-display); font-size: 1.25rem; font-weight: 700;
+                  letter-spacing: -.025em; color: var(--c-ink); margin-bottom: 8px; }
+    .modal-headline { font-family: var(--f-display); font-size: 1.75rem; font-weight: 500;
+                      color: var(--c-ink); margin-bottom: 24px; line-height: 1.1; }
+    .modal-tabs {
+      display: flex; border: 1px solid var(--c-n200); border-radius: var(--r-md);
+      overflow: hidden; margin-bottom: 28px;
+    }
+    .modal-tab {
+      flex: 1; padding: 9px; font-size: .8125rem; font-weight: 500;
+      background: transparent; border: none; color: var(--c-n500);
+      transition: background .2s, color .2s;
+    }
+    .modal-tab.active { background: var(--c-ink); color: white; }
+    .m-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .m-label { font-size: 10px; font-weight: 500; letter-spacing: .16em;
+               text-transform: uppercase; color: var(--c-n500); }
+    .m-input {
+      font-family: var(--f-body); font-size: .9375rem; padding: 11px 15px;
+      border: 1px solid var(--c-n200); border-radius: var(--r-md);
+      background: white; color: var(--c-ink); outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .m-input:focus { border-color: var(--c-gold); box-shadow: var(--s-focus); }
+    .m-input::placeholder { color: var(--c-n300); }
+    .modal-submit {
+      width: 100%; font-family: var(--f-body); font-size: .9375rem; font-weight: 500;
+      padding: 13px; border-radius: var(--r-md); border: none;
+      background: var(--c-ink); color: var(--c-bg); margin: 20px 0 16px;
+      transition: background .2s, transform .18s;
+    }
+    .modal-submit:hover { background: var(--c-n700); transform: translateY(-1px); }
+    .modal-or {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+      font-size: .75rem; color: var(--c-n400); letter-spacing: .08em;
+    }
+    .modal-or::before,
+    .modal-or::after { content: ''; flex: 1; height: 1px; background: var(--c-n100); }
+    .modal-google {
+      width: 100%; font-family: var(--f-body); font-size: .875rem; font-weight: 500;
+      padding: 11px; border-radius: var(--r-md); border: 1px solid var(--c-n200);
+      background: white; color: var(--c-ink);
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      transition: background .18s, border-color .18s;
+    }
+    .modal-google:hover { background: var(--c-n50); border-color: var(--c-n300); }
+    .modal-footer-note { margin-top: 18px; text-align: center; font-size: .8125rem; color: var(--c-n400); }
+    .modal-link { color: var(--c-gold); background: none; border: none; font-size: .8125rem;
+                  font-family: var(--f-body); cursor: pointer; }
+    .modal-link:hover { text-decoration: underline; }
+
+    /* ── RESPONSIVE ───────────────────────────────────── */
+    @media (max-width: 720px) {
+      .identity-inner { flex-direction: column; gap: 28px; }
+      .identity-right { align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+      .spoon-verdict { flex-direction: row; min-width: unset; text-align: left; }
+      .restaurant-name { font-size: 2.75rem; }
+      .review-verdict { font-size: 2rem; }
+      .back-bar { padding-left: 20px; padding-right: 20px; }
+      .content-col, .identity-wrap, .hero-wrap { padding-left: 20px; padding-right: 20px; }
+      .pull-quote { padding: 20px 22px; }
+      .pull-quote p { font-size: 1.3rem; }
+      .hdr-search { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ HEADER ══════════════════════════════════════════ -->
+<header class="header">
+  <div class="header-inner">
+    <a class="logo" href="Guide Karn Homepage.html">Guide <span class="logo-accent">Philippe</span></a>
+    <div class="hdr-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path>
+      </svg>
+      <input type="text" placeholder="Restaurant, cuisine or city…">
+    </div>
+    <div class="hdr-right" id="hdr-right">
+      <button class="icon-btn" aria-label="Saved">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+        </svg>
+      </button>
+      <!-- auth button injected by JS -->
+    </div>
+  </div>
+</header>
+
+<!-- ══ BACK BAR (visible only when arriving from search) ══ -->
+<div class="back-bar" id="back-bar" style="display:none;">
+  <a href="Guide Karn Search Results.html" class="back-btn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M19 12H5"></path><path d="m12 5-7 7 7 7"></path>
+    </svg>
+    Back to search results
+  </a>
+</div>
+
+<!-- ══ BREADCRUMB ═══════════════════════════════════════ -->
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a href="Guide Karn Homepage.html">Guide Philippe</a>
+  <span class="bc-sep">›</span>
+  <a href="Guide Karn Search Results.html">Paris</a>
+  <span class="bc-sep">›</span>
+  <span>Le Bernardin</span>
+</nav>
+
+<!-- ══ HERO IMAGE ═══════════════════════════════════════ -->
+<div class="hero-wrap">
+  <div class="hero-img" role="img" aria-label="Restaurant photo placeholder">
+    <span class="hero-placeholder">restaurant photo</span>
+    <div class="hero-badge">
+      <span class="hero-badge-dot"></span>
+      Editors' Pick 2026
+    </div>
+    <span class="photo-credit">photo placeholder</span>
+  </div>
+</div>
+
+<!-- ══ RESTAURANT IDENTITY ══════════════════════════════ -->
+<div class="identity-wrap">
+  <div class="identity-inner">
+
+    <div class="identity-left">
+      <div class="cuisine-overline">French · Seafood · Fine Dining</div>
+      <h1 class="restaurant-name">Le Bernardin</h1>
+      <div class="restaurant-meta">
+        <span class="meta-icon">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+        </span>
+        <span>24 Rue Royale, Paris 8ème</span>
+        <span class="meta-sep">·</span>
+        <span class="meta-price">
+          <span class="on">€</span><span class="on">€</span><span class="on">€</span><span class="on">€</span>
+        </span>
+        <span class="meta-sep">·</span>
+        <span>Open until 23:00</span>
+        <span class="meta-sep">·</span>
+        <span>Closed Tuesdays</span>
+      </div>
+    </div>
+
+    <div class="identity-right">
+      <div class="spoon-verdict">
+        <div class="verdict-emoji">🍽️</div>
+        <div class="verdict-pips">
+          <div class="pip on"></div>
+          <div class="pip on"></div>
+          <div class="pip on"></div>
+          <div class="pip on"></div>
+        </div>
+        <div class="verdict-label">Absolute Recommendation</div>
+        <div class="verdict-sub">Guide Philippe Rating</div>
+      </div>
+      <button class="btn-reserve">Reserve a table &rarr;</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ DIVIDER ══════════════════════════════════════════ -->
+<div class="page-rule"></div>
+
+<!-- ══ CONTENT COLUMN ══════════════════════════════════ -->
+<div class="content-col">
+
+  <!-- EDITOR'S REVIEW ─────────────────────────────────── -->
+  <article class="editors-review">
+
+    <div class="review-overline">Editor's Review</div>
+
+    <h2 class="review-verdict">
+      A cathedral to the sea —&thinsp;and to precision.
+    </h2>
+
+    <div class="review-body">
+
+      <p class="lead">There are restaurants where the food is excellent and the room is pleasant, and there are restaurants that quietly recalibrate your sense of what cooking can be. Le Bernardin, settled into the quieter end of the eighth arrondissement, belongs emphatically to the second category. What arrives at the table is not merely accomplished — it is, in the truest sense of the word, considered.</p>
+
+      <blockquote class="pull-quote">
+        <p>"The sole meunière arrives as if silence itself had been plated — bone-white, pristine, and persuasive in a way that makes conversation feel almost rude."</p>
+      </blockquote>
+
+      <p>Chef Martin Rousseau has spent two decades distilling a single philosophy: that the sea contains enough complexity to sustain a lifetime of investigation, and that restraint is not a limitation but a form of respect. The tasting progression — seven courses, each built around a different expression of brine and depth — rewards the patient diner. Nothing announces itself. Everything lingers.</p>
+
+      <p>The room participates in this project of quiet. Tables are generously spaced; service is ceremonial without being cold. Sommelier Claire Vidal's wine list has been assembled over many years with the same deliberateness one senses in the kitchen. The Burgundies are particularly worth the conversation. Reserve well in advance, eat from the full carte, and leave time for the cheese trolley — it is, like everything here, a serious undertaking.</p>
+
+    </div>
+
+    <div class="review-byline">
+      <div class="byline-avatar">IF</div>
+      <div>
+        <div class="byline-name">Isabelle Farron</div>
+        <div class="byline-role">Editor at Large, Guide Philippe &thinsp;·&thinsp; May 2026</div>
+      </div>
+    </div>
+
+  </article>
+
+  <!-- SECTION ORNAMENT ────────────────────────────────── -->
+  <div class="ornament" aria-hidden="true">
+    <div class="orn-line"></div>
+    <div class="orn-dot"></div>
+    <div class="orn-text">Reader Experiences</div>
+    <div class="orn-dot"></div>
+    <div class="orn-line"></div>
+  </div>
+
+  <!-- COMMUNITY ───────────────────────────────────────── -->
+  <section id="community" aria-label="Reader Reviews">
+
+    <div class="community-header">
+      <h2 class="community-title">Reader Experiences</h2>
+      <div class="community-meta">
+        <span class="community-avg">★ 4.4</span>
+        <span class="community-count">47 reviews</span>
+      </div>
+    </div>
+
+    <!-- Auth-gated input area (rendered by JS) -->
+    <div id="comment-gate"></div>
+
+    <!-- Comment feed (rendered by JS) -->
+    <div id="comments-list"></div>
+
+  </section>
+
+</div><!-- .content-col -->
+
+<!-- ══ AUTH MODAL ═══════════════════════════════════════ -->
+<div class="modal-backdrop" id="modal-backdrop" role="dialog" aria-modal="true" aria-label="Sign in">
+  <div class="modal" id="modal">
+    <button class="modal-close" id="modal-close-btn" aria-label="Close">&#x2715;</button>
+    <div class="modal-logo">Guide <span style="color:var(--c-burg)">Philippe</span></div>
+    <div class="modal-headline" id="modal-headline">Welcome back.</div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" id="tab-login"   onclick="switchTab('login')">Sign in</button>
+      <button class="modal-tab"        id="tab-signup"  onclick="switchTab('signup')">Create account</button>
+    </div>
+
+    <div id="name-field" style="display:none;">
+      <div class="m-field">
+        <label class="m-label">Full name</label>
+        <input class="m-input" type="text" placeholder="Your name" autocomplete="name">
+      </div>
+    </div>
+    <div class="m-field">
+      <label class="m-label">Email</label>
+      <input class="m-input" type="email" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <div class="m-field">
+      <label class="m-label">Password</label>
+      <input class="m-input" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+
+    <button class="modal-submit" id="modal-submit-btn">Sign in</button>
+
+    <div class="modal-or">or</div>
+
+    <button class="modal-google">
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"></path>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"></path>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66 2.84-.81-.62z"></path>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"></path>
+      </svg>
+      Continue with Google
+    </button>
+
+    <div class="modal-footer-note" id="modal-footer-note">
+      Don't have an account?
+      <button class="modal-link" onclick="switchTab('signup')">Create one →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ════════════════════════════════════════════════════════
+     AUTH STATE — toggle this boolean to preview both states
+  ════════════════════════════════════════════════════════ */
+  const LOGGED_IN = false;
+
+  /* ── MOCK USER ─────────────────────────────────────── */
+  const CURRENT_USER = { name: 'Sophie Martin', initials: 'SM' };
+
+  /* ── STAR RATING LABELS ────────────────────────────── */
+  const STAR_LABELS = ['', 'Poor', 'Below average', 'Good', 'Very good', 'Outstanding'];
+
+  /* ── SEED COMMENTS ─────────────────────────────────── */
+  const COMMENTS = [
+    {
+      id: 1, name: 'Michael Laurent', initials: 'ML',
+      bg: 'oklch(30% 0.008 78)',
+      date: 'May 28, 2026', rating: 5, helpful: 14,
+      text: 'An extraordinary evening. The turbot was cooked with such precision it seemed almost effortless — which, of course, is the whole point. Service never intrudes yet is always present. Worth every euro.'
+    },
+    {
+      id: 2, name: 'Clara Dumont', initials: 'CD',
+      bg: 'oklch(44% 0.062 72)',
+      date: 'May 14, 2026', rating: 4, helpful: 9,
+      text: 'My third visit and somehow it only deepens. The new mussel bisque with saffron cream is a revelation. The wine pairings this season are especially thoughtful — ask for Claire\'s recommendation on the whites.'
+    },
+    {
+      id: 3, name: 'James Whitfield', initials: 'JW',
+      bg: 'oklch(27% 0.060 17)',
+      date: 'April 30, 2026', rating: 5, helpful: 22,
+      text: 'I have dined at many celebrated establishments across Europe, and Le Bernardin holds its own with the very best. The room is quietly magnificent, and the kitchen produces food that makes you want to stop talking and simply eat.'
+    },
+    {
+      id: 4, name: 'Anaïs Petit', initials: 'AP',
+      bg: 'oklch(36% 0.008 78)',
+      date: 'April 12, 2026', rating: 3, helpful: 6,
+      text: 'Technically impeccable, though perhaps slightly overcalibrated for my taste — the menu\'s rigour can occasionally feel restraining. That said, the dessert course was genuinely imaginative and the cheese trolley is magnificent.'
+    }
+  ];
+
+  /* ════════════════════════════════════════════════════
+     INIT
+  ════════════════════════════════════════════════════ */
+  document.addEventListener('DOMContentLoaded', function () {
+    renderHeaderAuth();
+    renderCommentGate();
+    renderComments();
+    // Show back button when arriving from search results
+    if (new URLSearchParams(location.search).get('from') === 'search') {
+      document.getElementById('back-bar').style.display = '';
+    }
+  });
+
+  /* ── HEADER ────────────────────────────────────────── */
+  function renderHeaderAuth() {
+    var container = document.getElementById('hdr-right');
+    if (LOGGED_IN) {
+      var btn = document.createElement('button');
+      btn.className = 'user-avatar';
+      btn.textContent = CURRENT_USER.initials;
+      btn.setAttribute('aria-label', 'Account');
+      container.appendChild(btn);
+    } else {
+      var btn = document.createElement('button');
+      btn.className = 'btn-login';
+      btn.textContent = 'Login';
+      btn.onclick = openModal;
+      container.appendChild(btn);
+    }
+  }
+
+  /* ── COMMENT GATE ──────────────────────────────────── */
+  function renderCommentGate() {
+    var gate = document.getElementById('comment-gate');
+    if (LOGGED_IN) {
+      gate.innerHTML =
+        '<div class="comment-form">' +
+          '<div class="form-user-row">' +
+            '<div class="form-avatar">' + CURRENT_USER.initials + '</div>' +
+            '<div>' +
+              '<div class="form-user-name">' + CURRENT_USER.name + '</div>' +
+              '<div class="form-user-sub">Sharing your experience</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="star-picker" id="star-picker">' +
+            '<button class="star-btn" data-v="1" aria-label="1 star">&#9733;</button>' +
+            '<button class="star-btn" data-v="2" aria-label="2 stars">&#9733;</button>' +
+            '<button class="star-btn" data-v="3" aria-label="3 stars">&#9733;</button>' +
+            '<button class="star-btn" data-v="4" aria-label="4 stars">&#9733;</button>' +
+            '<button class="star-btn" data-v="5" aria-label="5 stars">&#9733;</button>' +
+            '<span class="star-label" id="star-label">Tap to rate</span>' +
+          '</div>' +
+          '<textarea class="form-textarea" id="comment-textarea" placeholder="Share your experience of Le Bernardin — what stood out, what surprised you, what you\'d tell a friend\u2026"></textarea>' +
+          '<div class="form-footer">' +
+            '<span class="form-note">Your personal rating is independent of the official <em>Spoon score</em>.</span>' +
+            '<button class="btn-post" onclick="submitComment()">Post review</button>' +
+          '</div>' +
+        '</div>';
+      initStarPicker();
+    } else {
+      gate.innerHTML =
+        '<div class="login-prompt">' +
+          '<div class="login-prompt-icon">🍴</div>' +
+          '<div class="login-prompt-title">Share your experience</div>' +
+          '<p class="login-prompt-sub">Log in to leave a review and add your perspective to the Guide Philippe community.</p>' +
+          '<div class="login-prompt-ctas">' +
+            '<button class="btn-outline-gold" onclick="openModal()">Log in to review</button>' +
+            '<button class="btn-ghost-sm" onclick="switchTab(\'signup\'); openModal()">Create account</button>' +
+          '</div>' +
+        '</div>';
+    }
+  }
+
+  /* ── RENDER COMMENTS ───────────────────────────────── */
+  function renderComments() {
+    var list = document.getElementById('comments-list');
+    list.innerHTML = COMMENTS.map(function (c) {
+      var stars = [1,2,3,4,5].map(function (i) {
+        return '<span class="c-star' + (i <= c.rating ? ' on' : '') + '">&#9733;</span>';
+      }).join('');
+      return (
+        '<div class="comment-item">' +
+          '<div class="comment-avatar" style="background:' + c.bg + '">' + c.initials + '</div>' +
+          '<div class="comment-body">' +
+            '<div class="comment-top">' +
+              '<span class="comment-name">' + c.name + '</span>' +
+              '<span class="comment-date">' + c.date + '</span>' +
+            '</div>' +
+            '<div class="comment-stars">' + stars + '</div>' +
+            '<p class="comment-text">' + c.text + '</p>' +
+            '<div class="comment-actions">' +
+              '<button class="btn-helpful" id="helpful-btn-' + c.id + '" onclick="markHelpful(' + c.id + ')">Helpful</button>' +
+              '<span class="helpful-count" id="helpful-count-' + c.id + '">' + c.helpful + ' found this helpful</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
+  function markHelpful(id) {
+    var btn = document.getElementById('helpful-btn-' + id);
+    if (!btn || btn.dataset.marked) return;
+    btn.dataset.marked = '1';
+    btn.classList.add('marked');
+    var c = COMMENTS.find(function (x) { return x.id === id; });
+    if (c) {
+      c.helpful++;
+      var el = document.getElementById('helpful-count-' + id);
+      if (el) el.textContent = c.helpful + ' found this helpful';
+    }
+  }
+
+  /* ── STAR PICKER ───────────────────────────────────── */
+  var selectedStars = 0;
+
+  function initStarPicker() {
+    var picker = document.getElementById('star-picker');
+    if (!picker) return;
+    var btns  = picker.querySelectorAll('.star-btn');
+    var label = document.getElementById('star-label');
+
+    btns.forEach(function (btn) {
+      var v = parseInt(btn.dataset.v, 10);
+      btn.addEventListener('mouseenter', function () {
+        paintStars(btns, v);
+        label.textContent = STAR_LABELS[v];
+        label.style.color = 'var(--c-ink)';
+      });
+      btn.addEventListener('mouseleave', function () {
+        paintStars(btns, selectedStars);
+        label.textContent = selectedStars > 0 ? STAR_LABELS[selectedStars] : 'Tap to rate';
+        label.style.color = '';
+      });
+      btn.addEventListener('click', function () {
+        selectedStars = v;
+        paintStars(btns, selectedStars);
+        label.textContent = STAR_LABELS[selectedStars];
+        label.style.color = 'var(--c-gold)';
+      });
+    });
+  }
+
+  function paintStars(btns, n) {
+    btns.forEach(function (b, i) {
+      b.style.color = i < n ? 'var(--c-gold)' : 'var(--c-n200)';
+    });
+  }
+
+  /* ── SUBMIT COMMENT ────────────────────────────────── */
+  function submitComment() {
+    var textarea = document.getElementById('comment-textarea');
+    var text = textarea.value.trim();
+    if (!selectedStars) {
+      var picker = document.getElementById('star-picker');
+      if (picker) picker.style.outline = '2px solid var(--c-gold)';
+      setTimeout(function () { if (picker) picker.style.outline = ''; }, 1200);
+      return;
+    }
+    if (!text) { textarea.focus(); return; }
+
+    COMMENTS.unshift({
+      id: Date.now(),
+      name: CURRENT_USER.name,
+      initials: CURRENT_USER.initials,
+      bg: 'oklch(30% 0.008 78)',
+      date: 'Just now',
+      rating: selectedStars,
+      helpful: 0,
+      text: text
+    });
+
+    var countEl = document.querySelector('.community-count');
+    if (countEl) {
+      var n = parseInt(countEl.textContent, 10) + 1;
+      countEl.textContent = n + ' reviews';
+    }
+
+    textarea.value = '';
+    selectedStars = 0;
+    var picker = document.getElementById('star-picker');
+    if (picker) {
+      paintStars(picker.querySelectorAll('.star-btn'), 0);
+      var lbl = document.getElementById('star-label');
+      if (lbl) { lbl.textContent = 'Tap to rate'; lbl.style.color = ''; }
+    }
+    renderComments();
+    var community = document.getElementById('community');
+    if (community) community.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /* ── MODAL ─────────────────────────────────────────── */
+  var backdrop = document.getElementById('modal-backdrop');
+  var currentTab = 'login';
+
+  function openModal() {
+    backdrop.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    backdrop.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+  backdrop.addEventListener('click', function (e) {
+    if (e.target === backdrop) closeModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && backdrop.classList.contains('open')) closeModal();
+  });
+
+  function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('tab-login').classList.toggle('active',  tab === 'login');
+    document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+    document.getElementById('name-field').style.display   = tab === 'signup' ? '' : 'none';
+    document.getElementById('modal-headline').textContent  = tab === 'login'  ? 'Welcome back.' : 'Join Guide Philippe.';
+    document.getElementById('modal-submit-btn').textContent = tab === 'login' ? 'Sign in' : 'Create account';
+    document.getElementById('modal-footer-note').innerHTML  = tab === 'login'
+      ? 'Don\'t have an account? <button class="modal-link" onclick="switchTab(\'signup\')">Create one &rarr;</button>'
+      : 'Already have an account? <button class="modal-link" onclick="switchTab(\'login\')">Sign in &rarr;</button>';
+  }
+</script>
+</body>
+</html>

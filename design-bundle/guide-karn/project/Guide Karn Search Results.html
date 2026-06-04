@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guide Philippe — Search Results</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
+  <style>
+    /* ── TOKENS ─────────────────────────────────────────── */
+    :root {
+      --c-bg:         oklch(97.5% 0.008 78);
+      --c-ink:        oklch(13%   0.012 255);
+      --c-gold:       oklch(58%   0.070 72);
+      --c-gold-light: oklch(91%   0.032 76);
+      --c-n50:        oklch(95.5% 0.006 78);
+      --c-n100:       oklch(92%   0.007 78);
+      --c-n200:       oklch(86%   0.008 78);
+      --c-n300:       oklch(76%   0.008 78);
+      --c-n400:       oklch(63%   0.007 78);
+      --c-n500:       oklch(52%   0.007 78);
+      --c-n600:       oklch(41%   0.007 78);
+      --f-display: 'Cormorant Garamond', Georgia, serif;
+      --f-body:    'DM Sans', system-ui, sans-serif;
+      --r-sm: 4px; --r-md: 8px; --r-lg: 14px; --r-pill: 9999px;
+      --s-sm: 0 1px 4px oklch(0% 0 0/.06), 0 1px 2px oklch(0% 0 0/.04);
+      --s-md: 0 4px 16px oklch(0% 0 0/.08), 0 2px 4px oklch(0% 0 0/.04);
+      --s-lg: 0 16px 40px oklch(0% 0 0/.11), 0 4px 8px oklch(0% 0 0/.06);
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+      --hdr: 60px;
+      --left-w: 420px;
+    }
+
+    /* ── RESET ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body { background: var(--c-bg); color: var(--c-ink);
+           font-family: var(--f-body); -webkit-font-smoothing: antialiased; }
+    button { font-family: var(--f-body); cursor: pointer; }
+    select { font-family: var(--f-body); }
+
+    /* ── HEADER ─────────────────────────────────────────── */
+    .header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+      height: var(--hdr);
+      border-top: 3px solid var(--c-burg);
+      background: oklch(97.5% 0.008 78 / 0.94);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--c-n100);
+      box-shadow: var(--s-sm);
+    }
+    .header-inner {
+      height: 100%; max-width: 100%; padding: 0 28px;
+      display: flex; align-items: center; gap: 20px;
+    }
+    .logo-accent { color: var(--c-burg); }
+    .logo {
+      font-family: var(--f-display); font-size: 1.375rem; font-weight: 700;
+      letter-spacing: -0.025em; color: var(--c-ink); white-space: nowrap; text-decoration: none;
+    }
+    .hdr-search {
+      flex: 1; max-width: 440px;
+      display: flex; align-items: center; gap: 10px;
+      background: white; border: 1px solid var(--c-n200);
+      border-radius: var(--r-pill); padding: 7px 14px;
+      box-shadow: var(--s-sm); cursor: text;
+    }
+    .hdr-search svg { color: var(--c-n400); flex-shrink: 0; }
+    .hdr-search input {
+      flex: 1; border: none; background: transparent; outline: none;
+      font-size: .875rem; color: var(--c-ink); min-width: 0;
+    }
+    .hdr-search input::placeholder { color: var(--c-n300); }
+    .hdr-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .icon-btn {
+      width: 36px; height: 36px; border: none; border-radius: var(--r-pill);
+      background: transparent; color: var(--c-n500);
+      display: flex; align-items: center; justify-content: center;
+      transition: background .18s, color .18s;
+    }
+    .icon-btn:hover { background: var(--c-n100); color: var(--c-ink); }
+    .btn-login {
+      font-size: .8125rem; font-weight: 500; padding: 7px 18px;
+      border-radius: var(--r-md); border: 1px solid var(--c-n200);
+      background: white; color: var(--c-ink);
+      transition: background .2s var(--ease), color .2s, border-color .2s;
+    }
+    .btn-login:hover { background: var(--c-ink); color: var(--c-bg); border-color: var(--c-ink); }
+
+    /* ── PAGE LAYOUT ────────────────────────────────────── */
+    .page {
+      display: flex;
+      height: 100vh;
+      padding-top: var(--hdr);
+    }
+
+    /* ── LEFT PANEL ─────────────────────────────────────── */
+    .panel-left {
+      width: var(--left-w);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--c-n100);
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Query bar */
+    .query-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px 12px;
+      border-bottom: 1px solid var(--c-n100);
+      flex-shrink: 0;
+    }
+    .query-info { display: flex; align-items: baseline; gap: 6px; }
+    .query-count { font-family: var(--f-display); font-size: 1.5rem; font-weight: 600; }
+    .query-for { font-size: .75rem; color: var(--c-n400); letter-spacing: .04em; }
+    .query-term { font-size: .875rem; font-weight: 500; color: var(--c-ink); }
+    .sort-select {
+      font-size: .75rem; font-weight: 500; color: var(--c-n500);
+      border: 1px solid var(--c-n200); border-radius: var(--r-md);
+      background: white; padding: 6px 28px 6px 10px;
+      outline: none; cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a8a39b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+    .sort-select:focus { border-color: var(--c-gold); }
+
+    /* Filter bar — sticky within panel */
+    .filter-bar {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--c-bg);
+      padding: 14px 24px 14px;
+      border-bottom: 1px solid var(--c-n100);
+      flex-shrink: 0;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+
+    .filter-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+    .filter-group { display: flex; align-items: center; gap: 8px; }
+
+    .filter-label-txt {
+      font-size: 10px; font-weight: 500; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--c-n400); white-space: nowrap;
+    }
+
+    /* Cuisine dropdown */
+    .cuisine-select {
+      font-size: .8125rem; font-weight: 500; color: var(--c-ink);
+      border: 1px solid var(--c-n200); border-radius: var(--r-md);
+      background: white; padding: 7px 28px 7px 12px;
+      outline: none; cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a8a39b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+      transition: border-color .18s, box-shadow .18s;
+    }
+    .cuisine-select:focus, .cuisine-select.active {
+      border-color: var(--c-burg); box-shadow: 0 0 0 2px oklch(93% 0.016 17);
+    }
+    .cuisine-select.has-value { border-color: var(--c-burg); color: var(--c-burg); font-weight: 600; }
+
+    /* Chips */
+    .chip-row { display: flex; gap: 5px; }
+    .chip {
+      font-size: .75rem; font-weight: 500; letter-spacing: .02em;
+      padding: 6px 12px; border-radius: var(--r-pill);
+      border: 1px solid var(--c-n200); background: white; color: var(--c-n600);
+      transition: all .18s var(--ease); white-space: nowrap;
+    }
+    .chip:hover { border-color: var(--c-n400); color: var(--c-ink); }
+    .chip.on { background: var(--c-burg); border-color: var(--c-burg); color: white; }
+
+    /* Active filter count */
+    .filter-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--c-burg); color: white;
+      font-size: 10px; font-weight: 600;
+    }
+    .filter-badge.hidden { display: none; }
+
+    .reset-link {
+      font-size: .75rem; color: var(--c-burg); font-weight: 500;
+      background: none; border: none; cursor: pointer; letter-spacing: .03em;
+      transition: color .15s; padding: 0; margin-left: auto;
+    }
+    .reset-link:hover { color: oklch(44% .070 72); }
+    .reset-link.hidden { visibility: hidden; }
+
+    /* Results list */
+    .results-list { overflow-y: auto; flex: 1; padding: 8px 0; }
+    .results-list::-webkit-scrollbar { width: 4px; }
+    .results-list::-webkit-scrollbar-track { background: transparent; }
+    .results-list::-webkit-scrollbar-thumb { background: var(--c-n200); border-radius: 2px; }
+
+    /* Result card */
+    .result-card {
+      display: grid;
+      grid-template-columns: 28px 76px 1fr auto;
+      gap: 12px;
+      align-items: start;
+      padding: 14px 24px;
+      border-left: 3px solid transparent;
+      cursor: pointer;
+      transition: background .18s, border-color .18s;
+    }
+    .result-card:hover { background: var(--c-n50); }
+    .result-card.selected {
+      background: oklch(96.5% 0.018 76);
+      border-left-color: var(--c-gold);
+    }
+    .card-num  { padding-top: 3px; }
+    .card-thumb { align-self: start; }
+
+    /* ── EXPANDED CARD ───────────────────────────────── */
+    .card-expand {
+      grid-column: 1 / -1;
+      display: none;
+      padding: 0 0 14px calc(28px + 12px + 76px + 12px);
+    }
+    .result-card.selected .card-expand {
+      display: block;
+      animation: cardExpand .28s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+    @keyframes cardExpand {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .expand-cta {
+      font-size: .8rem; font-weight: 500; letter-spacing: .02em;
+      padding: 6px 16px; border-radius: var(--r-pill);
+      border: 1.5px solid var(--c-gold); color: var(--c-gold); background: transparent;
+      white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
+      transition: background .18s, color .18s;
+    }
+    .expand-cta:hover { background: var(--c-burg); color: white; }
+
+    .card-num {
+      font-family: var(--f-display); font-size: .875rem; font-weight: 300;
+      color: var(--c-n300); align-self: start; padding-top: 2px; letter-spacing: .02em;
+    }
+
+    .card-thumb {
+      position: relative; width: 76px; height: 56px;
+      border-radius: var(--r-md); overflow: hidden; flex-shrink: 0;
+    }
+    .thumb-fill {
+      width: 100%; height: 100%;
+      background: repeating-linear-gradient(-45deg, var(--c-n100), var(--c-n100) 1px,
+                  var(--c-n50) 1px, var(--c-n50) 10px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .thumb-lbl { font-size: 9px; color: var(--c-n300); font-family: monospace; letter-spacing: .04em; }
+    .thumb-badge {
+      position: absolute; bottom: 4px; right: 4px;
+      background: white; border-radius: 3px;
+      padding: 2px 4px; font-size: 10px; line-height: 1;
+      box-shadow: var(--s-sm);
+    }
+
+    .card-info { min-width: 0; }
+    .card-name {
+      font-family: var(--f-display); font-size: 1.1rem; font-weight: 600;
+      color: var(--c-ink); line-height: 1.2; margin-bottom: 3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .card-detail {
+      font-size: .75rem; font-weight: 500; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--c-gold); margin-bottom: 5px;
+    }
+    .card-loc { font-size: .75rem; color: var(--c-n400); }
+
+    .card-meta { text-align: right; flex-shrink: 0; }
+    .card-price { font-size: .8125rem; font-weight: 500; letter-spacing: .02em; margin-bottom: 5px; }
+    .pon { color: var(--c-ink); }
+    .poff { color: var(--c-n200); }
+    .card-rating-lbl { font-size: .6875rem; color: var(--c-n400); letter-spacing: .04em; white-space: nowrap; }
+
+    /* No results */
+    .no-results {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 60px 24px; gap: 16px; text-align: center;
+    }
+    .no-results-icon { font-size: 2rem; }
+    .no-results-text { font-size: .875rem; color: var(--c-n500); }
+    .no-results button {
+      font-size: .8125rem; font-weight: 500; padding: 8px 20px;
+      border-radius: var(--r-md); border: 1px solid var(--c-n200);
+      background: white; color: var(--c-ink); transition: background .2s;
+    }
+    .no-results button:hover { background: var(--c-ink); color: var(--c-bg); border-color: var(--c-ink); }
+
+    /* ── RIGHT PANEL (MAP) ──────────────────────────────── */
+    .panel-right {
+      flex: 1; position: relative; overflow: hidden;
+    }
+    #map-canvas { display: block; width: 100%; height: 100%; }
+
+    /* Map tooltip */
+    .map-tooltip {
+      position: absolute; pointer-events: none;
+      background: white; border-radius: var(--r-lg);
+      padding: 12px 16px; box-shadow: var(--s-lg);
+      border: 1px solid var(--c-n100);
+      min-width: 160px;
+      opacity: 0; transform: translateY(6px);
+      transition: opacity .18s var(--ease), transform .18s var(--ease);
+      z-index: 10;
+    }
+    .map-tooltip.visible { opacity: 1; transform: translateY(0); }
+    .tt-emoji { font-size: 1.1rem; margin-bottom: 6px; }
+    .tt-name {
+      font-family: var(--f-display); font-size: 1rem; font-weight: 600;
+      color: var(--c-ink); margin-bottom: 3px;
+    }
+    .tt-info { font-size: .75rem; color: var(--c-n500); }
+    .tt-price { font-size: .75rem; font-weight: 500; color: var(--c-ink); margin-top: 6px; }
+
+    /* Map "click to deselect" hint */
+    .map-hint {
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      font-size: 11px; color: var(--c-n400); letter-spacing: .06em;
+      background: white; padding: 6px 14px; border-radius: var(--r-pill);
+      box-shadow: var(--s-sm); border: 1px solid var(--c-n100);
+      opacity: 0; transition: opacity .3s;
+      pointer-events: none; white-space: nowrap;
+    }
+    .map-hint.visible { opacity: 1; }
+
+    /* Map legend */
+    .map-legend {
+      position: absolute; top: 16px; right: 16px;
+      background: white; border-radius: var(--r-lg);
+      padding: 12px 16px; box-shadow: var(--s-sm);
+      border: 1px solid var(--c-n100);
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .legend-title {
+      font-size: 10px; font-weight: 500; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--c-burg); margin-bottom: 2px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--c-n500); }
+    .legend-pin {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #9a7945; flex-shrink: 0;
+    }
+    .legend-pin.selected-pin { background: #7d6132; box-shadow: 0 0 0 3px rgba(157,121,69,.2); }
+
+    /* ── MOBILE TOGGLE ──────────────────────────────────── */
+    .mobile-toggle {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 400;
+      background: white; border-top: 1px solid var(--c-n100);
+      padding: 8px 16px 12px;
+      gap: 8px;
+    }
+    .toggle-btn {
+      flex: 1; padding: 10px; border-radius: var(--r-md);
+      border: 1px solid var(--c-n200); background: white;
+      font-size: .8125rem; font-weight: 500; color: var(--c-n600);
+      transition: all .18s var(--ease);
+    }
+    .toggle-btn.active {
+      background: var(--c-ink); color: white; border-color: var(--c-ink);
+    }
+
+    /* Mobile bottom sheet */
+    .mobile-sheet {
+      display: none;
+      position: fixed; bottom: 68px; left: 12px; right: 12px; z-index: 350;
+      background: white; border-radius: var(--r-lg);
+      padding: 16px 20px; box-shadow: var(--s-lg);
+      border: 1px solid var(--c-n100);
+      transform: translateY(20px); opacity: 0;
+      transition: all .3s var(--ease);
+    }
+    .mobile-sheet.visible { transform: translateY(0); opacity: 1; }
+
+    /* ── RESPONSIVE ─────────────────────────────────────── */
+    @media (max-width: 900px) {
+      :root { --left-w: 340px; }
+    }
+
+    @media (max-width: 680px) {
+      :root { --hdr: 56px; }
+      html, body { overflow: auto; }
+
+      .page { flex-direction: column; height: auto; overflow: visible; padding-top: var(--hdr); }
+
+      .panel-left {
+        width: 100%; height: auto; overflow: visible; border-right: none;
+        border-bottom: 1px solid var(--c-n100);
+      }
+      .panel-left.view-map { display: none; }
+      .results-list { overflow: visible; max-height: none; }
+
+      .panel-right {
+        display: none; height: calc(100vh - var(--hdr) - 60px);
+      }
+      .panel-right.view-map { display: block; }
+
+      .mobile-toggle { display: flex; }
+      .mobile-sheet  { display: block; }
+
+      .hdr-search { display: none; }
+      .map-legend { display: none; }
+
+      .result-card { grid-template-columns: 24px 64px 1fr auto; padding: 12px 16px; gap: 10px; }
+      .card-expand { padding-left: calc(24px + 10px + 64px + 10px); }
+      .card-name  { font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ HEADER ══════════════════════════════════════════════ -->
+<header class="header">
+  <div class="header-inner">
+    <a class="logo" href="Guide Karn Homepage.html">Guide <span class="logo-accent">Philippe</span></a>
+
+    <div class="hdr-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path>
+      </svg>
+      <input type="text" value="Paris" placeholder="Restaurant, cuisine or city…" id="hdr-q">
+    </div>
+
+    <div class="hdr-right">
+      <button class="icon-btn" aria-label="Saved">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+        </svg>
+      </button>
+      <button class="btn-login">Login</button>
+    </div>
+  </div>
+</header>
+
+<!-- ══ PAGE ════════════════════════════════════════════════ -->
+<div class="page">
+
+  <!-- LEFT PANEL -->
+  <div class="panel-left" id="panel-left">
+
+    <!-- Query bar -->
+    <div class="query-bar">
+      <div class="query-info">
+        <span class="query-count" id="result-count">12</span>
+        <span class="query-for">results for</span>
+        <span class="query-term">"Paris"</span>
+      </div>
+      <select class="sort-select" id="sort-sel" onchange="applyFilters()">
+        <option value="rating">Highest Rated</option>
+        <option value="price-asc">Price: Low – High</option>
+        <option value="price-desc">Price: High – Low</option>
+        <option value="name">Name A–Z</option>
+      </select>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar" id="filter-bar">
+
+      <!-- Row 1: Cuisine + active badge + reset -->
+      <div class="filter-row">
+        <div class="filter-group">
+          <span class="filter-label-txt">Cuisine</span>
+          <select class="cuisine-select" id="f-cuisine" onchange="applyFilters()">
+            <option value="all">All Cuisines</option>
+            <option value="french">French</option>
+            <option value="italian">Italian</option>
+            <option value="japanese">Japanese</option>
+            <option value="mediterranean">Mediterranean</option>
+            <option value="spanish">Spanish</option>
+            <option value="nordic">Nordic</option>
+          </select>
+        </div>
+        <span class="filter-badge hidden" id="filter-badge">0</span>
+        <button class="reset-link hidden" id="reset-btn" onclick="resetFilters()">Reset filters</button>
+      </div>
+
+      <!-- Row 2: Price + Rating -->
+      <div class="filter-row">
+        <div class="filter-group">
+          <span class="filter-label-txt">Price</span>
+          <div class="chip-row" id="price-chips">
+            <button class="chip" data-f="price" data-v="1">€</button>
+            <button class="chip" data-f="price" data-v="2">€€</button>
+            <button class="chip" data-f="price" data-v="3">€€€</button>
+            <button class="chip" data-f="price" data-v="4">€€€€</button>
+          </div>
+        </div>
+        <div class="filter-group" style="margin-left:auto;">
+          <span class="filter-label-txt">Rating</span>
+          <div class="chip-row" id="rating-chips">
+            <button class="chip" data-f="rating" data-v="4" title="Absolute Recommendation">🍽️</button>
+            <button class="chip" data-f="rating" data-v="3" title="Worth Mentioning">🍴</button>
+            <button class="chip" data-f="rating" data-v="2" title="Remembering">🥄</button>
+            <button class="chip" data-f="rating" data-v="1" title="Not Recommended">🫗</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Results list -->
+    <div class="results-list" id="results-list"></div>
+  </div>
+
+  <!-- RIGHT PANEL (MAP) -->
+  <div class="panel-right" id="panel-right">
+    <canvas id="map-canvas"></canvas>
+
+    <!-- Tooltip -->
+    <div class="map-tooltip" id="map-tooltip">
+      <div class="tt-emoji" id="tt-emoji"></div>
+      <div class="tt-name"  id="tt-name"></div>
+      <div class="tt-info"  id="tt-info"></div>
+      <div class="tt-price" id="tt-price"></div>
+    </div>
+
+    <!-- Deselect hint -->
+    <div class="map-hint" id="map-hint">Click elsewhere to deselect</div>
+
+    <!-- Legend -->
+    <div class="map-legend">
+      <div class="legend-title">Guide Philippe</div>
+      <div class="legend-item"><div class="legend-pin"></div>Restaurant</div>
+      <div class="legend-item"><div class="legend-pin selected-pin"></div>Selected</div>
+    </div>
+  </div>
+
+</div><!-- .page -->
+
+<!-- ══ MOBILE TOGGLE ════════════════════════════════════════ -->
+<div class="mobile-toggle">
+  <button class="toggle-btn active" id="btn-list" onclick="setView('list')">
+    ≡&nbsp; List
+  </button>
+  <button class="toggle-btn" id="btn-map" onclick="setView('map')">
+    ◎&nbsp; Map
+  </button>
+</div>
+
+<!-- Mobile bottom sheet (selected card) -->
+<div class="mobile-sheet" id="mobile-sheet"></div>
+
+<script>
+/* ── DATA ──────────────────────────────────────────────── */
+const RATINGS = {
+  4: { emoji: '🍽️', label: 'Absolute Recommendation', short: 'Absolute rec.',     desc: 'A restaurant of exceptional merit. Do not miss under any circumstances.' },
+  3: { emoji: '🍴', label: 'Worth Mentioning',         short: 'Worth mentioning',  desc: 'A genuinely good restaurant with clear strengths worth your attention.'  },
+  2: { emoji: '🥄', label: 'Remembering',              short: 'Remembering',       desc: 'Pleasant, unremarkable. Fond memory; no urgency to return.'             },
+  1: { emoji: '🫗', label: 'Not Recommended',          short: 'Not recommended',   desc: 'Falls short of the standard expected at this price or ambition.'        }
+};
+
+const restaurants = [
+  { id:1,  name:'Le Bernardin',    cuisine:'French',        detail:'Seafood · Fine Dining', price:4, r:4, loc:'8ème',  mx:0.30, my:0.30, snippet:'The gold standard of Parisian fine dining. Chef Rousseau\'s tasting menu is a masterclass in precision \u2014 every plate a study in oceanic restraint.' },
+  { id:2,  name:'Sushi Kato',      cuisine:'Japanese',      detail:'Omakase',               price:4, r:4, loc:'1er',   mx:0.57, my:0.42, snippet:'An unmarked door, a counter of eight, and an omakase that rivals Tokyo\'s finest. Reserve three months ahead \u2014 it is categorically worth the effort.' },
+  { id:3,  name:'Trattoria Forno', cuisine:'Italian',       detail:'Roman Classics',        price:2, r:2, loc:'5ème',  mx:0.43, my:0.71, snippet:'Honest Roman cooking steps from the Panthéon. The cacio e pepe is dependable; the room is loud and charming in equal measure.' },
+  { id:4,  name:'El Cielo',        cuisine:'Spanish',       detail:'Modern Catalan',        price:3, r:4, loc:'2ème',  mx:0.68, my:0.24, snippet:'Barcelona sensibility transplanted to the right bank. The tasting menu riffs brilliantly on Catalan tradition with a lightness that feels wholly Parisian.' },
+  { id:5,  name:'Brasserie Nord',  cuisine:'French',        detail:'Brasserie',             price:2, r:3, loc:'9ème',  mx:0.48, my:0.18, snippet:'A reliable neighbourhood brasserie with a serious cellar. The steak tartare and the house Burgundy are a combination worth crossing the city for.' },
+  { id:6,  name:'Casa Mia',        cuisine:'Italian',       detail:'Seafood',               price:3, r:3, loc:'11ème', mx:0.74, my:0.70, snippet:'Southern Italian coastal cooking executed with conviction. The crudo selection changes daily and the pappardelle al granchio is not to be missed.' },
+  { id:7,  name:'Chez Marie',      cuisine:'French',        detail:'Café · Bistro',         price:1, r:2, loc:'6ème',  mx:0.36, my:0.80, snippet:'An ageless St-Germain café that pours a generous kir and charges fairly. The plat du jour is hit-or-miss; the terrace is always worth it.' },
+  { id:8,  name:'Garden Kitchen',  cuisine:'Mediterranean', detail:'Seasonal',              price:2, r:3, loc:'3ème',  mx:0.63, my:0.36, snippet:'A market-led menu that changes weekly, set in a sunlit Marais courtyard. Vegetable-forward cooking with genuine depth and a natural wine list to match.' },
+  { id:9,  name:'Lumière',         cuisine:'French',        detail:'Gastronomie',           price:4, r:4, loc:'8ème',  mx:0.24, my:0.22, snippet:'A quiet jewel in the 8th. The chef\'s seven-course menu balances classical technique with restrained modernity \u2014 this is French gastronomy at its most self-assured.' },
+  { id:10, name:'Atelier Nishi',   cuisine:'Japanese',      detail:'Kaiseki',               price:4, r:4, loc:'16ème', mx:0.13, my:0.36, snippet:'Kaiseki discipline meets \u00cele-de-France produce in this serene 16th arrondissement counter. One of Paris\'s most quietly extraordinary dining experiences.' },
+  { id:11, name:'Osteria Bella',   cuisine:'Italian',       detail:'Trattoria',             price:2, r:3, loc:'4ème',  mx:0.57, my:0.55, snippet:'A narrow Marais trattoria that punches well above its modest price. The handmade tagliatelle and tiramisu della casa are among the neighbourhood\'s better pleasures.' },
+  { id:12, name:'Café Soleil',     cuisine:'French',        detail:'Café',                  price:1, r:2, loc:'15ème', mx:0.22, my:0.80, snippet:'A neighbourhood café-cantine in the quiet 15th with loyal regulars and a short menu of well-executed French standards. Comfortable rather than remarkable.' },
+];
+
+/* ── STATE ─────────────────────────────────────────────── */
+let selectedId = null;
+let hoveredId  = null;
+const activeFilters = { cuisine: 'all', price: new Set(), rating: new Set() };
+
+function matchesFilters(r) {
+  if (activeFilters.cuisine !== 'all' &&
+      r.cuisine.toLowerCase() !== activeFilters.cuisine) return false;
+  if (activeFilters.price.size  > 0 && !activeFilters.price.has(r.price))  return false;
+  if (activeFilters.rating.size > 0 && !activeFilters.rating.has(r.r))     return false;
+  return true;
+}
+
+function getSorted() {
+  const mode = document.getElementById('sort-sel').value;
+  const list = restaurants.filter(matchesFilters);
+  if (mode === 'rating')     return list.sort((a,b) => b.r - a.r);
+  if (mode === 'price-asc')  return list.sort((a,b) => a.price - b.price);
+  if (mode === 'price-desc') return list.sort((a,b) => b.price - a.price);
+  if (mode === 'name')       return list.sort((a,b) => a.name.localeCompare(b.name));
+  return list;
+}
+
+function priceHTML(n) {
+  return [1,2,3,4].map(i =>
+    `<span class="${i<=n?'pon':'poff'}">€</span>`).join('');
+}
+function priceText(n) {
+  return '€'.repeat(n) + '<span style="color:var(--c-n200)">'+('€'.repeat(4-n))+'</span>';
+}
+
+/* ── CARDS ─────────────────────────────────────────────── */
+function renderCards() {
+  const list = getSorted();
+  const el   = document.getElementById('results-list');
+  document.getElementById('result-count').textContent = list.length;
+
+  if (list.length === 0) {
+    el.innerHTML = `<div class="no-results">
+      <div class="no-results-icon">🔍</div>
+      <div class="no-results-text">No restaurants match your filters.</div>
+      <button onclick="resetFilters()">Clear all filters</button>
+    </div>`;
+    drawMap(); return;
+  }
+
+  el.innerHTML = list.map((r, i) => `
+    <div class="result-card ${r.id === selectedId ? 'selected' : ''}"
+         data-id="${r.id}" id="card-${r.id}"
+         onclick="selectCard(${r.id})">
+      <div class="card-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="card-thumb">
+        <div class="thumb-fill"><span class="thumb-lbl">${r.loc}</span></div>
+        <div class="thumb-badge">${RATINGS[r.r].emoji}</div>
+      </div>
+      <div class="card-info">
+        <div class="card-name">${r.name}</div>
+        <div class="card-detail">${r.detail}</div>
+        <div class="card-loc">📍 ${r.loc}, Paris</div>
+      </div>
+      <div class="card-meta">
+        <div class="card-price">${priceHTML(r.price)}</div>
+        <div class="card-rating-lbl">${RATINGS[r.r].short}</div>
+      </div>
+      <div class="card-expand" onclick="event.stopPropagation()">
+        <a class="expand-cta" href="Guide Karn Restaurant Detail.html?from=search">Open restaurant page &rarr;</a>
+      </div>
+    </div>`).join('');
+
+  updateBadge();
+  drawMap();
+}
+
+function selectCard(id) {
+  selectedId = selectedId === id ? null : id;
+  renderCards();
+  if (selectedId) {
+    const card = document.getElementById('card-' + selectedId);
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    showHint(true);
+    updateMobileSheet(selectedId);
+  } else {
+    showHint(false);
+    updateMobileSheet(null);
+  }
+}
+
+/* ── FILTERS ────────────────────────────────────────────── */
+document.querySelectorAll('.chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const f = btn.dataset.f;
+    const v = parseInt(btn.dataset.v);
+    if (activeFilters[f].has(v)) activeFilters[f].delete(v);
+    else activeFilters[f].add(v);
+    btn.classList.toggle('on', activeFilters[f].has(v));
+    applyFilters();
+  });
+});
+
+function applyFilters() {
+  activeFilters.cuisine = document.getElementById('f-cuisine').value;
+  const sel = document.getElementById('f-cuisine');
+  sel.className = 'cuisine-select' + (activeFilters.cuisine !== 'all' ? ' has-value' : '');
+  if (selectedId && !matchesFilters(restaurants.find(r => r.id === selectedId))) {
+    selectedId = null;
+  }
+  renderCards();
+}
+
+function resetFilters() {
+  activeFilters.cuisine = 'all';
+  activeFilters.price.clear();
+  activeFilters.rating.clear();
+  document.getElementById('f-cuisine').value = 'all';
+  document.getElementById('f-cuisine').className = 'cuisine-select';
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+  selectedId = null;
+  renderCards();
+}
+
+function updateBadge() {
+  const count = (activeFilters.cuisine !== 'all' ? 1 : 0)
+              + activeFilters.price.size + activeFilters.rating.size;
+  const badge = document.getElementById('filter-badge');
+  const reset = document.getElementById('reset-btn');
+  badge.textContent = count;
+  badge.classList.toggle('hidden', count === 0);
+  reset.classList.toggle('hidden', count === 0);
+}
+
+/* ── MAP ────────────────────────────────────────────────── */
+const canvas = document.getElementById('map-canvas');
+const ctx    = canvas.getContext('2d');
+const DPR    = window.devicePixelRatio || 1;
+
+// Map palette (warm, brand-consistent)
+const MC = {
+  bg:     '#ede8df', block:  '#e1dbd1', block2: '#ddd7cc',
+  street: '#f5f1eb', water:  '#c8d4e0', park:   '#c8d8c4',
+  island: '#c4d2c0', label:  '#bbb7ae',
+  gold:   '#9a7945', goldDk: '#7d6132', goldHov:'#b08b52',
+};
+
+function rRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.arcTo(x+w,y,x+w,y+r,r); ctx.lineTo(x+w,y+h-r);
+  ctx.arcTo(x+w,y+h,x+w-r,y+h,r); ctx.lineTo(x+r,y+h);
+  ctx.arcTo(x,y+h,x,y+h-r,r); ctx.lineTo(x,y+r);
+  ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
+}
+
+function drawMap() {
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  if (W === 0 || H === 0) return;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  // 1. Background
+  ctx.fillStyle = MC.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // 2. City block grid (Paris proportions)
+  const COLS = 24, ROWS = 20, SW = 2.5;
+  const cw = W/COLS, ch = H/ROWS;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const s = (r*31 + c*17 + r*c*3) % 100;
+      if (s < 4) continue;
+      ctx.fillStyle = s%3===0 ? MC.block2 : MC.block;
+      ctx.fillRect(c*cw+SW/2, r*ch+SW/2, cw-SW, ch-SW);
+    }
+  }
+
+  // 3. Parks
+  [
+    [W*0.03, H*0.08, W*0.11, H*0.36],   // Bois de Boulogne
+    [W*0.33, H*0.40, W*0.07, H*0.09],   // Tuileries
+    [W*0.40, H*0.70, W*0.06, H*0.11],   // Luxembourg
+  ].forEach(([x,y,w,h]) => {
+    rRect(x,y,w,h,4);
+    ctx.fillStyle = MC.park; ctx.fill();
+  });
+
+  // 4. Seine river
+  ctx.beginPath();
+  ctx.moveTo(0, H*0.57);
+  ctx.bezierCurveTo(W*0.22,H*0.51, W*0.44,H*0.58, W*0.52,H*0.52);
+  ctx.bezierCurveTo(W*0.62,H*0.45, W*0.80,H*0.52, W,H*0.50);
+  ctx.lineTo(W, H*0.60);
+  ctx.bezierCurveTo(W*0.80,H*0.62, W*0.62,H*0.55, W*0.52,H*0.62);
+  ctx.bezierCurveTo(W*0.44,H*0.68, W*0.22,H*0.61, 0,H*0.67);
+  ctx.closePath();
+  ctx.fillStyle = MC.water; ctx.fill();
+
+  // Île de la Cité
+  ctx.beginPath();
+  ctx.ellipse(W*0.50, H*0.57, W*0.05, H*0.035, 0, 0, Math.PI*2);
+  ctx.fillStyle = MC.island; ctx.fill();
+
+  // 5. District labels
+  ctx.font = `500 ${Math.max(9, W/90)}px DM Sans, sans-serif`;
+  ctx.fillStyle = MC.label; ctx.textAlign = 'center';
+  [
+    [W*0.48,H*0.23,'OPÉRA'],
+    [W*0.28,H*0.34,'8ÈME'],
+    [W*0.63,H*0.38,'MARAIS'],
+    [W*0.44,H*0.75,'ST-GERMAIN'],
+    [W*0.72,H*0.65,'11ÈME'],
+    [W*0.14,H*0.60,'16ÈME'],
+  ].forEach(([x,y,t]) => ctx.fillText(t, x, y));
+  ctx.textAlign = 'left';
+
+  // 6. Pins — unselected first, selected on top
+  const visible = restaurants.filter(matchesFilters);
+  visible.filter(r => r.id !== selectedId)
+         .forEach(r => drawPin(r.mx*W, r.my*H, false, r.id===hoveredId));
+  const sel = visible.find(r => r.id === selectedId);
+  if (sel) drawPin(sel.mx*W, sel.my*H, true, false);
+}
+
+function drawPin(px, py, selected, hovered) {
+  const sz  = selected ? 11 : hovered ? 10 : 7;
+  const pcx = px, pcy = py - sz * 2.3;
+
+  // Pulse rings (selected)
+  if (selected) {
+    [20, 13].forEach((d, i) => {
+      ctx.beginPath();
+      ctx.arc(pcx, pcy, sz+d, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(154,121,69,${0.10 + i*0.06})`;
+      ctx.fill();
+    });
+  }
+
+  ctx.save();
+  ctx.shadowBlur    = selected ? 18 : hovered ? 12 : 7;
+  ctx.shadowColor   = 'rgba(0,0,0,0.22)';
+  ctx.shadowOffsetY = selected ? 3 : 2;
+
+  const col = selected ? MC.goldDk : hovered ? MC.goldHov : MC.gold;
+
+  // Circle
+  ctx.beginPath();
+  ctx.arc(pcx, pcy, sz, 0, Math.PI*2);
+  ctx.fillStyle = col; ctx.fill();
+
+  // Triangle pointer
+  ctx.beginPath();
+  ctx.moveTo(pcx - sz*0.6, pcy + sz*0.5);
+  ctx.lineTo(pcx + sz*0.6, pcy + sz*0.5);
+  ctx.lineTo(pcx, py + 1);
+  ctx.fillStyle = col; ctx.fill();
+
+  ctx.restore();
+
+  // White center dot
+  ctx.beginPath();
+  ctx.arc(pcx, pcy, sz*0.42, 0, Math.PI*2);
+  ctx.fillStyle = '#fff'; ctx.fill();
+}
+
+/* ── MAP INTERACTION ────────────────────────────────────── */
+function pinAt(mx, my) {
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  let hit = null, minD = 22;
+  restaurants.filter(matchesFilters).forEach(r => {
+    const sz = r.id === selectedId ? 11 : 7;
+    const d  = Math.hypot(mx - r.mx*W, my - (r.my*H - sz*2.3));
+    if (d < minD) { minD = d; hit = r; }
+  });
+  return hit;
+}
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx   = e.clientX - rect.left;
+  const my   = e.clientY - rect.top;
+  const hit  = pinAt(mx, my);
+  const newH = hit ? hit.id : null;
+  if (newH !== hoveredId) {
+    hoveredId = newH;
+    canvas.style.cursor = newH ? 'pointer' : 'default';
+    drawMap();
+  }
+  if (hit) showTooltip(hit, mx, my);
+  else hideTooltip();
+});
+
+canvas.addEventListener('mouseleave', () => {
+  hoveredId = null; canvas.style.cursor = 'default';
+  hideTooltip(); drawMap();
+});
+
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const hit  = pinAt(e.clientX - rect.left, e.clientY - rect.top);
+  if (hit) {
+    selectedId = selectedId === hit.id ? null : hit.id;
+    renderCards();
+    if (selectedId) {
+      const card = document.getElementById('card-' + selectedId);
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      showHint(true);
+      updateMobileSheet(selectedId);
+    } else {
+      showHint(false);
+      updateMobileSheet(null);
+    }
+  } else {
+    selectedId = null;
+    showHint(false);
+    updateMobileSheet(null);
+    renderCards();
+  }
+  drawMap();
+});
+
+/* ── TOOLTIP ────────────────────────────────────────────── */
+const tooltip = document.getElementById('map-tooltip');
+function showTooltip(r, mx, my) {
+  const W = canvas.offsetWidth;
+  document.getElementById('tt-emoji').textContent = RATINGS[r.r].emoji;
+  document.getElementById('tt-name').textContent  = r.name;
+  document.getElementById('tt-info').textContent  = r.detail + ' · ' + r.loc + ', Paris';
+  document.getElementById('tt-price').innerHTML   = priceText(r.price);
+  tooltip.classList.add('visible');
+  // Position above pin
+  const ttW = 172, ttH = 90;
+  let left = r.mx * W - ttW/2;
+  let top  = r.my * canvas.offsetHeight - ttH - 42;
+  left = Math.max(8, Math.min(left, W - ttW - 8));
+  top  = Math.max(8, top);
+  tooltip.style.left = left + 'px';
+  tooltip.style.top  = top  + 'px';
+}
+function hideTooltip() { tooltip.classList.remove('visible'); }
+
+/* ── HINT ───────────────────────────────────────────────── */
+const hint = document.getElementById('map-hint');
+function showHint(v) { hint.classList.toggle('visible', v); }
+
+/* ── MOBILE SHEET ───────────────────────────────────────── */
+function updateMobileSheet(id) {
+  const sheet = document.getElementById('mobile-sheet');
+  if (!id) { sheet.classList.remove('visible'); return; }
+  const r = restaurants.find(x => x.id === id);
+  if (!r) return;
+  sheet.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;justify-content:space-between;">
+      <div>
+        <div style="font-family:var(--f-display);font-size:1.1rem;font-weight:600;color:var(--c-ink);margin-bottom:4px;">${r.name}</div>
+        <div style="font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--c-gold);">${r.detail}</div>
+        <div style="font-size:11px;color:var(--c-n400);margin-top:4px;">📍 ${r.loc}, Paris</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:1.4rem;">${RATINGS[r.r].emoji}</div>
+        <div style="font-size:12px;font-weight:500;margin-top:4px;">${priceHTML(r.price)}</div>
+      </div>
+    </div>`;
+  sheet.classList.add('visible');
+}
+
+/* ── MOBILE VIEW TOGGLE ─────────────────────────────────── */
+function setView(v) {
+  document.getElementById('btn-list').classList.toggle('active', v==='list');
+  document.getElementById('btn-map').classList.toggle('active',  v==='map');
+  document.getElementById('panel-left').classList.toggle('view-map',  v==='map');
+  document.getElementById('panel-right').classList.toggle('view-map', v==='map');
+  if (v==='map') { resizeCanvas(); }
+}
+
+/* ── CANVAS RESIZE ──────────────────────────────────────── */
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width  = rect.width  * DPR;
+  canvas.height = rect.height * DPR;
+  canvas.style.width  = rect.width  + 'px';
+  canvas.style.height = rect.height + 'px';
+  drawMap();
+}
+
+const ro = new ResizeObserver(() => resizeCanvas());
+ro.observe(canvas.parentElement);
+
+/* ── INIT ───────────────────────────────────────────────── */
+renderCards();
+resizeCanvas();
+</script>
+</body>
+</html>

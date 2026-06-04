@@ -1,0 +1,75 @@
+/* ============================================================
+   GUIDE PHILIPPE — DESIGN TOKENS
+   v1.0 · June 2026
+============================================================ */
+:root {
+
+  /* — Core Colors — */
+  --c-bg:          oklch(97.5% 0.008 78);   /* warm ivory */
+  --c-ink:         oklch(13%  0.012 255);   /* deep charcoal */
+  --c-gold:        oklch(58%  0.070 72);    /* muted gold */
+  --c-gold-light:  oklch(91%  0.032 76);    /* gold tint */
+  --c-gold-mid:    oklch(72%  0.050 74);    /* gold mid */
+  --c-burg:        oklch(31%  0.080 17);    /* dark burgundy */
+  --c-burg-light:  oklch(93%  0.016 17);    /* burgundy tint */
+
+  /* — Neutral Scale (warm-tinted grays) — */
+  --c-n50:  oklch(95.5% 0.006 78);
+  --c-n100: oklch(92%   0.007 78);
+  --c-n200: oklch(86%   0.008 78);
+  --c-n300: oklch(76%   0.008 78);
+  --c-n400: oklch(63%   0.007 78);
+  --c-n500: oklch(52%   0.007 78);
+  --c-n600: oklch(41%   0.007 78);
+  --c-n700: oklch(30%   0.008 78);
+
+  /* — Typography — */
+  --f-display: 'Cormorant Garamond', Georgia, serif;
+  --f-body:    'DM Sans', system-ui, sans-serif;
+  --f-mono:    'SF Mono', 'Fira Code', monospace;
+
+  /* — Type Scale — */
+  --t-11:   0.6875rem;   /*  11px */
+  --t-12:   0.75rem;     /*  12px */
+  --t-14:   0.875rem;    /*  14px */
+  --t-16:   1rem;        /*  16px */
+  --t-18:   1.125rem;    /*  18px */
+  --t-20:   1.25rem;     /*  20px */
+  --t-24:   1.5rem;      /*  24px */
+  --t-32:   2rem;        /*  32px */
+  --t-40:   2.5rem;      /*  40px */
+  --t-56:   3.5rem;      /*  56px */
+  --t-80:   5rem;        /*  80px */
+  --t-hero: 7.5rem;      /* 120px */
+
+  /* — Spacing (base-4) — */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* — Border Radii — */
+  --r-sm:   4px;
+  --r-md:   8px;
+  --r-lg:   14px;
+  --r-xl:   22px;
+  --r-pill: 9999px;
+
+  /* — Shadows — */
+  --s-xs:    0 1px 2px oklch(0% 0 0 / 0.05);
+  --s-sm:    0 1px 4px oklch(0% 0 0 / 0.06), 0 1px 2px oklch(0% 0 0 / 0.04);
+  --s-md:    0 4px 14px oklch(0% 0 0 / 0.08), 0 2px 4px oklch(0% 0 0 / 0.04);
+  --s-lg:    0 14px 36px oklch(0% 0 0 / 0.10), 0 4px 8px oklch(0% 0 0 / 0.05);
+  --s-focus: 0 0 0 3px oklch(91% 0.032 76);
+
+  /* — Motion — */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast:   150ms;
+  --duration-base:   200ms;
+  --duration-enter:  250ms;
+}
