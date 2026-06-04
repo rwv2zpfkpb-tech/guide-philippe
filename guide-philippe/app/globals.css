@@ -1,26 +1,68 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --c-bg:          oklch(97.5% 0.008 78);
+  --c-ink:         oklch(13%  0.012 255);
+  --c-gold:        oklch(58%  0.070 72);
+  --c-gold-light:  oklch(91%  0.032 76);
+  --c-gold-mid:    oklch(72%  0.050 74);
+  --c-burg:        oklch(31%  0.080 17);
+  --c-burg-light:  oklch(93%  0.016 17);
+  --c-n50:   oklch(95.5% 0.006 78);
+  --c-n100:  oklch(92%   0.007 78);
+  --c-n200:  oklch(86%   0.008 78);
+  --c-n300:  oklch(76%   0.008 78);
+  --c-n400:  oklch(63%   0.007 78);
+  --c-n500:  oklch(52%   0.007 78);
+  --c-n600:  oklch(41%   0.007 78);
+  --c-n700:  oklch(30%   0.008 78);
+  --s-sm: 0 1px 4px oklch(0% 0 0 / 0.06), 0 1px 2px oklch(0% 0 0 / 0.04);
+  --s-md: 0 4px 14px oklch(0% 0 0 / 0.08), 0 2px 4px oklch(0% 0 0 / 0.04);
+  --s-lg: 0 14px 36px oklch(0% 0 0 / 0.10), 0 4px 8px oklch(0% 0 0 / 0.05);
+  --s-focus: 0 0 0 3px oklch(91% 0.032 76);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-dm-sans);
+  --font-display: var(--font-cormorant);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  background: var(--c-bg);
+  color: var(--c-ink);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-dm-sans), 'DM Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-wrap: pretty;
+}
+
+a { text-decoration: none; color: inherit; }
+button { font-family: inherit; }
+
+@media (max-width: 900px) {
+  .restaurant-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .restaurant-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.card-hover:hover {
+  box-shadow: var(--s-lg);
+  transform: translateY(-4px);
+  border-top-color: var(--c-burg) !important;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
