@@ -2,31 +2,92 @@ import { Suspense } from "react";
 import { getRestaurants } from "@/app/actions/restaurants";
 import RestaurantCard from "@/components/RestaurantCard";
 import FilterBar from "@/components/FilterBar";
+import { LocationSearch } from "@/components/LocationSearch";
+import { SearchResultsView } from "@/components/SearchResultsView";
 import type { RestaurantFilters } from "@/app/actions/restaurants";
 import type { PriceLevel, SpoonRating } from "@/types/database";
 
 export const metadata = { title: "Guide Philippe" };
 
+type SearchParams = {
+  q?: string;
+  cuisine?: string;
+  price_level?: string;
+  spoon_rating?: string;
+  location?: string;
+  lat?: string;
+  lng?: string;
+  ne_lat?: string;
+  ne_lng?: string;
+  sw_lat?: string;
+  sw_lng?: string;
+};
+
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ cuisine?: string; price_level?: string; spoon_rating?: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
 
+  const isLocationSearch = !!(
+    params.lat && params.lng &&
+    params.ne_lat && params.ne_lng &&
+    params.sw_lat && params.sw_lng
+  );
+
   const filters: RestaurantFilters = {};
+  if (params.q) filters.name_search = params.q;
   if (params.cuisine) filters.cuisine = params.cuisine;
   if (params.price_level) filters.price_level = Number(params.price_level) as PriceLevel;
   if (params.spoon_rating !== undefined && params.spoon_rating !== "") {
     filters.spoon_rating = Number(params.spoon_rating) as SpoonRating;
   }
+  if (isLocationSearch) {
+    filters.bounds = {
+      sw_lat: Number(params.sw_lat),
+      sw_lng: Number(params.sw_lng),
+      ne_lat: Number(params.ne_lat),
+      ne_lng: Number(params.ne_lng),
+    };
+  }
 
   const restaurants = await getRestaurants(filters);
+
+  // ── Location search mode: split list + map ────────────────────────────────
+  if (isLocationSearch) {
+    const locationParams = {
+      location: params.location ?? "",
+      lat:    params.lat!,    lng:    params.lng!,
+      ne_lat: params.ne_lat!, ne_lng: params.ne_lng!,
+      sw_lat: params.sw_lat!, sw_lng: params.sw_lng!,
+    };
+    const cuisines = Array.from(
+      new Set(restaurants.map((r) => r.cuisine).filter(Boolean) as string[])
+    ).sort();
+    return (
+      <SearchResultsView
+        restaurants={restaurants}
+        center={{ lat: Number(params.lat), lng: Number(params.lng) }}
+        locationParams={locationParams}
+        activeFilters={{
+          price_level:  params.price_level ? Number(params.price_level) : undefined,
+          spoon_rating: params.spoon_rating !== undefined && params.spoon_rating !== ""
+            ? Number(params.spoon_rating) : undefined,
+          cuisine: params.cuisine,
+        }}
+        cuisines={cuisines}
+      />
+    );
+  }
+
+  // ── Normal mode: hero + grid ──────────────────────────────────────────────
   const cuisines = Array.from(
     new Set(restaurants.map((r) => r.cuisine).filter(Boolean) as string[])
   ).sort();
 
-  const hasFilters = params.cuisine || params.price_level || params.spoon_rating !== undefined;
+  const hasFilters = params.q || params.cuisine || params.price_level || params.spoon_rating !== undefined;
+  const restaurantHints = restaurants.map((r) => ({ id: r.id, name: r.name, cuisine: r.cuisine }));
 
   return (
     <>
@@ -34,35 +95,37 @@ export default async function Page({
       <section
         style={{
           position: "relative",
-          overflow: "hidden",
+          // overflow intentionally NOT set here — it would clip the search dropdown.
+          // The watermark uses its own clipping wrapper below.
           padding: "72px 40px 68px",
           textAlign: "center",
           background: `linear-gradient(175deg,
-            oklch(90% 0.024 17) 0%,
-            oklch(95% 0.014 17) 38%,
-            var(--c-bg) 100%)`,
+            var(--hero-from) 0%,
+            var(--hero-mid)  38%,
+            var(--c-bg)      100%)`,
         }}
       >
-        {/* Watermark */}
-        <div
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: "52%",
-            transform: "translate(-50%, -50%)",
-            fontFamily: "var(--font-cormorant)",
-            fontSize: "38vw",
-            fontWeight: 700,
-            letterSpacing: "-0.05em",
-            lineHeight: 1,
-            color: "oklch(31% 0.080 17 / 0.055)",
-            pointerEvents: "none",
-            userSelect: "none",
-            whiteSpace: "nowrap",
-          }}
-        >
-          GP
+        {/* Watermark clipping wrapper — isolates overflow:hidden so the dropdown is not clipped */}
+        <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "52%",
+              transform: "translate(-50%, -50%)",
+              fontFamily: "var(--font-cormorant)",
+              fontSize: "38vw",
+              fontWeight: 700,
+              letterSpacing: "-0.05em",
+              lineHeight: 1,
+              color: "oklch(31% 0.080 17 / 0.055)",
+              userSelect: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            GP
+          </div>
         </div>
 
         <div
@@ -114,19 +177,29 @@ export default async function Page({
               fontWeight: 300,
               fontStyle: "italic",
               color: "oklch(38% 0.040 17)",
-              marginBottom: 44,
+              marginBottom: 36,
               animation: "fadeUp 0.8s var(--ease) 0.25s both",
             }}
           >
             An honest, curated guide to exceptional dining.
           </p>
 
-          {/* Filter chips */}
+          {/* Location search bar — position+zIndex ensures its dropdown stacking context
+              paints above the FilterBar's own stacking context (both created by fadeUp animation) */}
           <div
             style={{
-              animation: "fadeUp 0.8s var(--ease) 0.45s both",
+              maxWidth: 560,
+              margin: "0 auto 28px",
+              animation: "fadeUp 0.8s var(--ease) 0.35s both",
+              position: "relative",
+              zIndex: 10,
             }}
           >
+            <LocationSearch size="large" restaurants={restaurantHints} />
+          </div>
+
+          {/* Filter chips */}
+          <div style={{ animation: "fadeUp 0.8s var(--ease) 0.45s both", position: "relative", zIndex: 1 }}>
             <Suspense>
               <FilterBar cuisines={cuisines} />
             </Suspense>
@@ -148,35 +221,35 @@ export default async function Page({
           style={{
             display: "flex",
             alignItems: "baseline",
-            justifyContent: "space-between",
+            gap: 12,
             marginBottom: 28,
           }}
         >
-          <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-            <h2
-              style={{
-                fontFamily: "var(--font-cormorant)",
-                fontSize: "2rem",
-                fontWeight: 600,
-                letterSpacing: "-0.015em",
-                lineHeight: 1,
-                color: "var(--c-ink)",
-              }}
-            >
-              {hasFilters ? "Suchergebnisse" : "Restaurants"}
-            </h2>
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 500,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                color: "var(--c-burg)",
-              }}
-            >
-              {restaurants.length} {restaurants.length === 1 ? "Eintrag" : "Einträge"}
-            </span>
-          </div>
+          <h2
+            style={{
+              fontFamily: "var(--font-cormorant)",
+              fontSize: "2rem",
+              fontWeight: 600,
+              letterSpacing: "-0.015em",
+              lineHeight: 1,
+              color: "var(--c-ink)",
+            }}
+          >
+            {params.q
+              ? `Ergebnisse für „${params.q}"`
+              : hasFilters ? "Suchergebnisse" : "Restaurants"}
+          </h2>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 500,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: "var(--c-burg)",
+            }}
+          >
+            {restaurants.length} {restaurants.length === 1 ? "Eintrag" : "Einträge"}
+          </span>
         </div>
 
         {/* Ornament */}
@@ -208,7 +281,7 @@ export default async function Page({
               letterSpacing: "0.04em",
             }}
           >
-            {hasFilters ? "Gefilterte Auswahl" : "Unsere Auswahl"}
+            {params.q ? "Namenssuche" : hasFilters ? "Gefilterte Auswahl" : "Unsere Auswahl"}
           </span>
           <div
             style={{

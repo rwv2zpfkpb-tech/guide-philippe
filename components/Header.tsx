@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { signOut } from "@/app/actions/auth";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default async function Header() {
   const supabase = await createClient();
@@ -27,7 +28,7 @@ export default async function Header() {
         position: "sticky",
         top: 0,
         zIndex: 200,
-        background: "oklch(97.5% 0.008 78 / 0.92)",
+        background: "oklch(from var(--c-bg) l c h / 0.92)",
         backdropFilter: "blur(18px)",
         WebkitBackdropFilter: "blur(18px)",
         borderBottom: "1px solid var(--c-n100)",
@@ -60,6 +61,7 @@ export default async function Header() {
         </Link>
 
         <nav style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <ThemeToggle />
           {isAdmin && (
             <Link
               href="/admin/dashboard"
@@ -95,7 +97,7 @@ export default async function Header() {
                     padding: "7px 18px",
                     borderRadius: 6,
                     border: "1px solid var(--c-n200)",
-                    background: "white",
+                    background: "var(--c-surface)",
                     color: "var(--c-ink)",
                     cursor: "pointer",
                   }}
@@ -113,7 +115,7 @@ export default async function Header() {
                 padding: "7px 18px",
                 borderRadius: 6,
                 border: "1px solid var(--c-n200)",
-                background: "white",
+                background: "var(--c-surface)",
                 color: "var(--c-ink)",
                 display: "inline-block",
               }}

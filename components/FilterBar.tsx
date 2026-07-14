@@ -28,7 +28,7 @@ const chipBase: React.CSSProperties = {
   padding: "6px 14px",
   borderRadius: 9999,
   border: "1px solid var(--c-n200)",
-  background: "white",
+  background: "var(--c-surface)",
   color: "var(--c-n600)",
   cursor: "pointer",
   transition: "all 0.18s var(--ease)",

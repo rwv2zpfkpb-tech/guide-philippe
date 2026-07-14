@@ -1,7 +1,107 @@
 @import "tailwindcss";
 
+/* ════════════════════════════════════════════════════════════════
+   LIGHT MODE TOKENS (default)
+   ════════════════════════════════════════════════════════════════ */
 :root {
+  color-scheme: light dark;
+
+  --c-bg:           oklch(97.5% 0.008 78);
+  --c-surface:      white;
+  --c-ink:          oklch(13%  0.012 255);
+  --c-gold:         oklch(58%  0.070 72);
+  --c-gold-light:   oklch(91%  0.032 76);
+  --c-gold-mid:     oklch(72%  0.050 74);
+  --c-burg:         oklch(31%  0.080 17);
+  --c-burg-light:   oklch(93%  0.016 17);
+  --c-n50:   oklch(95.5% 0.006 78);
+  --c-n100:  oklch(92%   0.007 78);
+  --c-n200:  oklch(86%   0.008 78);
+  --c-n300:  oklch(76%   0.008 78);
+  --c-n400:  oklch(63%   0.007 78);
+  --c-n500:  oklch(52%   0.007 78);
+  --c-n600:  oklch(41%   0.007 78);
+  --c-n700:  oklch(30%   0.008 78);
+  --s-sm:    0 1px 4px oklch(0% 0 0 / 0.06), 0 1px 2px oklch(0% 0 0 / 0.04);
+  --s-md:    0 4px 14px oklch(0% 0 0 / 0.08), 0 2px 4px oklch(0% 0 0 / 0.04);
+  --s-lg:    0 14px 36px oklch(0% 0 0 / 0.10), 0 4px 8px oklch(0% 0 0 / 0.05);
+  --s-focus: 0 0 0 3px oklch(91% 0.032 76);
+  --ease:    cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Hero gradient stops (light) */
+  --hero-from: oklch(90% 0.024 17);
+  --hero-mid:  oklch(95% 0.014 17);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   DARK MODE TOKENS
+
+   NOTE: Both selectors use specificity 0-2-0 so they reliably
+   override the base :root block (0-1-0) and are mutually
+   exclusive with each other.
+   ════════════════════════════════════════════════════════════════ */
+
+/* System prefers dark, no explicit data-theme set (script didn't run or first paint) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    color-scheme: dark;
+    --c-bg:          oklch(12% 0.022 30);
+    --c-surface:     oklch(18% 0.022 30);
+    --c-ink:         oklch(93% 0.006 78);
+    --c-gold:        oklch(68% 0.070 72);
+    --c-gold-light:  oklch(22% 0.025 76);
+    --c-gold-mid:    oklch(56% 0.050 74);
+    --c-burg:        oklch(57% 0.080 17);
+    --c-burg-light:  oklch(20% 0.030 17);
+    --c-n50:         oklch(16% 0.018 30);
+    --c-n100:        oklch(22% 0.018 30);
+    --c-n200:        oklch(30% 0.014 35);
+    --c-n300:        oklch(41% 0.008 78);
+    --c-n400:        oklch(55% 0.007 78);
+    --c-n500:        oklch(67% 0.007 78);
+    --c-n600:        oklch(79% 0.006 78);
+    --c-n700:        oklch(88% 0.006 78);
+    --s-sm:    0 1px 4px oklch(0% 0 0 / 0.28), 0 1px 2px oklch(0% 0 0 / 0.18);
+    --s-md:    0 4px 14px oklch(0% 0 0 / 0.40), 0 2px 4px oklch(0% 0 0 / 0.22);
+    --s-lg:    0 14px 36px oklch(0% 0 0 / 0.50), 0 4px 8px oklch(0% 0 0 / 0.28);
+    --s-focus: 0 0 0 3px oklch(22% 0.025 76);
+    --hero-from: oklch(18% 0.028 17);
+    --hero-mid:  oklch(14% 0.022 22);
+  }
+}
+
+/* User explicitly chose dark (overrides any media query) — specificity 0-2-0 */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg:          oklch(12% 0.022 30);
+  --c-surface:     oklch(18% 0.022 30);
+  --c-ink:         oklch(93% 0.006 78);
+  --c-gold:        oklch(68% 0.070 72);
+  --c-gold-light:  oklch(22% 0.025 76);
+  --c-gold-mid:    oklch(56% 0.050 74);
+  --c-burg:        oklch(57% 0.080 17);
+  --c-burg-light:  oklch(20% 0.030 17);
+  --c-n50:         oklch(16% 0.018 30);
+  --c-n100:        oklch(22% 0.018 30);
+  --c-n200:        oklch(30% 0.014 35);
+  --c-n300:        oklch(41% 0.008 78);
+  --c-n400:        oklch(55% 0.007 78);
+  --c-n500:        oklch(67% 0.007 78);
+  --c-n600:        oklch(79% 0.006 78);
+  --c-n700:        oklch(88% 0.006 78);
+  --s-sm:    0 1px 4px oklch(0% 0 0 / 0.28), 0 1px 2px oklch(0% 0 0 / 0.18);
+  --s-md:    0 4px 14px oklch(0% 0 0 / 0.40), 0 2px 4px oklch(0% 0 0 / 0.22);
+  --s-lg:    0 14px 36px oklch(0% 0 0 / 0.50), 0 4px 8px oklch(0% 0 0 / 0.28);
+  --s-focus: 0 0 0 3px oklch(22% 0.025 76);
+  --hero-from: oklch(18% 0.028 17);
+  --hero-mid:  oklch(14% 0.022 22);
+}
+
+/* User explicitly chose light (overrides dark media query) — specificity 0-2-0 */
+:root[data-theme="light"] {
+  color-scheme: light;
   --c-bg:          oklch(97.5% 0.008 78);
+  --c-surface:     white;
   --c-ink:         oklch(13%  0.012 255);
   --c-gold:        oklch(58%  0.070 72);
   --c-gold-light:  oklch(91%  0.032 76);
@@ -16,24 +116,28 @@
   --c-n500:  oklch(52%   0.007 78);
   --c-n600:  oklch(41%   0.007 78);
   --c-n700:  oklch(30%   0.008 78);
-  --s-sm: 0 1px 4px oklch(0% 0 0 / 0.06), 0 1px 2px oklch(0% 0 0 / 0.04);
-  --s-md: 0 4px 14px oklch(0% 0 0 / 0.08), 0 2px 4px oklch(0% 0 0 / 0.04);
-  --s-lg: 0 14px 36px oklch(0% 0 0 / 0.10), 0 4px 8px oklch(0% 0 0 / 0.05);
+  --s-sm:    0 1px 4px oklch(0% 0 0 / 0.06), 0 1px 2px oklch(0% 0 0 / 0.04);
+  --s-md:    0 4px 14px oklch(0% 0 0 / 0.08), 0 2px 4px oklch(0% 0 0 / 0.04);
+  --s-lg:    0 14px 36px oklch(0% 0 0 / 0.10), 0 4px 8px oklch(0% 0 0 / 0.05);
   --s-focus: 0 0 0 3px oklch(91% 0.032 76);
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --hero-from: oklch(90% 0.024 17);
+  --hero-mid:  oklch(95% 0.014 17);
 }
 
+/* ════════════════════════════════════════════════════════════════
+   TAILWIND FONT TOKENS
+   ════════════════════════════════════════════════════════════════ */
 @theme inline {
-  --font-sans: var(--font-dm-sans);
+  --font-sans:    var(--font-dm-sans);
   --font-display: var(--font-cormorant);
 }
 
+/* ════════════════════════════════════════════════════════════════
+   RESET
+   ════════════════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; }
 
-html {
-  background: var(--c-bg);
-  color: var(--c-ink);
-}
+html, body { background: var(--c-bg); color: var(--c-ink); }
 
 body {
   font-family: var(--font-dm-sans), 'DM Sans', system-ui, sans-serif;
@@ -44,16 +148,35 @@ body {
 a { text-decoration: none; color: inherit; }
 button { font-family: inherit; }
 
-@media (max-width: 900px) {
-  .restaurant-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
+/* ════════════════════════════════════════════════════════════════
+   PLACES AUTOCOMPLETE ELEMENT (new Google Maps API)
+   Strip its own chrome — our pill container provides the shell.
+   ════════════════════════════════════════════════════════════════ */
+gmp-placeautocomplete {
+  flex: 1; min-width: 0; width: 100%;
+  --gmp-input-background-color: transparent;
+  --gmp-input-border-color:     transparent;
+  --gmp-input-border-radius:    0;
+  --gmp-input-box-shadow:       none;
+  --gmp-input-padding:          0;
+  --gmp-input-font-family:      inherit;
+  --gmp-input-color:            var(--c-ink);
+  --gmp-input-placeholder-color: var(--c-n300);
+}
+gmp-placeautocomplete::part(input) {
+  border: none; outline: none; background: transparent;
+  padding: 0; font-family: inherit; font-size: inherit;
+  color: var(--c-ink); width: 100%;
 }
 
+/* ════════════════════════════════════════════════════════════════
+   UTILITIES
+   ════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .restaurant-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
 @media (max-width: 560px) {
-  .restaurant-grid {
-    grid-template-columns: 1fr !important;
-  }
+  .restaurant-grid { grid-template-columns: 1fr !important; }
 }
 
 .card-hover:hover {
@@ -65,4 +188,17 @@ button { font-family: inherit; }
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(18px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gp-spin {
+  to { transform: rotate(360deg); }
+}
+
+.gp-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid var(--c-n200);
+  border-top-color: var(--c-burg);
+  animation: gp-spin 0.7s linear infinite;
 }

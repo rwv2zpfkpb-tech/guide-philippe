@@ -30,7 +30,7 @@ export default function RestaurantCard({ restaurant }: { restaurant: Restaurant 
     <Link
       href={`/restaurant/${restaurant.id}`}
       style={{
-        background: "white",
+        background: "var(--c-surface)",
         borderRadius: 14,
         border: "1px solid var(--c-n100)",
         boxShadow: "var(--s-sm)",
@@ -63,7 +63,7 @@ export default function RestaurantCard({ restaurant }: { restaurant: Restaurant 
             position: "absolute",
             bottom: 10,
             right: 10,
-            background: "white",
+            background: "var(--c-surface)",
             borderRadius: 4,
             padding: "4px 8px",
             fontSize: 15,

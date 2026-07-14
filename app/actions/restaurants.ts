@@ -12,10 +12,19 @@ import type {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export type LocationBounds = {
+  sw_lat: number;
+  sw_lng: number;
+  ne_lat: number;
+  ne_lng: number;
+};
+
 export type RestaurantFilters = {
   cuisine?: string;
   price_level?: PriceLevel;
   spoon_rating?: SpoonRating;
+  bounds?: LocationBounds;
+  name_search?: string;
 };
 
 // address and image_url removed — served live from Google Places API
@@ -46,6 +55,17 @@ export async function getRestaurants(
   if (filters?.price_level) query = query.eq("price_level", filters.price_level);
   if (filters?.spoon_rating !== undefined) {
     query = query.eq("spoon_rating", filters.spoon_rating);
+  }
+  if (filters?.name_search) {
+    query = query.ilike("name", `%${filters.name_search}%`);
+  }
+  if (filters?.bounds) {
+    const { sw_lat, sw_lng, ne_lat, ne_lng } = filters.bounds;
+    query = query
+      .not("lat", "is", null)
+      .not("lng", "is", null)
+      .gte("lat", sw_lat).lte("lat", ne_lat)
+      .gte("lng", sw_lng).lte("lng", ne_lng);
   }
 
   const { data, error } = await query;

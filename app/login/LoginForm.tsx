@@ -14,7 +14,7 @@ const inputStyle: React.CSSProperties = {
   padding: "11px 15px",
   border: "1px solid var(--c-n200)",
   borderRadius: 8,
-  background: "white",
+  background: "var(--c-surface)",
   color: "var(--c-ink)",
   outline: "none",
   transition: "border-color 0.2s, box-shadow 0.2s",
@@ -85,7 +85,7 @@ export default function LoginForm({ defaultTab }: { defaultTab: Tab }) {
     return (
       <div
         style={{
-          background: "white",
+          background: "var(--c-surface)",
           borderRadius: 22,
           padding: 40,
           maxWidth: 400,
@@ -127,7 +127,7 @@ export default function LoginForm({ defaultTab }: { defaultTab: Tab }) {
             padding: "10px 24px",
             borderRadius: 8,
             border: "1px solid var(--c-n200)",
-            background: "white",
+            background: "var(--c-surface)",
             color: "var(--c-ink)",
           }}
         >
@@ -151,7 +151,7 @@ export default function LoginForm({ defaultTab }: { defaultTab: Tab }) {
   return (
     <div
       style={{
-        background: "white",
+        background: "var(--c-surface)",
         borderRadius: 22,
         padding: 40,
         maxWidth: 400,
