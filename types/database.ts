@@ -37,6 +37,7 @@ export interface Database {
           role?: 'user' | 'admin'
           created_at?: string
         }
+        Relationships: []
       }
 
       restaurants: {
@@ -76,6 +77,7 @@ export interface Database {
           official_review?: string | null
           created_at?: string
         }
+        Relationships: []
       }
 
       comments: {
@@ -103,6 +105,22 @@ export interface Database {
           secondary_rating?: number | null
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "comments_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
       }
 
       data_sources: {
@@ -136,8 +154,10 @@ export interface Database {
           entry_count?: number
           created_at?: string
         }
+        Relationships: []
       }
     }
+    Views: Record<string, never>
     Functions: {
       is_admin: { Args: Record<string, never>; Returns: boolean }
     }
