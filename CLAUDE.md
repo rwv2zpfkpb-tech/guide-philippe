@@ -18,10 +18,19 @@ Restaurant-Guide-App. Admins pflegen Restaurants, eingeloggte Nutzer hinterlasse
 
 ```
 app/
-  layout.tsx              – Root-Layout (Geist-Fonts, Body-Wrapper)
+  layout.tsx              – Root-Layout (Cormorant Garamond + DM Sans Fonts, Theme-Cookie, Body-Wrapper)
   page.tsx                – Startseite (Server Component, lädt Restaurants)
+  loading.tsx             – Suspense-Fallback für die Startseite
   globals.css
+  login/
+    page.tsx              – Server Component: redirect wenn eingeloggt
+    LoginForm.tsx          – Client Component: Login/Signup-Tabs
+  restaurant/[id]/
+    page.tsx              – Detailseite (Places-Details, Kommentare)
+    loading.tsx
+    CommentForm.tsx        – Client Component: Kommentar abgeben
   actions/                – Alle Server Actions ("use server")
+    auth.ts               – signIn / signUp / signOut
     restaurants.ts        – CRUD Restaurants (Admin-Schutz)
     comments.ts           – CRUD Kommentare (Auth + RLS-Schutz)
     places.ts             – Google Places Details (Server-only API-Key)
@@ -32,22 +41,33 @@ app/
       AdminDashboard.tsx  – Client Component: gesamte Admin-UI
 
 components/
+  Header.tsx, Footer.tsx   – Layout-Rahmen (Server Components)
+  ThemeToggle.tsx          – Client Component: Hell-/Dunkelmodus-Umschalter
+  NavigationProgress.tsx   – Client Component: Ladebalken bei Routenwechsel
+  FilterBar.tsx            – Client Component: Küche/Preis/Bewertung-Filterchips
+  LocationSearch.tsx       – Client Component: Orts-/Restaurantsuche (Google Places)
+  SearchResultsView.tsx    – Client Component: Liste + Karte für Ortssuche
+  RestaurantCard.tsx       – Karte in der Restaurant-Grid-Ansicht
+  PriceLevelDots.tsx       – Gemeinsame €-Preisanzeige (1–4 Symbole)
   admin/
     PlacesAutocomplete.tsx – Google Places Autocomplete (Client)
   map/
     MapView.tsx            – Kartenansicht (Client)
 
+lib/
+  ratings.ts               – Single Source of Truth für Spoon-Rating-Emoji/Labels
+
 utils/supabase/
   server.ts        – createClient() für Server Components / Actions
   client.ts        – createClient() für Client Components
   admin.ts         – createAdminClient() (Service-Role-Key, nur Server)
-  middleware.ts    – updateSession() — Session-Refresh
+  proxy.ts         – updateSession() — Session-Refresh
   auth-helpers.ts  – requireAuth() / requireAdmin()
 
 types/
   database.ts      – Alle DB-Typen, händisch gepflegt (Supabase-Schema)
 
-middleware.ts      – Läuft auf jeder Route außer statischen Assets
+proxy.ts           – Läuft auf jeder Route außer statischen Assets (Next.js 16: ehem. middleware.ts)
 public/
   map-style.json   – Custom Google Maps Stil
 ```
@@ -121,9 +141,9 @@ await requireAdmin(); // wirft 'Forbidden' wenn kein Admin
 
 Die RLS-Policies in Supabase sind **zusätzliche Absicherung** — nicht der einzige Schutz.
 
-### Session-Refresh (Middleware)
+### Session-Refresh (Proxy)
 
-`middleware.ts` ruft `updateSession()` auf jeder Route auf — hält Supabase-JWT frisch. Läuft **nicht** auf `_next/static`, `_next/image` und Bilddateien.
+`proxy.ts` (Next.js-16-Nachfolger von `middleware.ts`) ruft `updateSession()` auf jeder Route auf — hält Supabase-JWT frisch. Läuft **nicht** auf `_next/static`, `_next/image` und Bilddateien. Proxy läuft standardmäßig im Node.js-Runtime (nicht mehr Edge).
 
 ## Server Actions (`app/actions/`)
 
@@ -189,6 +209,12 @@ Client Component. Gibt bei Auswahl ein `PlaceSelection`-Objekt zurück:
 ### `components/map/MapView.tsx`
 Client Component. Erwartet Restaurants mit lat/lng für Kartenanzeige.
 
+### `components/PriceLevelDots.tsx`
+Reine Darstellungskomponente: rendert 1–4 „€"-Zeichen, abgedunkelt oberhalb von `level`. Einzige Stelle mit dieser Logik — nicht erneut inline implementieren.
+
+## `lib/ratings.ts`
+Single Source of Truth für Spoon-Rating-Emoji/Labels (`SPOON_RATINGS`, `SPOON_RATING_ORDER`). Wird von `RestaurantCard`, der Detailseite, `SearchResultsView`, `MapView`, `FilterBar` und `AdminDashboard` importiert — bei neuen Stellen, die Spoon-Ratings anzeigen, immer von hier importieren statt neu zu deklarieren.
+
 ## Wichtige Muster
 
 - **Server-first**: Datenabruf in Server Components, Mutationen als Server Actions
@@ -196,6 +222,7 @@ Client Component. Erwartet Restaurants mit lat/lng für Kartenanzeige.
 - **revalidatePath nach Mutation**: Immer aufrufen um Next.js Cache zu leeren
 - **Typen aus `types/database.ts`**: Nie inline tippen — immer die exportierten Convenience-Typen verwenden (`Restaurant`, `Comment`, `Profile`, `DataSource`, `RestaurantWithComments`, `CommentWithProfile`)
 - **Google-Daten nie cachen**: Places-API-Antworten mit `cache: "no-store"` — Öffnungszeiten und Foto-URIs verfallen täglich
+- **Spoon-Ratings aus `lib/ratings.ts`**: Emoji/Label nie inline duplizieren — von dort importieren
 
 ## Entwicklung
 

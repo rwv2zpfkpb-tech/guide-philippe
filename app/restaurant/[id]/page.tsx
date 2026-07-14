@@ -4,32 +4,9 @@ import { getRestaurantById } from "@/app/actions/restaurants";
 import { getPlaceDetails } from "@/app/actions/places";
 import { deleteComment } from "@/app/actions/comments";
 import { createClient } from "@/utils/supabase/server";
+import { SPOON_RATINGS } from "@/lib/ratings";
+import { PriceLevelDots } from "@/components/PriceLevelDots";
 import CommentForm from "./CommentForm";
-
-const SPOON: Record<number, { emoji: string; label: string; labelShort: string }> = {
-  0: { emoji: "🫗", label: "Not Recommended",       labelShort: "NOT RECOMMENDED" },
-  1: { emoji: "🥄", label: "Remembering",            labelShort: "REMEMBERING" },
-  2: { emoji: "🍴", label: "Worth Mentioning",       labelShort: "WORTH MENTIONING" },
-  3: { emoji: "🍽️", label: "Absolute Recommendation", labelShort: "ABSOLUTE REC." },
-};
-
-function PriceDisplay({ level }: { level: number }) {
-  return (
-    <>
-      {[1, 2, 3, 4].map((i) => (
-        <span
-          key={i}
-          style={{
-            color: i <= level ? "var(--c-ink)" : "var(--c-n200)",
-            fontWeight: 500,
-          }}
-        >
-          €
-        </span>
-      ))}
-    </>
-  );
-}
 
 export default async function RestaurantPage({
   params,
@@ -54,7 +31,7 @@ export default async function RestaurantPage({
     ? await getPlaceDetails(restaurant.google_place_id).catch(() => null)
     : null;
 
-  const spoon = SPOON[restaurant.spoon_rating];
+  const spoon = SPOON_RATINGS[restaurant.spoon_rating];
   const firstPhoto = placeDetails?.photoUris?.[0] ?? null;
 
   return (
@@ -235,8 +212,8 @@ export default async function RestaurantPage({
               )}
               {restaurant.price_level != null && (
                 <>
-                  <span style={{ fontFamily: "var(--font-cormorant)", fontSize: "1rem" }}>
-                    <PriceDisplay level={restaurant.price_level} />
+                  <span style={{ fontFamily: "var(--font-cormorant)", fontSize: "1rem", fontWeight: 500 }}>
+                    <PriceLevelDots level={restaurant.price_level} />
                   </span>
                   <span style={{ color: "var(--c-n300)" }}>·</span>
                 </>

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MapView } from "@/components/map/MapView";
 import { LocationSearch } from "@/components/LocationSearch";
+import { PriceLevelDots } from "@/components/PriceLevelDots";
+import { SPOON_RATINGS, SPOON_RATING_ORDER } from "@/lib/ratings";
 import type { Restaurant } from "@/types/database";
 import type { MapRestaurant } from "@/components/map/MapView";
 
@@ -30,32 +32,10 @@ type Props = {
   cuisines:      string[];
 };
 
-// ── Rating config ─────────────────────────────────────────────────────────────
-
-const RATING = {
-  3: { emoji: "🍽️", short: "Absolute rec."   },
-  2: { emoji: "🍴", short: "Worth mentioning" },
-  1: { emoji: "🥄", short: "Remembering"      },
-  0: { emoji: "🫗", short: "Not recommended"  },
-} as const;
-
-// ── Price display ─────────────────────────────────────────────────────────────
-
-function PriceDisplay({ level }: { level: number | null }) {
-  if (!level) return null;
-  return (
-    <span style={{ fontSize: "0.8125rem", fontWeight: 500, letterSpacing: "0.02em" }}>
-      {[1, 2, 3, 4].map((i) => (
-        <span key={i} style={{ color: i <= level ? "var(--c-ink)" : "var(--c-n200)" }}>€</span>
-      ))}
-    </span>
-  );
-}
-
 // ── Compact list card ─────────────────────────────────────────────────────────
 
 function ResultCard({ restaurant, index }: { restaurant: Restaurant; index: number }) {
-  const rt = RATING[restaurant.spoon_rating as keyof typeof RATING] ?? RATING[0];
+  const rt = SPOON_RATINGS[restaurant.spoon_rating];
 
   return (
     <Link
@@ -120,11 +100,11 @@ function ResultCard({ restaurant, index }: { restaurant: Restaurant; index: numb
 
       {/* Meta */}
       <div style={{ textAlign: "right", flexShrink: 0 }}>
-        <div style={{ marginBottom: 4 }}>
-          <PriceDisplay level={restaurant.price_level} />
+        <div style={{ marginBottom: 4, fontSize: "0.8125rem", fontWeight: 500, letterSpacing: "0.02em" }}>
+          <PriceLevelDots level={restaurant.price_level} />
         </div>
         <div style={{ fontSize: "0.6875rem", color: "var(--c-n400)", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
-          {rt.short}
+          {rt.labelShort}
         </div>
       </div>
     </Link>
@@ -161,12 +141,11 @@ const PRICE_CHIPS = [
   { value: 4, label: "€€€€" },
 ];
 
-const SPOON_CHIPS = [
-  { value: 3, label: "🍽️", title: "Absolute Recommendation" },
-  { value: 2, label: "🍴", title: "Worth Mentioning" },
-  { value: 1, label: "🥄", title: "Remembering" },
-  { value: 0, label: "🫗", title: "Not Recommended" },
-];
+const SPOON_CHIPS = SPOON_RATING_ORDER.map((value) => ({
+  value,
+  label: SPOON_RATINGS[value].emoji,
+  title: SPOON_RATINGS[value].label,
+}));
 
 export function SearchResultsView({
   restaurants, center, locationParams, activeFilters, cuisines,

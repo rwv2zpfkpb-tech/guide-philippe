@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
+import { SPOON_RATINGS, SPOON_RATING_ORDER } from "@/lib/ratings";
 
 const PRICE_CHIPS = [
   { value: "1", label: "€" },
@@ -10,12 +11,10 @@ const PRICE_CHIPS = [
   { value: "4", label: "€€€€" },
 ];
 
-const SPOON_CHIPS = [
-  { value: "3", label: "🍽️" },
-  { value: "2", label: "🍴" },
-  { value: "1", label: "🥄" },
-  { value: "0", label: "🫗" },
-];
+const SPOON_CHIPS = SPOON_RATING_ORDER.map((value) => ({
+  value: String(value),
+  label: SPOON_RATINGS[value].emoji,
+}));
 
 interface FilterBarProps {
   cuisines: string[];
@@ -141,7 +140,7 @@ export default function FilterBar({ cuisines }: FilterBarProps) {
           key={s.value}
           onClick={() => toggleFilter("spoon_rating", s.value)}
           style={spoonRating === s.value ? chipActive : chipBase}
-          title={["Not Recommended", "Remembering", "Worth Mentioning", "Absolute Recommendation"][Number(s.value)]}
+          title={SPOON_RATINGS[Number(s.value) as 0 | 1 | 2 | 3].label}
         >
           {s.label}
         </button>

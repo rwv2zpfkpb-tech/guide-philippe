@@ -8,6 +8,7 @@ import {
   deleteRestaurant,
 } from "@/app/actions/restaurants";
 import { PlacesAutocomplete, type PlaceSelection } from "@/components/admin/PlacesAutocomplete";
+import { SPOON_RATINGS, SPOON_RATING_ORDER } from "@/lib/ratings";
 import type { Restaurant, SpoonRating, PriceLevel } from "@/types/database";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -18,12 +19,11 @@ const CUISINES = [
   "Vietnamese", "Thai", "Greek", "Turkish", "Other",
 ];
 
-const SPOON_OPTIONS: { value: SpoonRating; emoji: string; label: string }[] = [
-  { value: 3, emoji: "🍽️", label: "Absolute Recommendation" },
-  { value: 2, emoji: "🍴", label: "Worth Mentioning" },
-  { value: 1, emoji: "🥄", label: "Remembering" },
-  { value: 0, emoji: "🫗", label: "Not Recommended" },
-];
+const SPOON_OPTIONS = SPOON_RATING_ORDER.map((value) => ({
+  value,
+  emoji: SPOON_RATINGS[value].emoji,
+  label: SPOON_RATINGS[value].label,
+}));
 
 const PRICE_OPTIONS: { value: PriceLevel; label: string }[] = [
   { value: 1, label: "€" },

@@ -1,30 +1,10 @@
 import Link from "next/link";
 import type { Restaurant } from "@/types/database";
-
-const SPOON: Record<number, { emoji: string; label: string }> = {
-  0: { emoji: "🫗", label: "Not Recommended" },
-  1: { emoji: "🥄", label: "Remembering" },
-  2: { emoji: "🍴", label: "Worth Mentioning" },
-  3: { emoji: "🍽️", label: "Absolute Recommendation" },
-};
-
-function PriceDisplay({ level }: { level: number }) {
-  return (
-    <div style={{ fontSize: 13, fontWeight: 500, letterSpacing: "0.02em" }}>
-      {[1, 2, 3, 4].map((i) => (
-        <span
-          key={i}
-          style={{ color: i <= level ? "var(--c-ink)" : "var(--c-n200)" }}
-        >
-          €
-        </span>
-      ))}
-    </div>
-  );
-}
+import { SPOON_RATINGS } from "@/lib/ratings";
+import { PriceLevelDots } from "@/components/PriceLevelDots";
 
 export default function RestaurantCard({ restaurant }: { restaurant: Restaurant }) {
-  const spoon = SPOON[restaurant.spoon_rating];
+  const spoon = SPOON_RATINGS[restaurant.spoon_rating];
 
   return (
     <Link
@@ -119,7 +99,9 @@ export default function RestaurantCard({ restaurant }: { restaurant: Restaurant 
           }}
         >
           {restaurant.price_level != null ? (
-            <PriceDisplay level={restaurant.price_level} />
+            <div style={{ fontSize: 13, fontWeight: 500, letterSpacing: "0.02em" }}>
+              <PriceLevelDots level={restaurant.price_level} />
+            </div>
           ) : (
             <span />
           )}

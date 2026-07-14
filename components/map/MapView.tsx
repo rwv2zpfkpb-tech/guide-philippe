@@ -10,6 +10,7 @@ import {
   useAdvancedMarkerRef,
 } from "@vis.gl/react-google-maps";
 import type { SpoonRating } from "@/types/database";
+import { SPOON_RATINGS } from "@/lib/ratings";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -30,14 +31,16 @@ type Props = {
   zoom?: number;
 };
 
-// ── Rating visuals ────────────────────────────────────────────────────────────
+// ── Marker pin colors ─────────────────────────────────────────────────────────
+// Emoji/label come from the shared SPOON_RATINGS; only the marker's pin
+// colors are specific to the map.
 
-const RATING = {
-  3: { emoji: "🍽️", label: "Absolute Recommendation", bg: "#4a1520", border: "#7a2535" },
-  2: { emoji: "🍴", label: "Worth Mentioning",         bg: "#b8952a", border: "#d4af37" },
-  1: { emoji: "🥄", label: "Remembering",              bg: "#6b6560", border: "#8a8480" },
-  0: { emoji: "🫗", label: "Not Recommended",          bg: "#9e9790", border: "#bcb5ae" },
-} satisfies Record<SpoonRating, { emoji: string; label: string; bg: string; border: string }>;
+const MARKER_COLORS = {
+  3: { bg: "#4a1520", border: "#7a2535" },
+  2: { bg: "#b8952a", border: "#d4af37" },
+  1: { bg: "#6b6560", border: "#8a8480" },
+  0: { bg: "#9e9790", border: "#bcb5ae" },
+} satisfies Record<SpoonRating, { bg: string; border: string }>;
 
 // ── Single marker with InfoWindow ─────────────────────────────────────────────
 
@@ -53,7 +56,9 @@ function RestaurantMarker({
   onClose: () => void;
 }) {
   const [markerRef, marker] = useAdvancedMarkerRef();
-  const cfg = RATING[restaurant.spoon_rating] ?? RATING[0];
+  const rating = SPOON_RATINGS[restaurant.spoon_rating];
+  const colors = MARKER_COLORS[restaurant.spoon_rating];
+  const cfg = { ...rating, ...colors };
 
   return (
     <>
