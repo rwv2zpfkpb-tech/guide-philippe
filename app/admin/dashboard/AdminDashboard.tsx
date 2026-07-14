@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useCallback } from "react";
+import Link from "next/link";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import {
   createRestaurant,
@@ -97,7 +98,6 @@ function PriceBadge({ level }: { level: PriceLevel | null }) {
 function EditPanel({
   open,
   isNew,
-  editingId,
   form,
   onFormChange,
   onPlaceSelect,
@@ -107,7 +107,6 @@ function EditPanel({
 }: {
   open: boolean;
   isNew: boolean;
-  editingId: string | null;
   form: FormData;
   onFormChange: (patch: Partial<FormData>) => void;
   onPlaceSelect: (place: PlaceSelection) => void;
@@ -469,12 +468,12 @@ export function AdminDashboard({
               Admin
             </span>
             <div className="ml-auto flex items-center gap-2">
-              <a
+              <Link
                 href="/"
                 className="text-xs text-stone-500 hover:text-stone-800 transition-colors"
               >
                 ← Public site
-              </a>
+              </Link>
             </div>
           </div>
         </header>
@@ -589,7 +588,6 @@ export function AdminDashboard({
         <EditPanel
           open={panelOpen}
           isNew={isNew}
-          editingId={editingId}
           form={form}
           onFormChange={patchForm}
           onPlaceSelect={handlePlaceSelect}

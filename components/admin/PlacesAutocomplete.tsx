@@ -69,7 +69,7 @@ export function PlacesAutocomplete({
       el.addEventListener("gmp-placeselect", handler);
       cleanup = () => {
         el.removeEventListener("gmp-placeselect", handler);
-        containerRef.current?.contains(el) && containerRef.current.removeChild(el);
+        if (containerRef.current?.contains(el)) containerRef.current.removeChild(el);
       };
     } else {
       // ── Legacy Autocomplete fallback ──────────────────────────────
@@ -106,7 +106,7 @@ export function PlacesAutocomplete({
 
       cleanup = () => {
         listener.remove();
-        containerRef.current?.contains(input) && containerRef.current.removeChild(input);
+        if (containerRef.current?.contains(input)) containerRef.current.removeChild(input);
       };
     }
 

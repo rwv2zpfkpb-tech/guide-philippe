@@ -264,7 +264,7 @@ export function SearchResultsView({
                 Ergebnisse für
               </span>
               <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--c-ink)" }}>
-                „{locationParams.location}"
+                „{locationParams.location}&rdquo;
               </span>
             </div>
           </div>

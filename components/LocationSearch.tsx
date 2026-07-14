@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import { useRouter } from "next/navigation";
 
@@ -37,9 +37,15 @@ function navigateToLocation(
   router.push(`/?${p.toString()}`);
 }
 
+const NO_PREDICTIONS: Prediction[] = [];
+const NO_RESTAURANT_MATCHES: RestaurantHint[] = [];
+
 function LocationSearchInput({ defaultValue = "", size = "large", restaurants = [] }: Props) {
   const [value, setValue] = useState(defaultValue);
-  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [rawPredictions, setRawPredictions] = useState<Prediction[]>([]);
+  // Derived rather than cleared via setState in the effect below — avoids a
+  // render-then-clear cascade when the input drops back under 2 characters.
+  const predictions = value.length >= 2 ? rawPredictions : NO_PREDICTIONS;
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
 
@@ -51,24 +57,27 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
   const router    = useRouter();
   const isCompact = size === "compact";
 
-  const restaurantMatches =
-    value.length >= 2
-      ? restaurants
-          .filter((r) => r.name.toLowerCase().includes(value.toLowerCase()))
-          .slice(0, 4)
-      : [];
+  const restaurantMatches = useMemo(
+    () =>
+      value.length >= 2
+        ? restaurants
+            .filter((r) => r.name.toLowerCase().includes(value.toLowerCase()))
+            .slice(0, 4)
+        : NO_RESTAURANT_MATCHES,
+    [value, restaurants]
+  );
 
   // Debounced location predictions using AutocompleteSuggestion (new Places API)
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!placesLib || value.length < 2) { setPredictions([]); return; }
+    if (!placesLib || value.length < 2) return;
 
     debounceRef.current = setTimeout(async () => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { suggestions } = await (google.maps.places as any).AutocompleteSuggestion
           .fetchAutocompleteSuggestions({ input: value, includedPrimaryTypes: ["geocode"] });
-        setPredictions(
+        setRawPredictions(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (suggestions as any[])
             .filter((s) => s.placePrediction)
@@ -80,7 +89,7 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
             }))
         );
       } catch {
-        setPredictions([]);
+        setRawPredictions([]);
       }
     }, 220);
 

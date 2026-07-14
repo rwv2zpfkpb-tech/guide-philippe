@@ -23,6 +23,9 @@ export function ThemeToggle() {
 
   useEffect(() => {
     // Sync with the actual theme after hydration (no hydration mismatch).
+    // The real theme is only knowable client-side (DOM attribute / matchMedia),
+    // so this can't be computed during render — the sync-after-mount is intentional.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setThemeState(getEffectiveTheme());
   }, []);
 
