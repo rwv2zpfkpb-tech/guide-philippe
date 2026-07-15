@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 
 export type SignInState = { error: string } | null;
@@ -38,12 +39,17 @@ export async function signUp(
   const password = formData.get("password") as string;
   const username = (formData.get("username") as string)?.trim() || null;
 
+  const origin = (await headers()).get("origin");
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       // Passed to the DB trigger so the profiles row gets the username on creation
       data: { username },
+      // Where GoTrue redirects after the confirmation link is clicked —
+      // must also be listed under Supabase → Auth → URL Configuration → Redirect URLs
+      emailRedirectTo: `${origin}/auth/confirm`,
     },
   });
 

@@ -26,6 +26,8 @@ app/
   login/
     page.tsx              – Server Component: redirect wenn eingeloggt
     LoginForm.tsx          – Client Component: Login/Signup-Tabs
+  auth/confirm/
+    page.tsx              – Server Component: Ziel des Signup-Bestätigungslinks. Tauscht PKCE-`code` gegen Session (`exchangeCodeForSession`), zeigt Erfolgs-/Fehler-Screen
   restaurant/[id]/
     page.tsx              – Detailseite (Places-Details, Kommentare)
     loading.tsx
@@ -161,6 +163,8 @@ Supabase Auth verschickt Bestätigungslinks etc. weiterhin selbst (Token-Erzeugu
 5. Bei `reauthentication` gibt es keinen Link, sondern einen 6-stelligen Code (`email_data.token`) zum manuellen Eingeben.
 
 Konfiguration in Supabase Dashboard → Authentication → Hooks → Send Email Hook → URL auf `/api/auth/email` zeigen lassen, Secret dort kopieren und als `SEND_EMAIL_HOOK_SECRET` setzen. Ohne konfiguriertes `RESEND_API_KEY`/`SEND_EMAIL_HOOK_SECRET` antwortet die Route mit HTTP 500 (bricht den Auth-Flow bewusst ab, statt E-Mails zu verschlucken).
+
+**Bestätigungsscreen nach Signup** (`app/auth/confirm/page.tsx`): `signUp()` in `app/actions/auth.ts` setzt `emailRedirectTo: ${origin}/auth/confirm`. GoTrue verifiziert den Token selbst (hosteter `/auth/v1/verify`-Endpoint) und redirected danach mit einem PKCE-`code` an diese Seite; sie tauscht den Code per `exchangeCodeForSession` gegen eine Session und zeigt Erfolgs- (eingeloggt, Link zur Startseite) oder Fehler-Screen (Link zum Login). **Wichtig:** `${origin}/auth/confirm` muss in Supabase Dashboard → Authentication → URL Configuration → Redirect URLs eingetragen sein, sonst verwirft GoTrue die Redirect-URL still und fällt auf die Site-URL zurück.
 
 ## Server Actions (`app/actions/`)
 
