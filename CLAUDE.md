@@ -21,6 +21,7 @@ app/
   layout.tsx              – Root-Layout (Cormorant Garamond + DM Sans Fonts, Theme-Cookie, Body-Wrapper)
   page.tsx                – Startseite (Server Component, lädt Restaurants)
   loading.tsx             – Suspense-Fallback für die Startseite
+  error.tsx               – Error Boundary für die Startseite (fängt z.B. transiente Supabase-Fetch-Fehler ab), zeigt Retry-Button
   globals.css
   login/
     page.tsx              – Server Component: redirect wenn eingeloggt
@@ -39,6 +40,8 @@ app/
     dashboard/
       page.tsx            – Server Component: Auth-Guard + Datenladen
       AdminDashboard.tsx  – Client Component: gesamte Admin-UI
+  api/
+    auth/email/route.ts   – Route Handler: Supabase "Send Email" Auth-Hook, verschickt Auth-Mails via Resend (s.u.) — bewusste Ausnahme von „Kein API-Layer", da Supabase dies als HTTP-Webhook aufruft
 
 components/
   Header.tsx, Footer.tsx   – Layout-Rahmen (Server Components)
@@ -56,6 +59,8 @@ components/
 
 lib/
   ratings.ts               – Single Source of Truth für Spoon-Rating-Emoji/Labels
+  resend.ts                – getResendClient() Factory + RESEND_FROM_EMAIL (Server-only)
+  auth-emails.ts           – Deutsche HTML-Templates für Supabase-Auth-Mails (signup, recovery, ...)
 
 utils/supabase/
   server.ts        – createClient() für Server Components / Actions
@@ -145,6 +150,18 @@ Die RLS-Policies in Supabase sind **zusätzliche Absicherung** — nicht der ein
 
 `proxy.ts` (Next.js-16-Nachfolger von `middleware.ts`) ruft `updateSession()` auf jeder Route auf — hält Supabase-JWT frisch. Läuft **nicht** auf `_next/static`, `_next/image` und Bilddateien. Proxy läuft standardmäßig im Node.js-Runtime (nicht mehr Edge).
 
+### E-Mail-Versand (Resend statt Supabase-SMTP)
+
+Supabase Auth verschickt Bestätigungslinks etc. weiterhin selbst (Token-Erzeugung, Verifizierung über den gehosteten `/auth/v1/verify`-Endpunkt bleibt unverändert) — aber **nicht mehr per eigenem SMTP**, sondern über den [Send Email Hook](https://supabase.com/docs/guides/auth/auth-hooks/send-email-hook):
+
+1. Supabase ruft bei jeder Auth-Mail (`signup`, `recovery`, `magiclink`, `invite`, `email_change`, `reauthentication`) `POST /api/auth/email` auf (`app/api/auth/email/route.ts`) — signiert nach dem [Standard-Webhooks](https://www.standardwebhooks.com/)-Format.
+2. Die Route verifiziert die Signatur mit dem Paket `standardwebhooks` (Secret: `SEND_EMAIL_HOOK_SECRET`, Format `v1,whsec_...`).
+3. Aus `token_hash` / `email_action_type` / `redirect_to` wird die gleiche Bestätigungs-URL gebaut, die auch Supabases eigene Default-Templates verwenden (`${SUPABASE_URL}/auth/v1/verify?token=...&type=...&redirect_to=...`) — es gibt **keine eigene Verify-Route**, GoTrue übernimmt Prüfung + Redirect wie gehabt.
+4. Das passende deutsche HTML-Template kommt aus `lib/auth-emails.ts`, verschickt wird über `lib/resend.ts` (`getResendClient()`, Absender `RESEND_FROM_EMAIL`).
+5. Bei `reauthentication` gibt es keinen Link, sondern einen 6-stelligen Code (`email_data.token`) zum manuellen Eingeben.
+
+Konfiguration in Supabase Dashboard → Authentication → Hooks → Send Email Hook → URL auf `/api/auth/email` zeigen lassen, Secret dort kopieren und als `SEND_EMAIL_HOOK_SECRET` setzen. Ohne konfiguriertes `RESEND_API_KEY`/`SEND_EMAIL_HOOK_SECRET` antwortet die Route mit HTTP 500 (bricht den Auth-Flow bewusst ab, statt E-Mails zu verschlucken).
+
 ## Server Actions (`app/actions/`)
 
 Alle Actions haben `"use server"` und laufen auf dem Server. API-Keys verlassen den Server nie.
@@ -189,6 +206,9 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SERVICE_ROLE_KEY=          # nur Server, nie ans Frontend
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=    # für Maps-Komponenten im Browser
 GOOGLE_PLACES_API_KEY=              # nur Server, für Places API
+RESEND_API_KEY=                     # nur Server, für Auth-Mail-Versand
+RESEND_FROM_EMAIL=                  # muss auf verifizierter Resend-Domain liegen
+SEND_EMAIL_HOOK_SECRET=             # Standard-Webhooks-Secret aus Supabase Send Email Hook
 ```
 
 ## Admin-Dashboard (`/admin/dashboard`)
@@ -218,7 +238,7 @@ Single Source of Truth für Spoon-Rating-Emoji/Labels (`SPOON_RATINGS`, `SPOON_R
 ## Wichtige Muster
 
 - **Server-first**: Datenabruf in Server Components, Mutationen als Server Actions
-- **Kein API-Layer**: Keine Route Handlers für CRUD — direkt Server Actions
+- **Kein API-Layer**: Keine Route Handlers für CRUD — direkt Server Actions. Ausnahme: `app/api/auth/email/route.ts`, weil Supabase dies als HTTP-Webhook aufruft (Server Actions sind dafür nicht ansprechbar)
 - **revalidatePath nach Mutation**: Immer aufrufen um Next.js Cache zu leeren
 - **Typen aus `types/database.ts`**: Nie inline tippen — immer die exportierten Convenience-Typen verwenden (`Restaurant`, `Comment`, `Profile`, `DataSource`, `RestaurantWithComments`, `CommentWithProfile`)
 - **Google-Daten nie cachen**: Places-API-Antworten mit `cache: "no-store"` — Öffnungszeiten und Foto-URIs verfallen täglich
