@@ -174,42 +174,63 @@ export async function confirmCsvImport(
   const today = new Date().toISOString().slice(0, 10);
   const spoonRating = bulkSpoonRating ?? 1;
 
-  // Pro Zeile einzeln inserted (statt Batch-Insert) — hält Restaurant und
-  // Notiz eindeutig zusammen, unabhängig davon, ob PostgREST die Rückgabe-
-  // Reihenfolge eines Bulk-Inserts garantiert.
-  const inserted = await Promise.all(
-    selection.map(async (s) => {
-      const place = await resolvePlaceForImport(s.name, s.googlePlaceId).catch(() => null);
-
-      const { data: restaurant, error } = await supabase
-        .from("restaurants")
-        .insert({
-          name: s.name,
-          google_place_id: place?.googlePlaceId ?? s.googlePlaceId,
-          lat: place?.lat ?? null,
-          lng: place?.lng ?? null,
-          status: "draft" as const,
-        })
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
-
-      const { error: reviewError } = await supabase.from("restaurant_reviews").insert({
-        restaurant_id: restaurant.id,
-        visited_at: today,
-        spoon_rating: spoonRating,
-        fazit: s.note ?? "",
-      });
-      if (reviewError) throw new Error(reviewError.message);
-
-      // `restaurant` was fetched before the review insert above ran the
-      // sync_restaurant_spoon_rating trigger, so it still carries the
-      // pre-trigger default rating — patch it in-memory (same fix as
-      // createRestaurant in restaurants.ts) so the admin table shows the
-      // correct spoon emoji immediately instead of only after a refetch.
-      return { ...restaurant, spoon_rating: spoonRating };
-    })
+  // `google_place_id` trägt einen unique constraint. `resolvePlaceForImport`
+  // kann für zwei verschiedene CSV-Zeilen (oder eine CSV-Zeile und ein
+  // bereits bestehendes Restaurant, das die Namens-basierte Vorschau nicht
+  // erkannt hat) dieselbe Place-ID auflösen — bei größeren Importen kollidiert
+  // das dann mit `restaurants_google_place_id_key`. Bereits verwendete IDs
+  // (bestehend + innerhalb dieses Imports) werden deshalb nachverfolgt; bei
+  // einer Kollision fällt die Zeile auf `null` zurück statt den ganzen Import
+  // abzubrechen — genau wie ein sonst fehlgeschlagener Lookup (Admin kann die
+  // Place-ID später im Edit-Panel manuell korrigieren).
+  const { data: existingPlaceIds } = await supabase
+    .from("restaurants")
+    .select("google_place_id")
+    .not("google_place_id", "is", null);
+  const usedPlaceIds = new Set(
+    (existingPlaceIds ?? []).map((r) => r.google_place_id as string)
   );
+
+  // Sequenziell (statt Promise.all) — sowohl damit `usedPlaceIds` zuverlässig
+  // zwischen den Zeilen aktualisiert wird, als auch um die vorherige
+  // Race Condition auf demselben Constraint zu vermeiden.
+  const inserted: Restaurant[] = [];
+  for (const s of selection) {
+    const place = await resolvePlaceForImport(s.name, s.googlePlaceId).catch(() => null);
+    let googlePlaceId = place?.googlePlaceId ?? s.googlePlaceId ?? null;
+    if (googlePlaceId && usedPlaceIds.has(googlePlaceId)) {
+      googlePlaceId = null;
+    }
+    if (googlePlaceId) usedPlaceIds.add(googlePlaceId);
+
+    const { data: restaurant, error } = await supabase
+      .from("restaurants")
+      .insert({
+        name: s.name,
+        google_place_id: googlePlaceId,
+        lat: googlePlaceId ? place?.lat ?? null : null,
+        lng: googlePlaceId ? place?.lng ?? null : null,
+        status: "draft" as const,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+
+    const { error: reviewError } = await supabase.from("restaurant_reviews").insert({
+      restaurant_id: restaurant.id,
+      visited_at: today,
+      spoon_rating: spoonRating,
+      fazit: s.note ?? "",
+    });
+    if (reviewError) throw new Error(reviewError.message);
+
+    // `restaurant` was fetched before the review insert above ran the
+    // sync_restaurant_spoon_rating trigger, so it still carries the
+    // pre-trigger default rating — patch it in-memory (same fix as
+    // createRestaurant in restaurants.ts) so the admin table shows the
+    // correct spoon emoji immediately instead of only after a refetch.
+    inserted.push({ ...restaurant, spoon_rating: spoonRating });
+  }
 
   revalidatePath("/", "layout");
   return inserted;
