@@ -120,13 +120,20 @@ export async function resolvePlaceForImport(
   const fields = "id,location,formattedAddress,primaryTypeDisplayName,primaryType,types";
 
   if (placeId) {
-    const res = await fetch(`${BASE}/places/${encodeURIComponent(placeId)}`, {
-      headers: {
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": fields,
-      },
-      cache: "no-store",
-    });
+    // languageCode/regionCode: ohne das liefert Google primaryTypeDisplayName
+    // (die Grundlage für den Cuisine-Vorschlag, s. guessCuisine()) auf
+    // Englisch statt Deutsch — dieselben Params wie in getPlaceDetails()
+    // oben, aus demselben Grund (dort für die Öffnungszeiten-Strings).
+    const res = await fetch(
+      `${BASE}/places/${encodeURIComponent(placeId)}?languageCode=de&regionCode=DE`,
+      {
+        headers: {
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask": fields,
+        },
+        cache: "no-store",
+      }
+    );
     if (res.ok) {
       const data = (await res.json()) as {
         id?: string;
@@ -156,7 +163,9 @@ export async function resolvePlaceForImport(
       "X-Goog-FieldMask": fields.split(",").map((f) => `places.${f}`).join(","),
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ textQuery: name }),
+    // languageCode/regionCode live in the POST body for this endpoint
+    // (unlike the GET lookup above, where they're query params).
+    body: JSON.stringify({ textQuery: name, languageCode: "de", regionCode: "DE" }),
     cache: "no-store",
   });
   if (!searchRes.ok) return null;

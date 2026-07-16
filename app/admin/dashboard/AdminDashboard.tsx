@@ -360,12 +360,12 @@ function EditPanel({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--c-n100)]">
           <h2 className="font-serif text-lg font-semibold text-[var(--c-ink)]">
-            {isNew ? "Add Restaurant" : "Edit Restaurant"}
+            {isNew ? "Restaurant hinzufügen" : "Restaurant bearbeiten"}
           </h2>
           <button
             onClick={onClose}
             className="text-[var(--c-n400)] hover:text-[var(--c-n700)] transition-colors"
-            aria-label="Close"
+            aria-label="Schließen"
           >
             <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
               <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22z" />
@@ -384,7 +384,7 @@ function EditPanel({
                   missing.has("name") || missing.has("address") ? "text-[var(--c-burg)]" : "text-[var(--c-n500)]"
                 }`}
               >
-                {manualEntry ? "Ort manuell erfassen" : "Find on Google Maps"}
+                {manualEntry ? "Ort manuell erfassen" : "Auf Google Maps suchen"}
                 <span className="ml-1 text-[var(--c-burg)]">*</span>
               </label>
               <button
@@ -422,7 +422,7 @@ function EditPanel({
                     step="any"
                     value={form.lat ?? ""}
                     onChange={(e) => onFormChange({ lat: e.target.value === "" ? null : Number(e.target.value) })}
-                    placeholder="Latitude (optional)"
+                    placeholder="Breitengrad (optional)"
                     className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm font-mono text-[var(--c-ink)] placeholder:text-[var(--c-n400)] placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
                   />
                   <input
@@ -430,12 +430,12 @@ function EditPanel({
                     step="any"
                     value={form.lng ?? ""}
                     onChange={(e) => onFormChange({ lng: e.target.value === "" ? null : Number(e.target.value) })}
-                    placeholder="Longitude (optional)"
+                    placeholder="Längengrad (optional)"
                     className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm font-mono text-[var(--c-ink)] placeholder:text-[var(--c-n400)] placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
                   />
                 </div>
                 <p className="text-xs text-[var(--c-n400)]">
-                  Ohne Google-Platz-ID gibt es keine Live-Öffnungszeiten/Fotos auf der Detailseite — nur die hier gespeicherte Adresse. Latitude/Longitude sind nur für die Kartenanzeige nötig.
+                  Ohne Google-Platz-ID gibt es keine Live-Öffnungszeiten/Fotos auf der Detailseite — nur die hier gespeicherte Adresse. Breitengrad/Längengrad sind nur für die Kartenanzeige nötig.
                 </p>
               </div>
             ) : (
@@ -443,7 +443,7 @@ function EditPanel({
                 <PlacesAutocomplete
                   onSelect={onPlaceSelect}
                   defaultValue={form.name}
-                  placeholder="Search establishment…"
+                  placeholder="Restaurant suchen…"
                 />
                 {(missing.has("name") || missing.has("address")) && (
                   <p className="mt-1.5 text-xs text-[var(--c-burg)]">
@@ -850,14 +850,14 @@ function EditPanel({
               onClick={onClose}
               className="flex-1 rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] py-2.5 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)] transition-colors"
             >
-              Cancel
+              Abbrechen
             </button>
             <button
               onClick={onSave}
               disabled={saveDisabled}
               className="flex-1 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {saving ? "Saving…" : isNew ? "Add Restaurant" : "Save Changes"}
+              {saving ? "Speichert…" : isNew ? "Restaurant hinzufügen" : "Änderungen speichern"}
             </button>
           </div>
         </div>
@@ -885,7 +885,7 @@ function DeleteModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
       <div className="w-full max-w-sm rounded-2xl bg-[var(--c-surface)] p-6 shadow-xl">
         <h3 className="font-serif text-lg font-semibold text-[var(--c-ink)] mb-1">
-          {isBulk ? `${restaurants.length} Restaurants löschen?` : "Delete restaurant?"}
+          {isBulk ? `${restaurants.length} Restaurants löschen?` : "Restaurant löschen?"}
         </h3>
         <p className="text-sm text-[var(--c-n500)] mb-5">
           {isBulk ? (
@@ -895,8 +895,8 @@ function DeleteModal({
             </>
           ) : (
             <>
-              <span className="font-medium text-[var(--c-n700)]">{restaurants[0].name}</span> and all its
-              comments will be permanently removed.
+              <span className="font-medium text-[var(--c-n700)]">{restaurants[0].name}</span> und alle
+              zugehörigen Kommentare werden unwiderruflich gelöscht.
             </>
           )}
         </p>
@@ -905,14 +905,14 @@ function DeleteModal({
             onClick={onClose}
             className="flex-1 rounded-lg border border-[var(--c-n200)] py-2.5 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)]"
           >
-            Keep it
+            Behalten
           </button>
           <button
             onClick={onConfirm}
             disabled={deleting}
             className="flex-1 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
-            {deleting ? "Deleting…" : "Yes, delete"}
+            {deleting ? "Löscht…" : "Ja, löschen"}
           </button>
         </div>
       </div>
@@ -1669,7 +1669,7 @@ export function AdminDashboard({
         if (isNew) {
           const created = await createRestaurant(restaurantPayload, reviewPayload);
           setRestaurants((prev) => [created, ...prev]);
-          showToast("Restaurant added");
+          showToast("Restaurant hinzugefügt");
         } else if (editingId) {
           const updated = await updateRestaurant(editingId, restaurantPayload);
           if (form.review.asNewVisit) {
@@ -1684,7 +1684,7 @@ export function AdminDashboard({
               r.id === updated.id ? { ...updated, spoon_rating: reviewPayload.spoon_rating } : r
             )
           );
-          showToast("Changes saved");
+          showToast("Änderungen gespeichert");
         }
         closePanel();
       } catch (err) {
@@ -1711,7 +1711,7 @@ export function AdminDashboard({
           return next;
         });
         setDeleteTargets([]);
-        showToast(isBulk ? `${ids.length} Restaurants gelöscht` : "Restaurant deleted");
+        showToast(isBulk ? `${ids.length} Restaurants gelöscht` : "Restaurant gelöscht");
       } catch (err) {
         showToast((err as Error).message);
       }
@@ -1818,6 +1818,8 @@ export function AdminDashboard({
     <APIProvider
       apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!}
       libraries={["places"]}
+      language="de"
+      region="DE"
     >
       <div className="min-h-screen bg-[var(--c-bg)]">
         {/* No local header here — the global <Header> (app/layout.tsx) already
@@ -1871,7 +1873,7 @@ export function AdminDashboard({
                 Restaurants
               </h1>
               <p className="text-sm text-[var(--c-n500)] mt-0.5">
-                {restaurants.length} {restaurants.length === 1 ? "entry" : "entries"}
+                {restaurants.length} {restaurants.length === 1 ? "Eintrag" : "Einträge"}
               </p>
             </div>
             <div className="sm:ml-auto flex gap-2">
@@ -1882,7 +1884,7 @@ export function AdminDashboard({
                 </svg>
                 <input
                   type="text"
-                  placeholder="Search…"
+                  placeholder="Suchen…"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   className="rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] pl-8 pr-3 py-2 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 w-48"
@@ -1911,7 +1913,7 @@ export function AdminDashboard({
                 <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                   <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5z" />
                 </svg>
-                Add new
+                Neu hinzufügen
               </button>
             </div>
           </div>
@@ -1958,10 +1960,10 @@ export function AdminDashboard({
                     />
                   </th>
                   <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">Name</th>
-                  <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider hidden md:table-cell">Cuisine</th>
-                  <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">Price</th>
-                  <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">Rating</th>
-                  <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider hidden lg:table-cell">Place ID</th>
+                  <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider hidden md:table-cell">Küche</th>
+                  <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">Preis</th>
+                  <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">Bewertung</th>
+                  <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider hidden lg:table-cell">Platz-ID</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -1969,7 +1971,7 @@ export function AdminDashboard({
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-10 text-center text-sm text-[var(--c-n400)]">
-                      {query ? "No restaurants match your search." : "No restaurants yet. Add one!"}
+                      {query ? "Keine Restaurants entsprechen deiner Suche." : "Noch keine Restaurants. Füge eins hinzu!"}
                     </td>
                   </tr>
                 )}
@@ -2016,7 +2018,7 @@ export function AdminDashboard({
                         </span>
                       ) : (
                         <span className="text-xs text-[var(--c-gold)] bg-[var(--c-gold-light)] border border-[var(--c-gold)]/30 rounded px-1.5 py-0.5">
-                          No place ID
+                          Keine Platz-ID
                         </span>
                       )}
                     </td>
@@ -2039,13 +2041,13 @@ export function AdminDashboard({
                           disabled={loadingEditId === r.id}
                           className="rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-n600)] hover:bg-[var(--c-n100)] transition-colors disabled:opacity-50"
                         >
-                          {loadingEditId === r.id ? "…" : "Edit"}
+                          {loadingEditId === r.id ? "…" : "Bearbeiten"}
                         </button>
                         <button
                           onClick={() => setDeleteTargets([r])}
                           className="rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-burg)] hover:bg-[var(--c-burg-light)] transition-colors"
                         >
-                          Delete
+                          Löschen
                         </button>
                       </div>
                     </td>

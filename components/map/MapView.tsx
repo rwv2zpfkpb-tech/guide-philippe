@@ -100,7 +100,7 @@ function RestaurantMarker({
               className="text-[11px] font-medium underline-offset-2 hover:underline"
               style={{ color: "#b8952a" }}
             >
-              View details →
+              Details ansehen →
             </a>
           </div>
         </InfoWindow>
@@ -177,7 +177,7 @@ export function MapView({
     : process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
 
   return (
-    <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!}>
+    <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!} language="de" region="DE">
       <Map
         // defaultCenter/defaultZoom below are uncontrolled — vis.gl only
         // applies them on mount, so panning/zooming during a session isn't

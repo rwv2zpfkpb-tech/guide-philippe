@@ -704,7 +704,7 @@ export default async function RestaurantPage({
               letterSpacing: "0.04em",
             }}
           >
-            Reader Experiences
+            Leser-Erfahrungen
           </span>
           <div
             style={{
@@ -739,7 +739,7 @@ export default async function RestaurantPage({
                   color: "var(--c-ink)",
                 }}
               >
-                Reader Experiences
+                Leser-Erfahrungen
               </h2>
               <StarRating average={averageRating} />
             </div>

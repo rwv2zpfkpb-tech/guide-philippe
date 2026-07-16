@@ -490,7 +490,7 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
 
 export function LocationSearch(props: Props) {
   return (
-    <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!}>
+    <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!} language="de" region="DE">
       <LocationSearchInput {...props} />
     </APIProvider>
   );
