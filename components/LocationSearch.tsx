@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import { useRouter } from "next/navigation";
+import { IconList } from "@/components/icons";
 
 export type RestaurantHint = { id: string; name: string; cuisine: string | null };
 
@@ -376,7 +377,9 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
                     border: "none", cursor: "pointer", fontFamily: "inherit",
                   }}
                 >
-                  <span style={{ fontSize: "1rem", flexShrink: 0 }}>🍽️</span>
+                  <span style={{ flexShrink: 0, color: "var(--c-n400)", display: "flex" }}>
+                    <IconList size={14} />
+                  </span>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--c-ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {r.name}

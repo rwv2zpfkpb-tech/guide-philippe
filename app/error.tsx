@@ -1,5 +1,7 @@
 "use client";
 
+import { IconEmptyState } from "@/components/icons";
+
 export default function Error({
   reset,
 }: {
@@ -19,7 +21,7 @@ export default function Error({
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, maxWidth: 420 }}>
-        <div style={{ fontSize: "2rem" }}>🫗</div>
+        <IconEmptyState size={32} className="text-[var(--c-n400)]" />
         <p
           style={{
             fontFamily: "var(--font-cormorant)",

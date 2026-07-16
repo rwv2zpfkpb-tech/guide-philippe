@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useCallback } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import Link from "next/link";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import {
@@ -9,6 +9,7 @@ import {
   deleteRestaurant,
   getRestaurantById,
 } from "@/app/actions/restaurants";
+import { getPlaceDetails } from "@/app/actions/places";
 import { createReview, updateReview, type ReviewPayload } from "@/app/actions/reviews";
 import {
   previewCsvImport,
@@ -24,15 +25,17 @@ import {
   type ProfileWithEmail,
 } from "@/app/actions/profiles";
 import { PRIMARY_ADMIN_EMAIL } from "@/lib/admin";
+import { BackButton } from "@/components/BackButton";
+import { IconChevronDown } from "@/components/icons";
 import { PlacesAutocomplete, type PlaceSelection } from "@/components/admin/PlacesAutocomplete";
 import {
   SPOON_RATINGS,
+  SPOON_RATING_COLORS,
   SPOON_RATING_ORDER,
   REVIEW_CATEGORY_ORDER,
   REVIEW_CATEGORY_LABELS,
 } from "@/lib/ratings";
 import { RatingDots } from "@/components/RatingDots";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import type {
   Restaurant,
   SpoonRating,
@@ -81,6 +84,7 @@ type FormData = {
   google_place_id: string;
   lat: number | null;
   lng: number | null;
+  address: string;
   cuisine: string;
   price_level: PriceLevel | null;
   status: RestaurantStatus;
@@ -102,6 +106,7 @@ const emptyForm = (): FormData => ({
   google_place_id: "",
   lat: null,
   lng: null,
+  address: "",
   cuisine: "",
   price_level: null,
   status: "published",
@@ -125,6 +130,7 @@ function formFromRestaurant(r: Restaurant, latest: ReviewWithCategories | null):
     google_place_id: r.google_place_id ?? "",
     lat: r.lat,
     lng: r.lng,
+    address: r.address ?? "",
     cuisine: r.cuisine ?? "",
     price_level: r.price_level,
     status: r.status,
@@ -142,9 +148,14 @@ function formFromRestaurant(r: Restaurant, latest: ReviewWithCategories | null):
 
 function SpoonBadge({ rating }: { rating: SpoonRating }) {
   const opt = SPOON_OPTIONS.find((o) => o.value === rating)!;
+  const colors = SPOON_RATING_COLORS[rating];
   return (
-    <span className="text-sm" title={opt.label}>
-      {opt.emoji}
+    <span
+      className="inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-xs font-medium uppercase tracking-wider"
+      style={{ color: colors.text, background: colors.bg }}
+      title={opt.label}
+    >
+      <span className="text-sm">{opt.emoji}</span>
     </span>
   );
 }
@@ -168,6 +179,10 @@ function EditPanel({
   open,
   isNew,
   form,
+  manualEntry,
+  onManualEntryToggle,
+  placePhotos,
+  placePhotosLoading,
   pastReviews,
   onFormChange,
   onReviewChange,
@@ -179,6 +194,10 @@ function EditPanel({
 }: {
   open: boolean;
   isNew: boolean;
+  manualEntry: boolean;
+  onManualEntryToggle: () => void;
+  placePhotos: string[];
+  placePhotosLoading: boolean;
   form: FormData;
   pastReviews: ReviewWithCategories[];
   onFormChange: (patch: Partial<FormData>) => void;
@@ -201,7 +220,7 @@ function EditPanel({
 
       {/* Panel */}
       <aside
-        className={`fixed inset-y-0 right-0 z-40 flex flex-col w-full max-w-lg bg-[var(--c-bg)] shadow-2xl transition-transform duration-300 ease-in-out ${open ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed inset-y-0 right-0 z-40 flex flex-col w-full max-w-lg sm:max-w-xl lg:max-w-2xl bg-[var(--c-bg)] shadow-2xl transition-transform duration-300 ease-in-out ${open ? "translate-x-0" : "translate-x-full"}`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--c-n100)]">
@@ -222,40 +241,116 @@ function EditPanel({
         {/* Body — scrollable */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
-          {/* ── Google Places search ── */}
+          {/* ── Google Places search (or manual fallback) ── */}
           <div>
-            <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
-              Find on Google Maps
-            </label>
-            <PlacesAutocomplete
-              onSelect={onPlaceSelect}
-              defaultValue={form.name}
-              placeholder="Search establishment…"
-            />
-            {form.google_place_id && (
-              <div className="mt-2 flex items-center gap-2 text-xs text-[var(--c-n500)]">
-                <svg className="w-3.5 h-3.5 text-[var(--c-success)] shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5z" clipRule="evenodd" />
-                </svg>
-                <span className="font-medium text-[var(--c-n700)] truncate">{form.name}</span>
-                <span className="font-mono text-[var(--c-n400)] truncate">{form.google_place_id}</span>
+            <div className="flex items-center justify-between gap-3 mb-1.5">
+              <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">
+                {manualEntry ? "Ort manuell erfassen" : "Find on Google Maps"}
+              </label>
+              <button
+                type="button"
+                onClick={onManualEntryToggle}
+                className="shrink-0 text-xs font-medium text-[var(--c-burg)] hover:opacity-80"
+              >
+                {manualEntry ? "Google-Suche verwenden" : "Ort manuell erfassen"}
+              </button>
+            </div>
+
+            {manualEntry ? (
+              <div className="space-y-2.5">
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => onFormChange({ name: e.target.value })}
+                  placeholder="Name des Restaurants"
+                  className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
+                />
+                <input
+                  type="text"
+                  value={form.address}
+                  onChange={(e) => onFormChange({ address: e.target.value })}
+                  placeholder="Adresse (z. B. Musterstraße 1, 12345 Berlin)"
+                  className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="number"
+                    step="any"
+                    value={form.lat ?? ""}
+                    onChange={(e) => onFormChange({ lat: e.target.value === "" ? null : Number(e.target.value) })}
+                    placeholder="Latitude (optional)"
+                    className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm font-mono text-[var(--c-ink)] placeholder:text-[var(--c-n400)] placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
+                  />
+                  <input
+                    type="number"
+                    step="any"
+                    value={form.lng ?? ""}
+                    onChange={(e) => onFormChange({ lng: e.target.value === "" ? null : Number(e.target.value) })}
+                    placeholder="Longitude (optional)"
+                    className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm font-mono text-[var(--c-ink)] placeholder:text-[var(--c-n400)] placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
+                  />
+                </div>
+                <p className="text-xs text-[var(--c-n400)]">
+                  Ohne Google-Platz-ID gibt es keine Live-Öffnungszeiten/Fotos auf der Detailseite — nur die hier gespeicherte Adresse. Latitude/Longitude sind nur für die Kartenanzeige nötig.
+                </p>
               </div>
+            ) : (
+              <>
+                <PlacesAutocomplete
+                  onSelect={onPlaceSelect}
+                  defaultValue={form.name}
+                  placeholder="Search establishment…"
+                />
+                {form.google_place_id && (
+                  <div className="mt-2 flex items-start gap-2 rounded-lg border border-[var(--c-success)]/30 bg-[var(--c-success-light)] px-3 py-2 text-xs">
+                    <svg className="w-3.5 h-3.5 mt-0.5 text-[var(--c-success)] shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5z" clipRule="evenodd" />
+                    </svg>
+                    <div className="min-w-0">
+                      <div className="font-medium text-[var(--c-n700)] truncate">{form.name}</div>
+                      <div className="text-[var(--c-n500)] truncate">
+                        {form.address
+                          ? form.address
+                          : form.lat !== null && form.lng !== null
+                          ? `${form.lat.toFixed(6)}, ${form.lng.toFixed(6)}`
+                          : "Keine Adresse verfügbar"}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {placePhotosLoading && (
+                  <p className="mt-2 text-xs text-[var(--c-n400)]">Lade Fotos von Google Maps…</p>
+                )}
+                {!placePhotosLoading && placePhotos.length > 0 && (
+                  <div className="mt-2 grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    {placePhotos.map((uri, i) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={i}
+                        src={uri}
+                        alt=""
+                        className="aspect-square w-full rounded-lg object-cover border border-[var(--c-n100)]"
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* ── Coordinates (read-only preview) ── */}
+                {(form.lat !== null && form.lng !== null) && (
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1">Latitude</label>
+                      <div className="rounded-lg border border-[var(--c-n100)] bg-[var(--c-n50)] px-3 py-2 text-sm font-mono text-[var(--c-n600)]">{form.lat?.toFixed(6)}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1">Longitude</label>
+                      <div className="rounded-lg border border-[var(--c-n100)] bg-[var(--c-n50)] px-3 py-2 text-sm font-mono text-[var(--c-n600)]">{form.lng?.toFixed(6)}</div>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
-
-          {/* ── Coordinates (read-only preview) ── */}
-          {(form.lat !== null && form.lng !== null) && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1">Latitude</label>
-                <div className="rounded-lg border border-[var(--c-n100)] bg-[var(--c-n50)] px-3 py-2 text-sm font-mono text-[var(--c-n600)]">{form.lat?.toFixed(6)}</div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1">Longitude</label>
-                <div className="rounded-lg border border-[var(--c-n100)] bg-[var(--c-n50)] px-3 py-2 text-sm font-mono text-[var(--c-n600)]">{form.lng?.toFixed(6)}</div>
-              </div>
-            </div>
-          )}
 
           <hr className="border-[var(--c-n100)]" />
 
@@ -264,16 +359,21 @@ function EditPanel({
             <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
               Cuisine
             </label>
-            <select
+            {/* Auto-filled from Google Maps on place selection, but a free-text
+                input (not a fixed select) so it always stays editable/correctable. */}
+            <input
+              type="text"
+              list="cuisine-suggestions"
               value={form.cuisine}
               onChange={(e) => onFormChange({ cuisine: e.target.value })}
-              className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
-            >
-              <option value="">Select cuisine…</option>
+              placeholder="z. B. Italian…"
+              className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
+            />
+            <datalist id="cuisine-suggestions">
               {CUISINES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c} />
               ))}
-            </select>
+            </datalist>
           </div>
 
           {/* ── Price level ── */}
@@ -402,7 +502,7 @@ function EditPanel({
             <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
               Kategorien
             </label>
-            <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               {REVIEW_CATEGORY_ORDER.map((category) => {
                 const cat = form.review.categories[category];
                 return (
@@ -413,6 +513,7 @@ function EditPanel({
                       </span>
                       <RatingDots
                         value={cat.rating}
+                        min={1}
                         max={5}
                         size={10}
                         onChange={(v) => onCategoryChange(category, { rating: v })}
@@ -572,7 +673,7 @@ function ImportModal({
         <div className="px-6 py-4 border-b border-[var(--c-n100)]">
           <h3 className="font-serif text-lg font-semibold text-[var(--c-ink)]">CSV-Import</h3>
           <p className="text-xs text-[var(--c-n500)] mt-0.5">
-            Google-Takeout-Export einer „Gespeicherte Orte“-Liste (Spalten Title, URL)
+            Google-Takeout-Export einer „Gespeicherte Orte“-Liste (Spalten Title/Titel, URL)
           </p>
         </div>
 
@@ -891,13 +992,7 @@ function UserManagement({
   onAction: (profile: ProfileWithEmail, kind: UserActionKind) => void;
 }) {
   return (
-    <div className="mb-6 rounded-xl border border-[var(--c-n100)] bg-[var(--c-surface)] overflow-hidden">
-      <div className="px-4 py-3 border-b border-[var(--c-n100)]">
-        <h2 className="text-sm font-semibold text-[var(--c-ink)]">Nutzerverwaltung</h2>
-        <p className="text-xs text-[var(--c-n500)] mt-0.5">
-          {profiles.length} {profiles.length === 1 ? "Konto" : "Konten"} insgesamt
-        </p>
-      </div>
+    <div className="border-t border-[var(--c-n100)]">
       <ul className="divide-y divide-[var(--c-n50)]">
         {profiles.map((p) => {
           const isSelf = p.id === currentUserId;
@@ -971,6 +1066,9 @@ export function AdminDashboard({
   const [isNew, setIsNew] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm());
+  const [manualEntry, setManualEntry] = useState(false);
+  const [placePhotos, setPlacePhotos] = useState<string[]>([]);
+  const [placePhotosLoading, setPlacePhotosLoading] = useState(false);
   const [currentReviewId, setCurrentReviewId] = useState<string | null>(null);
   const [pastReviews, setPastReviews] = useState<ReviewWithCategories[]>([]);
   const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
@@ -1007,6 +1105,7 @@ export function AdminDashboard({
   }
 
   // ── User management (promote/demote/delete, double confirmation) ───────────
+  const [userMgmtOpen, setUserMgmtOpen] = useState(false);
   const [allProfiles, setAllProfiles] = useState(initialAllProfiles);
   const [userAction, setUserAction] = useState<UserAction | null>(null);
   const [userActionStep, setUserActionStep] = useState<1 | 2>(1);
@@ -1084,8 +1183,39 @@ export function AdminDashboard({
       google_place_id: place.placeId,
       lat: place.lat,
       lng: place.lng,
+      address: place.address,
+      // Best-effort suggestion from Google — the field below stays a free-text
+      // input, so the admin can correct/override it right away.
+      ...(place.cuisine ? { cuisine: place.cuisine } : {}),
     });
   }, [patchForm]);
+
+  // Vorschau-Fotos aus Google Maps laden, sobald eine Place-ID im Formular steht
+  // (frisch ausgewählt oder von einem bereits bestehenden Restaurant geladen).
+  // Ohne Place-ID wird beim Rendern (s. placePhotos-Prop unten) einfach nichts
+  // angezeigt, statt hier zusätzlich State zurückzusetzen.
+  useEffect(() => {
+    const placeId = form.google_place_id;
+    if (!placeId) return;
+    let cancelled = false;
+    // Loading-Flag muss synchron vor dem Fetch gesetzt werden, damit die UI
+    // sofort "Lade Fotos…" statt kurzzeitig veralteter Fotos zeigt.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPlacePhotosLoading(true);
+    getPlaceDetails(placeId)
+      .then((details) => {
+        if (!cancelled) setPlacePhotos(details.photoUris);
+      })
+      .catch(() => {
+        if (!cancelled) setPlacePhotos([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPlacePhotosLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [form.google_place_id]);
 
   function openNew() {
     setIsNew(true);
@@ -1093,6 +1223,7 @@ export function AdminDashboard({
     setCurrentReviewId(null);
     setPastReviews([]);
     setForm(emptyForm());
+    setManualEntry(false);
     setPanelOpen(true);
   }
 
@@ -1106,6 +1237,9 @@ export function AdminDashboard({
       setCurrentReviewId(latest?.id ?? null);
       setPastReviews(past);
       setForm(formFromRestaurant(r, latest ?? null));
+      // Restaurants without a google_place_id were (or need to be) entered
+      // manually — default straight to the manual fields in that case.
+      setManualEntry(!r.google_place_id);
       setPanelOpen(true);
     } catch (err) {
       showToast((err as Error).message);
@@ -1129,6 +1263,7 @@ export function AdminDashboard({
       google_place_id: form.google_place_id || null,
       lat: form.lat,
       lng: form.lng,
+      address: form.address || null,
       cuisine: form.cuisine || null,
       price_level: form.price_level,
       status: form.status,
@@ -1231,7 +1366,7 @@ export function AdminDashboard({
   function handleConfirmImport() {
     const selection = importRows
       .filter((r) => r.match === "new" && importSelected.has(r.row))
-      .map((r) => ({ name: r.name, googlePlaceId: r.googlePlaceId }));
+      .map((r) => ({ name: r.name, googlePlaceId: r.googlePlaceId, note: r.note }));
 
     setImportImporting(true);
     startTransition(async () => {
@@ -1262,40 +1397,50 @@ export function AdminDashboard({
       libraries={["places"]}
     >
       <div className="min-h-screen bg-[var(--c-bg)]">
-        {/* ── Header ── */}
-        <header className="sticky top-0 z-20 border-b border-[var(--c-n100)] bg-[var(--c-bg)]/95 backdrop-blur-sm">
-          <div className="mx-auto max-w-6xl px-6 h-14 flex items-center gap-4">
-            <span className="font-serif text-lg font-semibold text-[var(--c-ink)]">
-              Guide <span className="text-[var(--c-burg)]">Philippe</span>
-            </span>
-            <span className="text-xs font-medium text-[var(--c-n400)] border border-[var(--c-n200)] rounded px-1.5 py-0.5 uppercase tracking-wider">
-              Admin
-            </span>
-            <div className="ml-auto flex items-center gap-3">
-              <Link
-                href="/"
-                className="text-xs text-[var(--c-n500)] hover:text-[var(--c-ink)] transition-colors"
-              >
-                ← Public site
-              </Link>
-              <ThemeToggle />
-            </div>
-          </div>
-        </header>
+        {/* No local header here — the global <Header> (app/layout.tsx) already
+            renders on every route, including this one; a second admin-only
+            header used to render right below it, showing the same site
+            branding/theme toggle twice in a row. */}
 
         {/* ── Page content ── */}
         <main className="mx-auto max-w-6xl px-6 py-8">
+          <div className="mb-6">
+            <BackButton fallbackHref="/" label="Zurück zur Seite" />
+          </div>
+
           <PendingRegistrations
             profiles={pendingProfiles}
             onDecision={handleRegistrationDecision}
             busyId={decisionBusyId}
           />
 
-          <UserManagement
-            profiles={allProfiles}
-            currentUserId={currentUserId}
-            onAction={openUserAction}
-          />
+          {/* Collapsed by default — could realistically hold 100+ accounts,
+              so it shouldn't render fully expanded on every dashboard visit. */}
+          <div className="mb-6 rounded-xl border border-[var(--c-n100)] bg-[var(--c-surface)] overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setUserMgmtOpen((v) => !v)}
+              className="w-full px-4 py-3 flex items-center justify-between text-left"
+            >
+              <div>
+                <h2 className="text-sm font-semibold text-[var(--c-ink)]">Nutzerverwaltung</h2>
+                <p className="text-xs text-[var(--c-n500)] mt-0.5">
+                  {allProfiles.length} {allProfiles.length === 1 ? "Konto" : "Konten"} insgesamt
+                </p>
+              </div>
+              <IconChevronDown
+                size={16}
+                className={`text-[var(--c-n400)] transition-transform ${userMgmtOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            {userMgmtOpen && (
+              <UserManagement
+                profiles={allProfiles}
+                currentUserId={currentUserId}
+                onAction={openUserAction}
+              />
+            )}
+          </div>
 
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
             <div>
@@ -1372,7 +1517,15 @@ export function AdminDashboard({
                 {filtered.map((r) => (
                   <tr key={r.id} className="hover:bg-[var(--c-n50)]/60 transition-colors group">
                     <td className="px-4 py-3">
-                      <span className="font-medium text-[var(--c-ink)]">{r.name}</span>
+                      <Link
+                        href={`/restaurant/${r.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-[var(--c-ink)] hover:text-[var(--c-burg)] hover:underline transition-colors"
+                        title="Öffentliche Seite in neuem Tab ansehen"
+                      >
+                        {r.name}
+                      </Link>
                       {r.status === "draft" && (
                         <span className="ml-2 text-xs font-medium text-[var(--c-gold)] bg-[var(--c-gold-light)] rounded px-1.5 py-0.5 uppercase tracking-wider align-middle">
                           Entwurf
@@ -1400,7 +1553,7 @@ export function AdminDashboard({
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => openEdit(r)}
                           disabled={loadingEditId === r.id}
@@ -1428,6 +1581,10 @@ export function AdminDashboard({
           open={panelOpen}
           isNew={isNew}
           form={form}
+          manualEntry={manualEntry}
+          onManualEntryToggle={() => setManualEntry((v) => !v)}
+          placePhotos={form.google_place_id ? placePhotos : []}
+          placePhotosLoading={placePhotosLoading}
           pastReviews={pastReviews}
           onFormChange={patchForm}
           onReviewChange={patchReview}

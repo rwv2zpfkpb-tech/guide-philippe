@@ -29,14 +29,19 @@ export type RestaurantFilters = {
   name_search?: string;
 };
 
-// address and image_url removed — served live from Google Places API.
-// spoon_rating/official_review removed — derived from restaurant_reviews
-// (the review with the latest visited_at), see app/actions/reviews.ts.
+// image_url removed — served live from Google Places API. address is
+// persisted (Places-Autocomplete selection or manual entry) so restaurants
+// without a google_place_id (manual fallback) still show an address, and
+// the detail page has something to fall back to if the live Places lookup
+// fails. spoon_rating/official_review removed — derived from
+// restaurant_reviews (the review with the latest visited_at), see
+// app/actions/reviews.ts.
 export type RestaurantPayload = {
   name: string;
   google_place_id?: string | null;
   lat?: number | null;
   lng?: number | null;
+  address?: string | null;
   cuisine?: string | null;
   price_level?: PriceLevel | null;
   status?: RestaurantStatus;
@@ -70,6 +75,26 @@ export async function getRestaurants(
   }
 
   const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+// Restaurants added within the last 30 days, newest first — powers the
+// "Neu hinzugefügt" strip on the landing page. RLS already hides drafts
+// from non-admins, so no explicit status filter is needed here.
+export async function getRecentRestaurants(limit = 8): Promise<Restaurant[]> {
+  const supabase = await createClient();
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+
+  const { data, error } = await supabase
+    .from("restaurants")
+    .select("*")
+    .gte("created_at", cutoff.toISOString())
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
   if (error) throw new Error(error.message);
   return data ?? [];
 }

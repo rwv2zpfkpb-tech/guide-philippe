@@ -6,6 +6,7 @@ import { deleteComment } from "@/app/actions/comments";
 import { createClient } from "@/utils/supabase/server";
 import {
   SPOON_RATINGS,
+  SPOON_RATING_COLORS,
   REVIEW_CATEGORY_ORDER,
   REVIEW_CATEGORY_LABELS,
   computeAverageRating,
@@ -13,6 +14,9 @@ import {
 import { PriceLevelDots } from "@/components/PriceLevelDots";
 import { RatingDots } from "@/components/RatingDots";
 import { StarRating } from "@/components/StarRating";
+import { NavigateButton } from "@/components/NavigateButton";
+import { BackButton } from "@/components/BackButton";
+import { IconPin, IconEmptyState } from "@/components/icons";
 import type { ReviewWithCategories, RestaurantReviewCategory } from "@/types/database";
 import CommentForm from "./CommentForm";
 
@@ -24,9 +28,17 @@ function ReviewContent({ review }: { review: ReviewWithCategories }) {
     .map((cat) => review.categories.find((c) => c.category === cat))
     .filter((c): c is RestaurantReviewCategory => !!c?.body?.trim());
 
+  // Headline = first sentence (styled large as a pull-quote), body = the
+  // remainder. Previously the full fazit was repeated verbatim below the
+  // headline, so the first sentence appeared twice on the page.
+  const fazit = review.fazit?.trim() ?? "";
+  const firstStop = fazit.indexOf(".");
+  const headline = firstStop === -1 ? fazit : fazit.slice(0, firstStop + 1);
+  const rest = firstStop === -1 ? "" : fazit.slice(firstStop + 1).trim();
+
   return (
     <div>
-      {review.fazit && (
+      {fazit && (
         <article style={{ marginBottom: categories.length ? 36 : 0 }}>
           <div
             style={{
@@ -36,14 +48,16 @@ function ReviewContent({ review }: { review: ReviewWithCategories }) {
               lineHeight: 1.15,
               letterSpacing: "-0.01em",
               color: "var(--c-ink)",
-              marginBottom: 16,
+              marginBottom: rest ? 16 : 0,
             }}
           >
-            {review.fazit.split(".")[0]}.
+            {headline}
           </div>
-          <p style={{ fontSize: "1rem", lineHeight: 1.75, color: "var(--c-ink)" }}>
-            {review.fazit}
-          </p>
+          {rest && (
+            <p style={{ fontSize: "1rem", lineHeight: 1.75, color: "var(--c-ink)" }}>
+              {rest}
+            </p>
+          )}
         </article>
       )}
 
@@ -84,7 +98,7 @@ function ReviewContent({ review }: { review: ReviewWithCategories }) {
                 >
                   {c.heading?.trim() || REVIEW_CATEGORY_LABELS[c.category]}
                 </span>
-                <RatingDots value={c.rating} max={5} size={7} />
+                <RatingDots value={c.rating} min={1} max={5} size={7} />
               </div>
               <p style={{ fontSize: "0.875rem", lineHeight: 1.65, color: "var(--c-n600)" }}>
                 {c.body}
@@ -121,6 +135,7 @@ export default async function RestaurantPage({
     : null;
 
   const spoon = SPOON_RATINGS[restaurant.spoon_rating];
+  const spoonColors = SPOON_RATING_COLORS[restaurant.spoon_rating];
   const firstPhoto = placeDetails?.photoUris?.[0] ?? null;
 
   const [currentReview, ...pastReviews] = restaurant.reviews;
@@ -128,26 +143,9 @@ export default async function RestaurantPage({
 
   return (
     <>
-      {/* ── BACK / BREADCRUMB ───────────────────────────── */}
+      {/* ── BACK ─────────────────────────────────────────── */}
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "16px 40px 0" }}>
-        <Link
-          href="/"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 7,
-            fontSize: "0.8125rem",
-            fontWeight: 500,
-            color: "var(--c-n500)",
-            border: "1px solid var(--c-n200)",
-            borderRadius: 9999,
-            padding: "6px 16px 6px 12px",
-            background: "white",
-            boxShadow: "var(--s-sm)",
-          }}
-        >
-          ← Alle Restaurants
-        </Link>
+        <BackButton fallbackHref="/" label="Zurück" />
       </div>
 
       {/* ── HERO IMAGE ──────────────────────────────────── */}
@@ -224,6 +222,7 @@ export default async function RestaurantPage({
       {/* ── RESTAURANT IDENTITY ─────────────────────────── */}
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "36px 40px 32px" }}>
         <div
+          className="restaurant-hero-row"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -286,7 +285,7 @@ export default async function RestaurantPage({
                 lineHeight: 1,
               }}
             >
-              {placeDetails?.formattedAddress && (
+              {(placeDetails?.formattedAddress || restaurant.address) && (
                 <>
                   <span
                     style={{
@@ -296,9 +295,9 @@ export default async function RestaurantPage({
                       color: "var(--c-n400)",
                     }}
                   >
-                    📍
+                    <IconPin size={14} />
                   </span>
-                  <span>{placeDetails.formattedAddress}</span>
+                  <span>{placeDetails?.formattedAddress || restaurant.address}</span>
                   <span style={{ color: "var(--c-n300)" }}>·</span>
                 </>
               )}
@@ -322,10 +321,23 @@ export default async function RestaurantPage({
                 </span>
               )}
             </div>
+
+            {restaurant.lat != null && restaurant.lng != null && (
+              <div style={{ marginTop: 22 }}>
+                <NavigateButton
+                  name={restaurant.name}
+                  lat={restaurant.lat}
+                  lng={restaurant.lng}
+                  googlePlaceId={restaurant.google_place_id}
+                />
+              </div>
+            )}
           </div>
 
-          {/* Right: spoon verdict */}
+          {/* Right: spoon verdict — color-coded by rating tier (SPOON_RATING_COLORS)
+              so the box itself signals good/mediocre/bad at a glance, not just the emoji. */}
           <div
+            className="restaurant-hero-verdict"
             style={{
               flexShrink: 0,
               display: "flex",
@@ -336,8 +348,8 @@ export default async function RestaurantPage({
           >
             <div
               style={{
-                background: "var(--c-burg-light)",
-                border: "1px solid oklch(83% 0.030 17)",
+                background: spoonColors.bg,
+                border: `1px solid ${spoonColors.border}`,
                 borderRadius: 14,
                 padding: "22px 28px",
                 display: "flex",
@@ -349,14 +361,14 @@ export default async function RestaurantPage({
               }}
             >
               <div style={{ fontSize: "2.75rem", lineHeight: 1 }}>{spoon.emoji}</div>
-              <RatingDots value={restaurant.spoon_rating} max={3} size={8} />
+              <RatingDots value={restaurant.spoon_rating} max={3} size={8} color={spoonColors.text} />
               <div
                 style={{
                   fontSize: 10,
                   fontWeight: 600,
                   letterSpacing: "0.16em",
                   textTransform: "uppercase",
-                  color: "var(--c-gold)",
+                  color: spoonColors.text,
                 }}
               >
                 {spoon.labelShort}
@@ -381,36 +393,84 @@ export default async function RestaurantPage({
           padding: "0 40px",
         }}
       >
-        {/* Opening hours detail */}
+        {/* Opening hours — collapsed by default (details/summary, closed unless
+            "open" is set), a chevron makes the expandability obvious. Google
+            liefert "Tag: Zeiten"-Strings (Mo–So); hier in zwei Spalten
+            aufgeteilt und der heutige Wochentag hervorgehoben. */}
         {placeDetails?.regularOpeningHours?.weekdayDescriptions && (
           <div style={{ padding: "40px 0 0" }}>
-            <div
+            <details
+              className="oh-details"
               style={{
-                fontSize: 10,
-                fontWeight: 500,
-                letterSpacing: "0.22em",
-                textTransform: "uppercase",
-                color: "var(--c-n400)",
-                marginBottom: 14,
+                border: "1px solid var(--c-n100)",
+                borderRadius: 12,
+                overflow: "hidden",
               }}
             >
-              Öffnungszeiten
-            </div>
-            <ul style={{ listStyle: "none", padding: 0 }}>
-              {placeDetails.regularOpeningHours.weekdayDescriptions.map((d, i) => (
-                <li
-                  key={i}
-                  style={{
-                    fontSize: "0.875rem",
-                    color: "var(--c-n600)",
-                    padding: "4px 0",
-                    borderBottom: "1px solid var(--c-n100)",
-                  }}
+              <summary
+                style={{
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  padding: "14px 18px",
+                  fontSize: 10,
+                  fontWeight: 500,
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  color: "var(--c-n400)",
+                }}
+              >
+                <span>Öffnungszeiten</span>
+                <svg
+                  className="oh-chevron"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="var(--c-n400)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
                 >
-                  {d}
-                </li>
-              ))}
-            </ul>
+                  <polyline points="5 7 10 12 15 7" />
+                </svg>
+              </summary>
+              <div style={{ borderTop: "1px solid var(--c-n100)" }}>
+                {placeDetails.regularOpeningHours.weekdayDescriptions.map((d, i) => {
+                  const sep = d.indexOf(":");
+                  const day = sep === -1 ? d : d.slice(0, sep);
+                  const hours = sep === -1 ? "" : d.slice(sep + 1).trim();
+                  const todayIndex = (new Date().getDay() + 6) % 7; // 0=Montag … 6=Sonntag
+                  const isToday = i === todayIndex;
+
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 16,
+                        fontSize: "0.875rem",
+                        padding: "9px 16px",
+                        background: isToday ? "var(--c-gold-light)" : "transparent",
+                        color: isToday ? "var(--c-ink)" : "var(--c-n600)",
+                        fontWeight: isToday ? 600 : 400,
+                        borderBottom:
+                          i < placeDetails.regularOpeningHours!.weekdayDescriptions.length - 1
+                            ? "1px solid var(--c-n100)"
+                            : "none",
+                      }}
+                    >
+                      <span>{day}</span>
+                      <span>{hours}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </details>
           </div>
         )}
 
@@ -469,7 +529,7 @@ export default async function RestaurantPage({
                       border: "1px solid var(--c-n100)",
                       borderRadius: 14,
                       padding: "18px 22px",
-                      background: "white",
+                      background: "var(--c-surface)",
                     }}
                   >
                     <summary
@@ -593,11 +653,13 @@ export default async function RestaurantPage({
                 padding: "40px 36px",
                 textAlign: "center",
                 marginBottom: 44,
-                background: "white",
+                background: "var(--c-surface)",
                 boxShadow: "var(--s-sm)",
               }}
             >
-              <div style={{ fontSize: "2rem", marginBottom: 16, opacity: 0.6 }}>🍴</div>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 16, opacity: 0.6, color: "var(--c-n400)" }}>
+                <IconEmptyState size={32} />
+              </div>
               <div
                 style={{
                   fontFamily: "var(--font-cormorant)",

@@ -1,7 +1,9 @@
-import { getRestaurants, getCuisines } from "@/app/actions/restaurants";
+import { getRestaurants, getCuisines, getRecentRestaurants } from "@/app/actions/restaurants";
 import RestaurantCard from "@/components/RestaurantCard";
 import { HeroSearch } from "@/components/HeroSearch";
 import { SearchResultsView } from "@/components/SearchResultsView";
+import { InstallPwaInstructions } from "@/components/InstallPwaInstructions";
+import { IconEmptyState } from "@/components/icons";
 import type { RestaurantFilters } from "@/app/actions/restaurants";
 import type { PriceLevel, SpoonRating } from "@/types/database";
 
@@ -90,6 +92,7 @@ export default async function Page({
     params.q || cuisineFilters.length || priceLevelFilters.length || spoonRatingFilters.length
   );
   const restaurantHints = restaurants.map((r) => ({ id: r.id, name: r.name, cuisine: r.cuisine }));
+  const recentRestaurants = await getRecentRestaurants();
 
   return (
     <>
@@ -192,6 +195,35 @@ export default async function Page({
         </div>
       </section>
 
+      {/* ── RECENTLY ADDED (last 30 days) ─────────────────── */}
+      {recentRestaurants.length > 0 && (
+        <section style={{ maxWidth: 1240, margin: "0 auto", padding: "8px 40px 0" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+            <h2
+              style={{
+                fontFamily: "var(--font-cormorant)",
+                fontSize: "1.5rem",
+                fontWeight: 600,
+                letterSpacing: "-0.01em",
+                color: "var(--c-ink)",
+              }}
+            >
+              Neu hinzugefügt
+            </h2>
+            <span style={{ fontSize: 11, color: "var(--c-n400)", letterSpacing: "0.06em" }}>
+              Letzte 30 Tage
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 12 }}>
+            {recentRestaurants.map((r) => (
+              <div key={r.id} style={{ minWidth: 230, maxWidth: 230, flexShrink: 0 }}>
+                <RestaurantCard restaurant={r} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* ── RESTAURANT GRID ─────────────────────────────── */}
       <main
         style={{
@@ -288,7 +320,9 @@ export default async function Page({
               color: "var(--c-n400)",
             }}
           >
-            <div style={{ fontSize: "2rem", marginBottom: 16 }}>🫗</div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+              <IconEmptyState size={32} />
+            </div>
             <p
               style={{
                 fontFamily: "var(--font-cormorant)",
@@ -319,6 +353,9 @@ export default async function Page({
           </div>
         )}
       </main>
+
+      {/* ── PWA INSTALL INSTRUCTIONS ────────────────────── */}
+      <InstallPwaInstructions />
     </>
   );
 }

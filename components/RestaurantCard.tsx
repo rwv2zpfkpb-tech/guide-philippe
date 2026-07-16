@@ -1,10 +1,14 @@
 import Link from "next/link";
 import type { Restaurant } from "@/types/database";
-import { SPOON_RATINGS } from "@/lib/ratings";
+import { SPOON_RATINGS, SPOON_RATING_COLORS } from "@/lib/ratings";
 import { PriceLevelDots } from "@/components/PriceLevelDots";
 
+// No image — restaurant photos are only shown on the detail page (live from
+// Google Places). Cards here are text-first; the top accent bar + label
+// color-code the spoon rating tier (SPOON_RATING_COLORS) instead.
 export default function RestaurantCard({ restaurant }: { restaurant: Restaurant }) {
   const spoon = SPOON_RATINGS[restaurant.spoon_rating];
+  const colors = SPOON_RATING_COLORS[restaurant.spoon_rating];
 
   return (
     <Link
@@ -13,65 +17,39 @@ export default function RestaurantCard({ restaurant }: { restaurant: Restaurant 
         background: "var(--c-surface)",
         borderRadius: 14,
         border: "1px solid var(--c-n100)",
+        borderTop: `3px solid ${colors.border}`,
         boxShadow: "var(--s-sm)",
         overflow: "hidden",
         display: "block",
-        transition: "box-shadow 0.25s var(--ease), transform 0.25s var(--ease), border-top-color 0.25s",
+        transition: "box-shadow 0.25s var(--ease), transform 0.25s var(--ease)",
         textDecoration: "none",
       }}
       className="card-hover"
     >
-      {/* Image placeholder */}
-      <div
-        style={{
-          width: "100%",
-          aspectRatio: "4 / 3",
-          position: "relative",
-          overflow: "hidden",
-          background: `repeating-linear-gradient(
-            -45deg,
-            var(--c-n100), var(--c-n100) 1px,
-            var(--c-n50) 1px, var(--c-n50) 14px
-          )`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
+      <div style={{ padding: "16px 16px 14px" }}>
         <div
           style={{
-            position: "absolute",
-            bottom: 10,
-            right: 10,
-            background: "var(--c-surface)",
-            borderRadius: 4,
-            padding: "4px 8px",
-            fontSize: 15,
-            lineHeight: 1,
-            boxShadow: "var(--s-sm)",
             display: "flex",
-            alignItems: "center",
-            gap: 5,
-          }}
-          title={spoon.label}
-        >
-          {spoon.emoji}
-        </div>
-      </div>
-
-      {/* Card body */}
-      <div style={{ padding: "14px 16px 18px" }}>
-        <div
-          style={{
-            fontFamily: "var(--font-cormorant)",
-            fontSize: "1.175rem",
-            fontWeight: 600,
-            lineHeight: 1.2,
-            color: "var(--c-ink)",
-            marginBottom: 4,
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 10,
           }}
         >
-          {restaurant.name}
+          <div
+            style={{
+              fontFamily: "var(--font-cormorant)",
+              fontSize: "1.175rem",
+              fontWeight: 600,
+              lineHeight: 1.2,
+              color: "var(--c-ink)",
+              marginBottom: 4,
+            }}
+          >
+            {restaurant.name}
+          </div>
+          <span style={{ fontSize: "1.3rem", lineHeight: 1, flexShrink: 0 }} title={spoon.label}>
+            {spoon.emoji}
+          </span>
         </div>
 
         {restaurant.cuisine && (
@@ -105,17 +83,17 @@ export default function RestaurantCard({ restaurant }: { restaurant: Restaurant 
           ) : (
             <span />
           )}
-          <div
+          <span
             style={{
-              fontSize: 11,
-              color: "var(--c-n400)",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: colors.text,
             }}
           >
-            <span style={{ fontSize: 13 }}>{spoon.emoji}</span>
-          </div>
+            {spoon.labelShort}
+          </span>
         </div>
       </div>
     </Link>

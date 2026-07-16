@@ -8,8 +8,12 @@ import { useMapsLibrary } from "@vis.gl/react-google-maps";
 export type PlaceSelection = {
   placeId: string;
   name:    string;
+  address: string;
   lat:     number;
   lng:     number;
+  /** Best-effort cuisine guess derived from Google's place type — the admin
+   *  form field stays freely editable, this is only a starting point. */
+  cuisine: string | null;
 };
 
 type Props = {
@@ -18,6 +22,38 @@ type Props = {
   placeholder?:          string;
   componentRestrictions?: google.maps.places.ComponentRestrictions;
 };
+
+// Google place "types" that carry no cuisine information — skip these when
+// looking for a usable type to turn into a cuisine guess.
+const GENERIC_PLACE_TYPES = new Set([
+  "restaurant", "food", "point_of_interest", "establishment", "store",
+]);
+
+function prettifyPlaceType(type: string): string {
+  return type
+    .replace(/_restaurant$/, "")
+    .split("_")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+// Turns a Google primary-type display name / type id / types list into a
+// short, human cuisine label (e.g. "italian_restaurant" → "Italian").
+// Returns null when nothing usable is available — the admin fills it in by hand.
+function guessCuisine(
+  primaryTypeDisplayName?: string | null,
+  primaryType?: string | null,
+  types?: string[] | null
+): string | null {
+  if (primaryTypeDisplayName?.trim()) {
+    return primaryTypeDisplayName.replace(/\s*restaurant$/i, "").trim() || primaryTypeDisplayName;
+  }
+  const candidate =
+    (primaryType && !GENERIC_PLACE_TYPES.has(primaryType) ? primaryType : null) ??
+    types?.find((t) => t.endsWith("_restaurant") && !GENERIC_PLACE_TYPES.has(t));
+  return candidate ? prettifyPlaceType(candidate) : null;
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 // Must be rendered inside an <APIProvider> with the places library available.
@@ -53,22 +89,27 @@ export function PlacesAutocomplete({
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const handler = async (e: any) => {
-        const place = e.place;
+        const place = e.placePrediction.toPlace();
         await place.fetchFields({
-          fields: ["id", "location", "displayName"],
+          fields: [
+            "id", "location", "displayName", "formattedAddress",
+            "primaryTypeDisplayName", "primaryType", "types",
+          ],
         });
         if (!place.location) return;
         onSelectRef.current({
           placeId: place.id    ?? "",
           name:    place.displayName ?? "",
+          address: place.formattedAddress ?? "",
           lat:     place.location.lat(),
           lng:     place.location.lng(),
+          cuisine: guessCuisine(place.primaryTypeDisplayName, place.primaryType, place.types),
         });
       };
 
-      el.addEventListener("gmp-placeselect", handler);
+      el.addEventListener("gmp-select", handler);
       cleanup = () => {
-        el.removeEventListener("gmp-placeselect", handler);
+        el.removeEventListener("gmp-select", handler);
         if (containerRef.current?.contains(el)) containerRef.current.removeChild(el);
       };
     } else {
@@ -89,7 +130,7 @@ export function PlacesAutocomplete({
 
       const ac = new placesLib.Autocomplete(input, {
         types:  ["establishment"],
-        fields: ["place_id", "name", "geometry.location"],
+        fields: ["place_id", "name", "formatted_address", "geometry.location", "types"],
         ...(componentRestrictions ? { componentRestrictions } : {}),
       });
 
@@ -99,8 +140,10 @@ export function PlacesAutocomplete({
         onSelectRef.current({
           placeId: place.place_id,
           name:    place.name ?? "",
+          address: place.formatted_address ?? "",
           lat:     place.geometry.location.lat(),
           lng:     place.geometry.location.lng(),
+          cuisine: guessCuisine(null, null, place.types),
         });
       });
 

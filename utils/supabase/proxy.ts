@@ -6,7 +6,19 @@ import { type NextRequest, NextResponse } from "next/server";
 // - /pending: screen shown to logged-in-but-not-yet-approved accounts
 // - /api/auth/email: Supabase's Send Email Hook calls this server-to-server
 //   (no user session) — redirecting it to /login would break every auth mail.
-const PUBLIC_PATHS = ["/login", "/auth/confirm", "/pending", "/api/auth/email"];
+// - /manifest.webmanifest, /icon, /apple-icon, /icons/*: PWA metadata — the
+//   browser tab favicon must render on /login itself, and Chrome/Safari need
+//   to fetch these to offer "Add to Home Screen" even before the user signs in.
+const PUBLIC_PATHS = [
+  "/login",
+  "/auth/confirm",
+  "/pending",
+  "/api/auth/email",
+  "/manifest.webmanifest",
+  "/icon",
+  "/apple-icon",
+  "/icons",
+];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));

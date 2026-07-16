@@ -18,21 +18,30 @@ export type PlaceDetails = {
   photoUris: string[]; // resolved photo CDN URLs (up to 5)
 };
 
+export type ResolvedPlace = {
+  googlePlaceId: string;
+  lat: number;
+  lng: number;
+};
+
 // ── Action ────────────────────────────────────────────────────────────────────
 
 export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_PLACES_API_KEY env var is not set");
 
-  // Step 1 — fetch place fields
-  const detailRes = await fetch(`${BASE}/places/${encodeURIComponent(placeId)}`, {
-    headers: {
-      "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": "formattedAddress,regularOpeningHours,photos",
-    },
-    // no-store: hours change daily, photos expire; always fetch fresh
-    cache: "no-store",
-  });
+  // Step 1 — fetch place fields (languageCode/regionCode: deutsche Öffnungszeiten-Strings statt englischer)
+  const detailRes = await fetch(
+    `${BASE}/places/${encodeURIComponent(placeId)}?languageCode=de&regionCode=DE`,
+    {
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "formattedAddress,regularOpeningHours,photos",
+      },
+      // no-store: hours change daily, photos expire; always fetch fresh
+      cache: "no-store",
+    }
+  );
 
   if (!detailRes.ok) {
     const msg = await detailRes.text().catch(() => String(detailRes.status));
@@ -75,4 +84,61 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
       : null,
     photoUris,
   };
+}
+
+// ── CSV-Import: Ort anhand Name (+ evtl. extrahierter Place-ID) auflösen ──────
+// Der CSV-Import kennt nur einen Namen und oft keine brauchbare Place-ID (s.
+// csvImport.ts — moderne Google-Maps-Share-Links enthalten eine CID statt
+// einer Place-ID). Damit importierte Entwürfe trotzdem sofort Kartendaten
+// haben, wird hier zuerst die evtl. vorhandene Place-ID direkt aufgelöst und
+// bei Fehlschlag per Text-Suche nach dem Namen der wahrscheinlichste Treffer
+// verwendet. Nur ein bestmöglicher Vorschlag — der Admin prüft/korrigiert vor
+// Veröffentlichung ohnehin über die Places-Autocomplete im Edit-Panel.
+export async function resolvePlaceForImport(
+  name: string,
+  placeId: string | null
+): Promise<ResolvedPlace | null> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) throw new Error("GOOGLE_PLACES_API_KEY env var is not set");
+
+  if (placeId) {
+    const res = await fetch(`${BASE}/places/${encodeURIComponent(placeId)}`, {
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "id,location",
+      },
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const data = (await res.json()) as {
+        id?: string;
+        location?: { latitude: number; longitude: number };
+      };
+      if (data.id && data.location) {
+        return { googlePlaceId: data.id, lat: data.location.latitude, lng: data.location.longitude };
+      }
+    }
+    // Fällt durch zur Textsuche, falls die extrahierte ID keine echte Place-ID war.
+  }
+
+  const searchRes = await fetch(`${BASE}/places:searchText`, {
+    method: "POST",
+    headers: {
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": "places.id,places.location",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ textQuery: name }),
+    cache: "no-store",
+  });
+  if (!searchRes.ok) return null;
+
+  const searchData = (await searchRes.json()) as {
+    places?: Array<{ id?: string; location?: { latitude: number; longitude: number } }>;
+  };
+  const top = searchData.places?.[0];
+  if (top?.id && top.location) {
+    return { googlePlaceId: top.id, lat: top.location.latitude, lng: top.location.longitude };
+  }
+  return null;
 }

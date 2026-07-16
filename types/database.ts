@@ -65,6 +65,7 @@ export interface Database {
           google_place_id: string | null
           lat: number | null
           lng: number | null
+          address: string | null
           cuisine: string | null
           price_level: PriceLevel | null
           spoon_rating: SpoonRating
@@ -77,6 +78,7 @@ export interface Database {
           google_place_id?: string | null
           lat?: number | null
           lng?: number | null
+          address?: string | null
           cuisine?: string | null
           price_level?: PriceLevel | null
           spoon_rating?: SpoonRating
@@ -89,6 +91,7 @@ export interface Database {
           google_place_id?: string | null
           lat?: number | null
           lng?: number | null
+          address?: string | null
           cuisine?: string | null
           price_level?: PriceLevel | null
           spoon_rating?: SpoonRating

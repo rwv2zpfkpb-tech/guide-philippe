@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { signOut } from "@/app/actions/auth";
+import { IconBlocked, IconClock } from "@/components/icons";
 
 export const metadata = { title: "Konto wird geprüft — Guide Philippe" };
 
@@ -50,8 +51,15 @@ export default async function PendingPage() {
           textAlign: "center",
         }}
       >
-        <div style={{ fontSize: "2.5rem", marginBottom: 20 }}>
-          {rejected ? "🚫" : "⏳"}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginBottom: 20,
+            color: rejected ? "var(--c-burg)" : "var(--c-gold)",
+          }}
+        >
+          {rejected ? <IconBlocked size={40} /> : <IconClock size={40} />}
         </div>
         <div
           style={{

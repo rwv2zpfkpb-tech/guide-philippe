@@ -45,7 +45,7 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
       ref={formRef}
       onSubmit={handleSubmit}
       style={{
-        background: "white",
+        background: "var(--c-surface)",
         border: "1px solid var(--c-n100)",
         borderRadius: 14,
         padding: 26,

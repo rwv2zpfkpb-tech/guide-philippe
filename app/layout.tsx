@@ -21,6 +21,11 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "Guide Philippe",
   description: "Restaurant-Guide von Philippe",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Guide Philippe",
+  },
 };
 
 export default async function RootLayout({

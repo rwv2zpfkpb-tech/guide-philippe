@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import Link from "next/link";
 import { signIn, signUp } from "@/app/actions/auth";
 import type { SignInState, SignUpState } from "@/app/actions/auth";
+import { IconMail } from "@/components/icons";
 
 type Tab = "login" | "signup";
 
@@ -94,7 +95,9 @@ export default function LoginForm({ defaultTab }: { defaultTab: Tab }) {
           textAlign: "center",
         }}
       >
-        <div style={{ fontSize: "2.5rem", marginBottom: 20 }}>✉️</div>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20, color: "var(--c-gold)" }}>
+          <IconMail size={40} />
+        </div>
         <div
           style={{
             fontFamily: "var(--font-cormorant)",

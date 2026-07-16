@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import { IconCheckCircle, IconWarningTriangle } from "@/components/icons";
 
 export const metadata = { title: "E-Mail bestätigt — Guide Philippe" };
 
@@ -45,8 +46,15 @@ export default async function ConfirmEmailPage({
           textAlign: "center",
         }}
       >
-        <div style={{ fontSize: "2.5rem", marginBottom: 20 }}>
-          {success ? "✅" : "⚠️"}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginBottom: 20,
+            color: success ? "var(--c-success)" : "var(--c-burg)",
+          }}
+        >
+          {success ? <IconCheckCircle size={40} /> : <IconWarningTriangle size={40} />}
         </div>
         <div
           style={{
