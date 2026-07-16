@@ -69,7 +69,10 @@ type CategoryFormData = { heading: string; body: string; rating: number | null }
 
 type ReviewFormData = {
   visited_at: string; // yyyy-mm-dd
-  spoon_rating: SpoonRating;
+  // null = noch nicht ausgewählt (nur bei neuen Restaurants möglich — ein
+  // bestehendes Restaurant hat immer schon einen Aufenthalt mit konkretem
+  // Rating, s. `restaurant_reviews`-Invariante).
+  spoon_rating: SpoonRating | null;
   fazit: string;
   asNewVisit: boolean;
   categories: Record<ReviewCategory, CategoryFormData>;
@@ -91,6 +94,42 @@ type FormData = {
 };
 
 type ContactField = "phone" | "website" | "opening_hours";
+
+// ── Pflichtfelder ─────────────────────────────────────────────────────────────
+// "name" ist immer Pflicht (auch für Entwürfe — ein namenloser Datensatz ist
+// unsinnig). Die übrigen vier sind nur für den Status "published" Pflicht;
+// unvollständige Einträge (z.B. frisch aus dem CSV-Import) bleiben als
+// "draft" speicherbar und werden erst beim Veröffentlichen erzwungen.
+type RequiredField = "name" | "address" | "price_level" | "spoon_rating" | "fazit";
+
+const REQUIRED_FIELD_LABELS: Record<RequiredField, string> = {
+  name: "Name",
+  address: "Adresse",
+  price_level: "Preis",
+  spoon_rating: "Spoon-Rating",
+  fazit: "Fazit",
+};
+
+function getMissingRequiredFields(form: FormData): Set<RequiredField> {
+  const missing = new Set<RequiredField>();
+  if (!form.name.trim()) missing.add("name");
+  if (!form.address.trim()) missing.add("address");
+  if (form.price_level == null) missing.add("price_level");
+  if (form.review.spoon_rating == null) missing.add("spoon_rating");
+  if (!form.review.fazit.trim()) missing.add("fazit");
+  return missing;
+}
+
+// ── Fazit-Headline-Vorschau ───────────────────────────────────────────────────
+// Muss deckungsgleich mit `ReviewContent` auf der Restaurant-Detailseite
+// (app/restaurant/[id]/page.tsx) bleiben: erster Satz (bis zum ersten Punkt)
+// wird dort groß als Überschrift gerendert, der Rest als normaler Fließtext.
+function splitFazit(fazit: string): { headline: string; rest: string } {
+  const trimmed = fazit.trim();
+  const firstStop = trimmed.indexOf(".");
+  if (firstStop === -1) return { headline: trimmed, rest: "" };
+  return { headline: trimmed.slice(0, firstStop + 1), rest: trimmed.slice(firstStop + 1).trim() };
+}
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -116,7 +155,7 @@ const emptyForm = (): FormData => ({
   status: "published",
   review: {
     visited_at: todayISO(),
-    spoon_rating: 3,
+    spoon_rating: null,
     fazit: "",
     asNewVisit: false,
     categories: emptyCategories(),
@@ -295,6 +334,13 @@ function EditPanel({
   onClose: () => void;
   saving: boolean;
 }) {
+  const missing = getMissingRequiredFields(form);
+  // "name" ist immer Pflicht; die übrigen vier blockieren das Speichern nur,
+  // wenn der Eintrag veröffentlicht (nicht als Entwurf) gespeichert wird.
+  const saveDisabled =
+    saving || missing.has("name") || (form.status === "published" && missing.size > 0);
+  const fazitPreview = splitFazit(form.review.fazit);
+
   return (
     <>
       {/* Backdrop */}
@@ -331,8 +377,13 @@ function EditPanel({
           {/* ── Google Places search (or manual fallback) ── */}
           <div>
             <div className="flex items-center justify-between gap-3 mb-1.5">
-              <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">
+              <label
+                className={`block text-xs font-medium uppercase tracking-wider ${
+                  missing.has("name") || missing.has("address") ? "text-[var(--c-burg)]" : "text-[var(--c-n500)]"
+                }`}
+              >
                 {manualEntry ? "Ort manuell erfassen" : "Find on Google Maps"}
+                <span className="ml-1 text-[var(--c-burg)]">*</span>
               </label>
               <button
                 type="button"
@@ -350,14 +401,18 @@ function EditPanel({
                   value={form.name}
                   onChange={(e) => onFormChange({ name: e.target.value })}
                   placeholder="Name des Restaurants"
-                  className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
+                  className={`w-full rounded-lg border ${
+                    missing.has("name") ? "border-[var(--c-burg)]" : "border-[var(--c-n200)]"
+                  } bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]`}
                 />
                 <input
                   type="text"
                   value={form.address}
                   onChange={(e) => onFormChange({ address: e.target.value })}
                   placeholder="Adresse (z. B. Musterstraße 1, 12345 Berlin)"
-                  className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
+                  className={`w-full rounded-lg border ${
+                    missing.has("address") ? "border-[var(--c-burg)]" : "border-[var(--c-n200)]"
+                  } bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]`}
                 />
                 <div className="grid grid-cols-2 gap-3">
                   <input
@@ -388,6 +443,11 @@ function EditPanel({
                   defaultValue={form.name}
                   placeholder="Search establishment…"
                 />
+                {(missing.has("name") || missing.has("address")) && (
+                  <p className="mt-1.5 text-xs text-[var(--c-burg)]">
+                    Bitte einen Ort auswählen — Name und Adresse sind Pflichtfelder.
+                  </p>
+                )}
                 {form.google_place_id && (
                   <div className="mt-2 flex items-start gap-2 rounded-lg border border-[var(--c-success)]/30 bg-[var(--c-success-light)] px-3 py-2 text-xs">
                     <svg className="w-3.5 h-3.5 mt-0.5 text-[var(--c-success)] shrink-0" viewBox="0 0 20 20" fill="currentColor">
@@ -518,10 +578,18 @@ function EditPanel({
 
           {/* ── Price level ── */}
           <div>
-            <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
-              Price Level
+            <label
+              className={`block text-xs font-medium uppercase tracking-wider mb-1.5 ${
+                missing.has("price_level") ? "text-[var(--c-burg)]" : "text-[var(--c-n500)]"
+              }`}
+            >
+              Price Level<span className="ml-1 text-[var(--c-burg)]">*</span>
             </label>
-            <div className="flex gap-2">
+            <div
+              className={`flex gap-2 rounded-lg ${
+                missing.has("price_level") ? "ring-1 ring-[var(--c-burg)]/60 p-1" : ""
+              }`}
+            >
               {PRICE_OPTIONS.map(({ value, label }) => (
                 <button
                   key={value}
@@ -590,7 +658,18 @@ function EditPanel({
               />
             </div>
 
-            <div className="space-y-2 mb-3">
+            <label
+              className={`block text-xs mb-1 ${
+                missing.has("spoon_rating") ? "text-[var(--c-burg)]" : "text-[var(--c-n500)]"
+              }`}
+            >
+              Spoon-Rating<span className="ml-1 text-[var(--c-burg)]">*</span>
+            </label>
+            <div
+              className={`space-y-2 mb-3 rounded-lg ${
+                missing.has("spoon_rating") ? "ring-1 ring-[var(--c-burg)]/60 p-1" : ""
+              }`}
+            >
               {SPOON_OPTIONS.map(({ value, emoji, label }) => (
                 <label
                   key={value}
@@ -623,13 +702,36 @@ function EditPanel({
               ))}
             </div>
 
+            <label
+              className={`block text-xs mb-1 ${
+                missing.has("fazit") ? "text-[var(--c-burg)]" : "text-[var(--c-n500)]"
+              }`}
+            >
+              Fazit<span className="ml-1 text-[var(--c-burg)]">*</span>
+            </label>
             <textarea
               value={form.review.fazit}
               onChange={(e) => onReviewChange({ fazit: e.target.value })}
               rows={5}
               placeholder="Fazit dieses Aufenthalts…"
-              className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)] resize-none"
+              className={`w-full rounded-lg border ${
+                missing.has("fazit") ? "border-[var(--c-burg)]" : "border-[var(--c-n200)]"
+              } bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)] resize-none`}
             />
+            <p className="mt-1.5 text-xs text-[var(--c-n400)]">
+              Der erste Satz (bis zum ersten Punkt) erscheint auf der Restaurant-Seite groß als Überschrift, der Rest als normaler Fließtext.
+            </p>
+            {form.review.fazit.trim() && (
+              <div className="mt-2 rounded-lg border border-[var(--c-n100)] bg-[var(--c-n50)] px-3 py-2.5">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--c-n400)] mb-1.5">Vorschau</p>
+                <p className="font-serif text-base font-medium leading-tight text-[var(--c-ink)]">
+                  {fazitPreview.headline}
+                </p>
+                {fazitPreview.rest && (
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--c-n600)]">{fazitPreview.rest}</p>
+                )}
+              </div>
+            )}
             <p className="mt-1 text-right text-xs text-[var(--c-n400)]">
               {form.review.fazit.length} chars
             </p>
@@ -709,20 +811,31 @@ function EditPanel({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-[var(--c-n100)] flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] py-2.5 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)] transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onSave}
-            disabled={saving || !form.name}
-            className="flex-1 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {saving ? "Saving…" : isNew ? "Add Restaurant" : "Save Changes"}
-          </button>
+        <div className="px-6 py-4 border-t border-[var(--c-n100)]">
+          {missing.size > 0 && (
+            <p className="mb-2 text-xs text-[var(--c-burg)]">
+              {missing.has("name")
+                ? `Fehlende Pflichtfelder: ${Array.from(missing).map((f) => REQUIRED_FIELD_LABELS[f]).join(", ")}.`
+                : form.status === "published"
+                ? `Fehlende Pflichtfelder: ${Array.from(missing).map((f) => REQUIRED_FIELD_LABELS[f]).join(", ")} — oder als Entwurf speichern.`
+                : `Vor Veröffentlichung noch nötig: ${Array.from(missing).map((f) => REQUIRED_FIELD_LABELS[f]).join(", ")}.`}
+            </p>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] py-2.5 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onSave}
+              disabled={saveDisabled}
+              className="flex-1 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {saving ? "Saving…" : isNew ? "Add Restaurant" : "Save Changes"}
+            </button>
+          </div>
         </div>
       </aside>
     </>
@@ -806,11 +919,11 @@ function ImportModal({
   importing: boolean;
   rows: CsvImportRow[];
   selected: Set<number>;
-  bulkSpoonRating: 0 | 1 | 2 | 3;
+  bulkSpoonRating: 0 | 1 | 2 | 3 | null;
   onFileSelected: (file: File) => void;
   onToggleRow: (row: number) => void;
   onToggleAllNew: (checked: boolean) => void;
-  onBulkSpoonRatingChange: (value: 0 | 1 | 2 | 3) => void;
+  onBulkSpoonRatingChange: (value: 0 | 1 | 2 | 3 | null) => void;
   onImport: () => void;
   onClose: () => void;
 }) {
@@ -859,18 +972,22 @@ function ImportModal({
               {newRows.length > 0 && (
                 <div>
                   <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
-                    Spoon-Rating für neue Einträge
+                    Spoon-Rating für neue Einträge <span className="normal-case font-normal text-[var(--c-n400)]">(optional)</span>
                   </label>
                   <p className="text-xs text-[var(--c-n400)] mb-2">
                     Gilt für alle importierten Einträge — praktisch, wenn diese CSV-Liste bereits
-                    einer einzigen Bewertungsstufe entspricht (z.B. nur „Worth Mentioning“).
+                    einer einzigen Bewertungsstufe entspricht (z.B. nur „Worth Mentioning“). Ohne
+                    Auswahl landen die Einträge trotzdem als Entwurf und lassen sich später im
+                    Edit-Panel bewerten.
                   </p>
                   <div className="flex gap-1.5 flex-wrap">
                     {SPOON_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
                         type="button"
-                        onClick={() => onBulkSpoonRatingChange(opt.value)}
+                        onClick={() =>
+                          onBulkSpoonRatingChange(bulkSpoonRating === opt.value ? null : opt.value)
+                        }
                         title={opt.label}
                         className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                           bulkSpoonRating === opt.value
@@ -1268,7 +1385,7 @@ export function AdminDashboard({
   const [importImporting, setImportImporting] = useState(false);
   const [importRows, setImportRows] = useState<CsvImportRow[]>([]);
   const [importSelected, setImportSelected] = useState<Set<number>>(new Set());
-  const [importBulkSpoonRating, setImportBulkSpoonRating] = useState<0 | 1 | 2 | 3>(1);
+  const [importBulkSpoonRating, setImportBulkSpoonRating] = useState<0 | 1 | 2 | 3 | null>(null);
   const [isPending, startTransition] = useTransition();
   const [pendingProfiles, setPendingProfiles] = useState(initialPendingProfiles);
   const [decisionBusyId, setDecisionBusyId] = useState<string | null>(null);
@@ -1503,7 +1620,11 @@ export function AdminDashboard({
 
     const reviewPayload: ReviewPayload = {
       visited_at: form.review.visited_at,
-      spoon_rating: form.review.spoon_rating,
+      // Entwürfe dürfen ohne explizit gewähltes Spoon-Rating gespeichert
+      // werden (Pflichtfeld nur fürs Veröffentlichen, s. `saveDisabled` in
+      // EditPanel) — die DB-Spalte ist aber NOT NULL, daher hier derselbe
+      // Platzhalter-Fallback wie bei `confirmCsvImport`.
+      spoon_rating: form.review.spoon_rating ?? 1,
       fazit: form.review.fazit,
       categories: form.review.categories,
     };
@@ -1591,7 +1712,7 @@ export function AdminDashboard({
     setImportStep("pick");
     setImportRows([]);
     setImportSelected(new Set());
-    setImportBulkSpoonRating(1);
+    setImportBulkSpoonRating(null);
   }
 
   function closeImport() {
@@ -1638,7 +1759,7 @@ export function AdminDashboard({
     setImportImporting(true);
     startTransition(async () => {
       try {
-        const inserted = await confirmCsvImport(selection, importBulkSpoonRating);
+        const inserted = await confirmCsvImport(selection, importBulkSpoonRating ?? undefined);
         setRestaurants((prev) => [...inserted, ...prev]);
         showToast(`${inserted.length} Restaurants als Entwurf importiert`);
         closeImport();

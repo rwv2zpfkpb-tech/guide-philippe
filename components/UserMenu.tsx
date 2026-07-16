@@ -82,8 +82,8 @@ export function UserMenu({ email, label }: { email: string; label: string }) {
           }}
         >
           {resetState && "success" in resetState ? (
-            <div style={{ fontSize: "0.8125rem", color: "var(--c-success)", padding: "8px 10px" }}>
-              Link verschickt
+            <div style={{ fontSize: "0.8125rem", color: "var(--c-success)", padding: "8px 10px", lineHeight: 1.4 }}>
+              E-Mail mit Link verschickt — bitte Postfach prüfen.
             </div>
           ) : (
             <form action={resetAction}>
@@ -102,13 +102,23 @@ export function UserMenu({ email, label }: { email: string; label: string }) {
                   background: "none",
                   border: "none",
                   borderRadius: 6,
-                  padding: "9px 10px",
+                  padding: "9px 10px 2px",
                   cursor: resetPending ? "default" : "pointer",
                   opacity: resetPending ? 0.6 : 1,
                 }}
               >
                 {resetPending ? "Sende…" : "Passwort ändern"}
               </button>
+              <p
+                style={{
+                  fontSize: "0.6875rem",
+                  color: "var(--c-n400)",
+                  padding: "0 10px 8px",
+                  lineHeight: 1.35,
+                }}
+              >
+                Schickt dir einen Link per E-Mail
+              </p>
             </form>
           )}
 
