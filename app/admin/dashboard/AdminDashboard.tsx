@@ -7,10 +7,40 @@ import {
   createRestaurant,
   updateRestaurant,
   deleteRestaurant,
+  getRestaurantById,
 } from "@/app/actions/restaurants";
+import { createReview, updateReview, type ReviewPayload } from "@/app/actions/reviews";
+import {
+  previewCsvImport,
+  confirmCsvImport,
+  type CsvImportRow,
+} from "@/app/actions/csvImport";
+import {
+  approveProfile,
+  rejectProfile,
+  promoteToAdmin,
+  demoteFromAdmin,
+  deleteUserAccount,
+  type ProfileWithEmail,
+} from "@/app/actions/profiles";
+import { PRIMARY_ADMIN_EMAIL } from "@/lib/admin";
 import { PlacesAutocomplete, type PlaceSelection } from "@/components/admin/PlacesAutocomplete";
-import { SPOON_RATINGS, SPOON_RATING_ORDER } from "@/lib/ratings";
-import type { Restaurant, SpoonRating, PriceLevel } from "@/types/database";
+import {
+  SPOON_RATINGS,
+  SPOON_RATING_ORDER,
+  REVIEW_CATEGORY_ORDER,
+  REVIEW_CATEGORY_LABELS,
+} from "@/lib/ratings";
+import { RatingDots } from "@/components/RatingDots";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import type {
+  Restaurant,
+  SpoonRating,
+  PriceLevel,
+  RestaurantStatus,
+  ReviewCategory,
+  ReviewWithCategories,
+} from "@/types/database";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -27,6 +57,7 @@ const SPOON_OPTIONS = SPOON_RATING_ORDER.map((value) => ({
 }));
 
 const PRICE_OPTIONS: { value: PriceLevel; label: string }[] = [
+  { value: 0, label: "Kostenlos" },
   { value: 1, label: "€" },
   { value: 2, label: "€€" },
   { value: 3, label: "€€€" },
@@ -35,6 +66,16 @@ const PRICE_OPTIONS: { value: PriceLevel; label: string }[] = [
 
 // ── Form state ────────────────────────────────────────────────────────────────
 
+type CategoryFormData = { heading: string; body: string; rating: number | null };
+
+type ReviewFormData = {
+  visited_at: string; // yyyy-mm-dd
+  spoon_rating: SpoonRating;
+  fazit: string;
+  asNewVisit: boolean;
+  categories: Record<ReviewCategory, CategoryFormData>;
+};
+
 type FormData = {
   name: string;
   google_place_id: string;
@@ -42,9 +83,19 @@ type FormData = {
   lng: number | null;
   cuisine: string;
   price_level: PriceLevel | null;
-  spoon_rating: SpoonRating;
-  official_review: string;
+  status: RestaurantStatus;
+  review: ReviewFormData;
 };
+
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function emptyCategories(): Record<ReviewCategory, CategoryFormData> {
+  return Object.fromEntries(
+    REVIEW_CATEGORY_ORDER.map((c) => [c, { heading: "", body: "", rating: null }])
+  ) as Record<ReviewCategory, CategoryFormData>;
+}
 
 const emptyForm = (): FormData => ({
   name: "",
@@ -53,11 +104,22 @@ const emptyForm = (): FormData => ({
   lng: null,
   cuisine: "",
   price_level: null,
-  spoon_rating: 3,
-  official_review: "",
+  status: "published",
+  review: {
+    visited_at: todayISO(),
+    spoon_rating: 3,
+    fazit: "",
+    asNewVisit: false,
+    categories: emptyCategories(),
+  },
 });
 
-function formFromRestaurant(r: Restaurant): FormData {
+function formFromRestaurant(r: Restaurant, latest: ReviewWithCategories | null): FormData {
+  const categories = emptyCategories();
+  for (const c of latest?.categories ?? []) {
+    categories[c.category] = { heading: c.heading ?? "", body: c.body ?? "", rating: c.rating };
+  }
+
   return {
     name: r.name,
     google_place_id: r.google_place_id ?? "",
@@ -65,8 +127,14 @@ function formFromRestaurant(r: Restaurant): FormData {
     lng: r.lng,
     cuisine: r.cuisine ?? "",
     price_level: r.price_level,
-    spoon_rating: r.spoon_rating,
-    official_review: r.official_review ?? "",
+    status: r.status,
+    review: {
+      visited_at: latest?.visited_at ?? todayISO(),
+      spoon_rating: latest?.spoon_rating ?? r.spoon_rating,
+      fazit: latest?.fazit ?? "",
+      asNewVisit: false,
+      categories,
+    },
   };
 }
 
@@ -82,13 +150,14 @@ function SpoonBadge({ rating }: { rating: SpoonRating }) {
 }
 
 function PriceBadge({ level }: { level: PriceLevel | null }) {
-  if (!level) return <span className="text-stone-400">—</span>;
+  if (level == null) return <span className="text-[var(--c-n400)]">—</span>;
+  if (level === 0) return <span className="font-mono text-xs text-[var(--c-n400)]">Kostenlos</span>;
   const full = "€".repeat(level);
   const empty = "€".repeat(4 - level);
   return (
     <span className="font-mono text-xs">
-      <span className="text-stone-800">{full}</span>
-      <span className="text-stone-300">{empty}</span>
+      <span className="text-[var(--c-ink)]">{full}</span>
+      <span className="text-[var(--c-n300)]">{empty}</span>
     </span>
   );
 }
@@ -99,7 +168,10 @@ function EditPanel({
   open,
   isNew,
   form,
+  pastReviews,
   onFormChange,
+  onReviewChange,
+  onCategoryChange,
   onPlaceSelect,
   onSave,
   onClose,
@@ -108,7 +180,10 @@ function EditPanel({
   open: boolean;
   isNew: boolean;
   form: FormData;
+  pastReviews: ReviewWithCategories[];
   onFormChange: (patch: Partial<FormData>) => void;
+  onReviewChange: (patch: Partial<ReviewFormData>) => void;
+  onCategoryChange: (category: ReviewCategory, patch: Partial<CategoryFormData>) => void;
   onPlaceSelect: (place: PlaceSelection) => void;
   onSave: () => void;
   onClose: () => void;
@@ -126,16 +201,16 @@ function EditPanel({
 
       {/* Panel */}
       <aside
-        className={`fixed inset-y-0 right-0 z-40 flex flex-col w-full max-w-lg bg-[#faf8f3] shadow-2xl transition-transform duration-300 ease-in-out ${open ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed inset-y-0 right-0 z-40 flex flex-col w-full max-w-lg bg-[var(--c-bg)] shadow-2xl transition-transform duration-300 ease-in-out ${open ? "translate-x-0" : "translate-x-full"}`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100">
-          <h2 className="font-serif text-lg font-semibold text-stone-900">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--c-n100)]">
+          <h2 className="font-serif text-lg font-semibold text-[var(--c-ink)]">
             {isNew ? "Add Restaurant" : "Edit Restaurant"}
           </h2>
           <button
             onClick={onClose}
-            className="text-stone-400 hover:text-stone-700 transition-colors"
+            className="text-[var(--c-n400)] hover:text-[var(--c-n700)] transition-colors"
             aria-label="Close"
           >
             <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
@@ -149,7 +224,7 @@ function EditPanel({
 
           {/* ── Google Places search ── */}
           <div>
-            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
               Find on Google Maps
             </label>
             <PlacesAutocomplete
@@ -158,12 +233,12 @@ function EditPanel({
               placeholder="Search establishment…"
             />
             {form.google_place_id && (
-              <div className="mt-2 flex items-center gap-2 text-xs text-stone-500">
-                <svg className="w-3.5 h-3.5 text-emerald-500 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              <div className="mt-2 flex items-center gap-2 text-xs text-[var(--c-n500)]">
+                <svg className="w-3.5 h-3.5 text-[var(--c-success)] shrink-0" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5z" clipRule="evenodd" />
                 </svg>
-                <span className="font-medium text-stone-700 truncate">{form.name}</span>
-                <span className="font-mono text-stone-400 truncate">{form.google_place_id}</span>
+                <span className="font-medium text-[var(--c-n700)] truncate">{form.name}</span>
+                <span className="font-mono text-[var(--c-n400)] truncate">{form.google_place_id}</span>
               </div>
             )}
           </div>
@@ -172,27 +247,27 @@ function EditPanel({
           {(form.lat !== null && form.lng !== null) && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Latitude</label>
-                <div className="rounded-lg border border-stone-100 bg-stone-50 px-3 py-2 text-sm font-mono text-stone-600">{form.lat?.toFixed(6)}</div>
+                <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1">Latitude</label>
+                <div className="rounded-lg border border-[var(--c-n100)] bg-[var(--c-n50)] px-3 py-2 text-sm font-mono text-[var(--c-n600)]">{form.lat?.toFixed(6)}</div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1">Longitude</label>
-                <div className="rounded-lg border border-stone-100 bg-stone-50 px-3 py-2 text-sm font-mono text-stone-600">{form.lng?.toFixed(6)}</div>
+                <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1">Longitude</label>
+                <div className="rounded-lg border border-[var(--c-n100)] bg-[var(--c-n50)] px-3 py-2 text-sm font-mono text-[var(--c-n600)]">{form.lng?.toFixed(6)}</div>
               </div>
             </div>
           )}
 
-          <hr className="border-stone-100" />
+          <hr className="border-[var(--c-n100)]" />
 
           {/* ── Cuisine ── */}
           <div>
-            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
               Cuisine
             </label>
             <select
               value={form.cuisine}
               onChange={(e) => onFormChange({ cuisine: e.target.value })}
-              className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400"
+              className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
             >
               <option value="">Select cuisine…</option>
               {CUISINES.map((c) => (
@@ -203,7 +278,7 @@ function EditPanel({
 
           {/* ── Price level ── */}
           <div>
-            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
               Price Level
             </label>
             <div className="flex gap-2">
@@ -214,8 +289,8 @@ function EditPanel({
                   onClick={() => onFormChange({ price_level: value })}
                   className={`flex-1 rounded-lg border py-2 text-sm font-mono transition-colors ${
                     form.price_level === value
-                      ? "border-amber-500 bg-amber-50 text-amber-800 font-semibold"
-                      : "border-stone-200 bg-white text-stone-600 hover:border-stone-300"
+                      ? "border-[var(--c-gold)] bg-[var(--c-gold-light)] text-[var(--c-ink)] font-semibold"
+                      : "border-[var(--c-n200)] bg-[var(--c-surface)] text-[var(--c-n600)] hover:border-[var(--c-n300)]"
                   }`}
                 >
                   {label}
@@ -224,75 +299,186 @@ function EditPanel({
             </div>
           </div>
 
-          {/* ── Spoon rating ── */}
+          {/* ── Sichtbarkeit (Entwurf/veröffentlicht) ── */}
           <div>
-            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
-              Spoon Rating
+            <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
+              Sichtbarkeit
             </label>
-            <div className="space-y-2">
+            <label className="flex items-center gap-2 rounded-lg border border-[var(--c-n200)] px-3 py-2.5 text-sm text-[var(--c-ink)] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.status === "draft"}
+                onChange={(e) =>
+                  onFormChange({ status: e.target.checked ? "draft" : "published" })
+                }
+                className="rounded border-[var(--c-n300)]"
+              />
+              Als Entwurf speichern (für Nutzer unsichtbar, bis veröffentlicht)
+            </label>
+          </div>
+
+          {/* ── Aktuelle Bewertung (aktuellster Aufenthalt) ── */}
+          <div>
+            <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
+              Aktuelle Bewertung
+            </label>
+
+            {!isNew && (
+              <label className="flex items-center gap-2 mb-3 text-xs text-[var(--c-n600)]">
+                <input
+                  type="checkbox"
+                  checked={form.review.asNewVisit}
+                  onChange={(e) =>
+                    onReviewChange({
+                      asNewVisit: e.target.checked,
+                      visited_at: e.target.checked ? todayISO() : form.review.visited_at,
+                    })
+                  }
+                  className="rounded border-[var(--c-n300)]"
+                />
+                Als neuen Aufenthalt speichern (bisherige Bewertung wird archiviert)
+              </label>
+            )}
+
+            <div className="mb-3">
+              <label className="block text-xs text-[var(--c-n500)] mb-1">Datum</label>
+              <input
+                type="date"
+                value={form.review.visited_at}
+                onChange={(e) => onReviewChange({ visited_at: e.target.value })}
+                className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2 text-sm text-[var(--c-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
+              />
+            </div>
+
+            <div className="space-y-2 mb-3">
               {SPOON_OPTIONS.map(({ value, emoji, label }) => (
                 <label
                   key={value}
                   className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
-                    form.spoon_rating === value
-                      ? "border-[#4a1520] bg-[#4a1520]/5"
-                      : "border-stone-200 bg-white hover:border-stone-300"
+                    form.review.spoon_rating === value
+                      ? "border-[var(--c-burg)] bg-[var(--c-burg)]/5"
+                      : "border-[var(--c-n200)] bg-[var(--c-surface)] hover:border-[var(--c-n300)]"
                   }`}
                 >
                   <input
                     type="radio"
                     name="spoon_rating"
                     value={value}
-                    checked={form.spoon_rating === value}
-                    onChange={() => onFormChange({ spoon_rating: value })}
+                    checked={form.review.spoon_rating === value}
+                    onChange={() => onReviewChange({ spoon_rating: value })}
                     className="sr-only"
                   />
                   <span className="text-lg">{emoji}</span>
                   <div>
-                    <p className={`text-sm font-medium ${form.spoon_rating === value ? "text-[#4a1520]" : "text-stone-800"}`}>
+                    <p className={`text-sm font-medium ${form.review.spoon_rating === value ? "text-[var(--c-burg)]" : "text-[var(--c-ink)]"}`}>
                       {label}
                     </p>
                   </div>
-                  {form.spoon_rating === value && (
-                    <svg className="ml-auto w-4 h-4 text-[#4a1520]" viewBox="0 0 20 20" fill="currentColor">
+                  {form.review.spoon_rating === value && (
+                    <svg className="ml-auto w-4 h-4 text-[var(--c-burg)]" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5z" clipRule="evenodd" />
                     </svg>
                   )}
                 </label>
               ))}
             </div>
-          </div>
 
-          {/* ── Official review ── */}
-          <div>
-            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
-              Editor&rsquo;s Review
-            </label>
             <textarea
-              value={form.official_review}
-              onChange={(e) => onFormChange({ official_review: e.target.value })}
+              value={form.review.fazit}
+              onChange={(e) => onReviewChange({ fazit: e.target.value })}
               rows={5}
-              placeholder="Write the official editorial review…"
-              className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 resize-none"
+              placeholder="Fazit dieses Aufenthalts…"
+              className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)] resize-none"
             />
-            <p className="mt-1 text-right text-xs text-stone-400">
-              {form.official_review.length} chars
+            <p className="mt-1 text-right text-xs text-[var(--c-n400)]">
+              {form.review.fazit.length} chars
             </p>
           </div>
+
+          <hr className="border-[var(--c-n100)]" />
+
+          {/* ── Kategorien (unabhängige, optionale Sektionen) ── */}
+          <div>
+            <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
+              Kategorien
+            </label>
+            <div className="space-y-3">
+              {REVIEW_CATEGORY_ORDER.map((category) => {
+                const cat = form.review.categories[category];
+                return (
+                  <div key={category} className="rounded-lg border border-[var(--c-n200)] p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-medium text-[var(--c-ink)]">
+                        {REVIEW_CATEGORY_LABELS[category]}
+                      </span>
+                      <RatingDots
+                        value={cat.rating}
+                        max={5}
+                        size={10}
+                        onChange={(v) => onCategoryChange(category, { rating: v })}
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={cat.heading}
+                      onChange={(e) => onCategoryChange(category, { heading: e.target.value })}
+                      placeholder={`Überschrift (optional, Standard: ${REVIEW_CATEGORY_LABELS[category]})`}
+                      className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
+                    />
+                    <textarea
+                      value={cat.body}
+                      onChange={(e) => onCategoryChange(category, { body: e.target.value })}
+                      rows={3}
+                      placeholder="Text zu dieser Kategorie… (leer lassen zum Ausblenden)"
+                      className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)] resize-none"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── Bisherige Aufenthalte (read-only) ── */}
+          {!isNew && pastReviews.length > 0 && (
+            <>
+              <hr className="border-[var(--c-n100)]" />
+              <div>
+                <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
+                  Bisherige Aufenthalte
+                </label>
+                <ul className="space-y-2">
+                  {pastReviews.map((rev) => (
+                    <li
+                      key={rev.id}
+                      className="rounded-lg border border-[var(--c-n100)] px-3 py-2 text-xs text-[var(--c-n500)]"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-[var(--c-n700)]">
+                          {new Date(rev.visited_at).toLocaleDateString("de-DE")}
+                        </span>
+                        <span>{SPOON_RATINGS[rev.spoon_rating].emoji}</span>
+                      </div>
+                      <p className="line-clamp-2">{rev.fazit || "—"}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-stone-100 flex gap-3">
+        <div className="px-6 py-4 border-t border-[var(--c-n100)] flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 rounded-lg border border-stone-200 bg-white py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
+            className="flex-1 rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] py-2.5 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)] transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onSave}
             disabled={saving || !form.name}
-            className="flex-1 rounded-lg bg-[#4a1520] py-2.5 text-sm font-medium text-white hover:bg-[#5e1c28] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {saving ? "Saving…" : isNew ? "Add Restaurant" : "Save Changes"}
           </button>
@@ -318,25 +504,25 @@ function DeleteModal({
   if (!restaurant) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-        <h3 className="font-serif text-lg font-semibold text-stone-900 mb-1">
+      <div className="w-full max-w-sm rounded-2xl bg-[var(--c-surface)] p-6 shadow-xl">
+        <h3 className="font-serif text-lg font-semibold text-[var(--c-ink)] mb-1">
           Delete restaurant?
         </h3>
-        <p className="text-sm text-stone-500 mb-5">
-          <span className="font-medium text-stone-700">{restaurant.name}</span> and all its
+        <p className="text-sm text-[var(--c-n500)] mb-5">
+          <span className="font-medium text-[var(--c-n700)]">{restaurant.name}</span> and all its
           comments will be permanently removed.
         </p>
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 rounded-lg border border-stone-200 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
+            className="flex-1 rounded-lg border border-[var(--c-n200)] py-2.5 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)]"
           >
             Keep it
           </button>
           <button
             onClick={onConfirm}
             disabled={deleting}
-            className="flex-1 rounded-lg bg-red-600 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            className="flex-1 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
             {deleting ? "Deleting…" : "Yes, delete"}
           </button>
@@ -346,26 +532,551 @@ function DeleteModal({
   );
 }
 
+// ── CSV import modal ──────────────────────────────────────────────────────────
+
+function ImportModal({
+  open,
+  step,
+  parsing,
+  importing,
+  rows,
+  selected,
+  onFileSelected,
+  onToggleRow,
+  onToggleAllNew,
+  onImport,
+  onClose,
+}: {
+  open: boolean;
+  step: "pick" | "preview";
+  parsing: boolean;
+  importing: boolean;
+  rows: CsvImportRow[];
+  selected: Set<number>;
+  onFileSelected: (file: File) => void;
+  onToggleRow: (row: number) => void;
+  onToggleAllNew: (checked: boolean) => void;
+  onImport: () => void;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+
+  const newRows = rows.filter((r) => r.match === "new");
+  const existingRows = rows.filter((r) => r.match === "existing");
+  const allNewSelected = newRows.length > 0 && newRows.every((r) => selected.has(r.row));
+  const selectedCount = newRows.filter((r) => selected.has(r.row)).length;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
+      <div className="w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl bg-[var(--c-surface)] shadow-xl">
+        <div className="px-6 py-4 border-b border-[var(--c-n100)]">
+          <h3 className="font-serif text-lg font-semibold text-[var(--c-ink)]">CSV-Import</h3>
+          <p className="text-xs text-[var(--c-n500)] mt-0.5">
+            Google-Takeout-Export einer „Gespeicherte Orte“-Liste (Spalten Title, URL)
+          </p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {step === "pick" && (
+            <div>
+              <label className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[var(--c-n200)] px-4 py-10 text-center cursor-pointer hover:border-[var(--c-gold)] transition-colors">
+                <span className="text-sm font-medium text-[var(--c-ink)]">
+                  {parsing ? "Wird analysiert…" : "CSV-Datei auswählen"}
+                </span>
+                <span className="text-xs text-[var(--c-n400)]">.csv aus Google Takeout</span>
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  disabled={parsing}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) onFileSelected(file);
+                    e.target.value = "";
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          )}
+
+          {step === "preview" && (
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">
+                    Neu ({newRows.length})
+                  </label>
+                  {newRows.length > 0 && (
+                    <button
+                      onClick={() => onToggleAllNew(!allNewSelected)}
+                      className="text-xs font-medium text-[var(--c-burg)] hover:opacity-80"
+                    >
+                      {allNewSelected ? "Alle abwählen" : "Alle auswählen"}
+                    </button>
+                  )}
+                </div>
+                {newRows.length === 0 ? (
+                  <p className="text-sm text-[var(--c-n400)]">Keine neuen Einträge gefunden.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {newRows.map((r) => (
+                      <li key={r.row}>
+                        <label className="flex items-center gap-2.5 rounded-lg border border-[var(--c-n200)] px-3 py-2 text-sm cursor-pointer hover:bg-[var(--c-n50)]">
+                          <input
+                            type="checkbox"
+                            checked={selected.has(r.row)}
+                            onChange={() => onToggleRow(r.row)}
+                            className="rounded border-[var(--c-n300)]"
+                          />
+                          <span className="flex-1 text-[var(--c-ink)] truncate">{r.name}</span>
+                          {!r.googlePlaceId && r.mapsUrl && (
+                            <a
+                              href={r.mapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs text-[var(--c-n400)] hover:text-[var(--c-burg)] shrink-0"
+                            >
+                              Maps ↗
+                            </a>
+                          )}
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {existingRows.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
+                    Bereits vorhanden ({existingRows.length})
+                  </label>
+                  <ul className="space-y-1.5">
+                    {existingRows.map((r) => (
+                      <li
+                        key={r.row}
+                        className="flex items-center gap-2.5 rounded-lg border border-[var(--c-n100)] px-3 py-2 text-sm text-[var(--c-n400)]"
+                      >
+                        <span className="flex-1 truncate">{r.name}</span>
+                        <span className="text-xs shrink-0">→ {r.existingName}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 py-4 border-t border-[var(--c-n100)] flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] py-2.5 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)] transition-colors"
+          >
+            {step === "preview" ? "Abbrechen" : "Schließen"}
+          </button>
+          {step === "preview" && (
+            <button
+              onClick={onImport}
+              disabled={importing || selectedCount === 0}
+              className="flex-1 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {importing ? "Importiere…" : `${selectedCount} als Entwurf importieren`}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main dashboard ────────────────────────────────────────────────────────────
+
+function PendingRegistrations({
+  profiles,
+  onDecision,
+  busyId,
+}: {
+  profiles: ProfileWithEmail[];
+  onDecision: (id: string, decision: "approve" | "reject") => void;
+  busyId: string | null;
+}) {
+  if (profiles.length === 0) return null;
+
+  return (
+    <div className="mb-6 rounded-xl border border-[var(--c-gold)]/30 bg-[var(--c-gold-light)]/60 overflow-hidden">
+      <div className="px-4 py-3 border-b border-[var(--c-gold)]/30">
+        <h2 className="text-sm font-semibold text-[var(--c-ink)]">
+          Registrierungen ausstehend
+        </h2>
+        <p className="text-xs text-[var(--c-n500)] mt-0.5">
+          {profiles.length} {profiles.length === 1 ? "Konto wartet" : "Konten warten"} auf Freischaltung
+        </p>
+      </div>
+      <ul className="divide-y divide-[var(--c-gold)]/20">
+        {profiles.map((p) => (
+          <li key={p.id} className="px-4 py-3 flex items-center gap-3">
+            <span className="font-medium text-[var(--c-ink)] text-sm">
+              {p.email ?? <span className="text-[var(--c-n400)] italic">unbekannte E-Mail</span>}
+            </span>
+            {p.username && (
+              <span className="text-xs text-[var(--c-n400)]">@{p.username}</span>
+            )}
+            <span className="text-xs text-[var(--c-n400)]">
+              seit {new Date(p.created_at).toLocaleDateString("de-DE")}
+            </span>
+            <div className="ml-auto flex items-center gap-1">
+              <button
+                onClick={() => onDecision(p.id, "approve")}
+                disabled={busyId === p.id}
+                className="rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-success)] hover:bg-[var(--c-success-light)] transition-colors disabled:opacity-50"
+              >
+                Freischalten
+              </button>
+              <button
+                onClick={() => onDecision(p.id, "reject")}
+                disabled={busyId === p.id}
+                className="rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-burg)] hover:bg-[var(--c-burg-light)] transition-colors disabled:opacity-50"
+              >
+                Ablehnen
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ── User management (promote/demote/delete) ───────────────────────────────────
+
+type UserActionKind = "promote" | "demote" | "delete";
+type UserAction = { profile: ProfileWithEmail; kind: UserActionKind };
+
+const ACTION_COPY: Record<UserActionKind, { title: string; body: string; confirmLabel: string }> = {
+  promote: {
+    title: "Zum Admin machen?",
+    body: "erhält vollen Admin-Zugriff: Restaurants verwalten, Bilder hochladen, Registrierungen freischalten und andere Nutzer verwalten.",
+    confirmLabel: "Zum Admin machen",
+  },
+  demote: {
+    title: "Admin-Status entfernen?",
+    body: "verliert den Zugriff auf das Admin-Dashboard sofort.",
+    confirmLabel: "Admin-Status entfernen",
+  },
+  delete: {
+    title: "Konto endgültig löschen?",
+    body: "wird zusammen mit allen Kommentaren unwiderruflich gelöscht. Das kann nicht rückgängig gemacht werden.",
+    confirmLabel: "Endgültig löschen",
+  },
+};
+
+function UserActionModal({
+  action,
+  step,
+  confirmText,
+  onConfirmTextChange,
+  onContinue,
+  onConfirm,
+  onCancel,
+  busy,
+}: {
+  action: UserAction | null;
+  step: 1 | 2;
+  confirmText: string;
+  onConfirmTextChange: (v: string) => void;
+  onContinue: () => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+  busy: boolean;
+}) {
+  if (!action) return null;
+  const copy = ACTION_COPY[action.kind];
+  const identifier = action.profile.email ?? action.profile.username ?? "dieses Konto";
+  const matches = confirmText.trim().toLowerCase() === identifier.toLowerCase();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
+      <div className="w-full max-w-sm rounded-2xl bg-[var(--c-surface)] p-6 shadow-xl">
+        <h3 className="font-serif text-lg font-semibold text-[var(--c-ink)] mb-1">
+          {copy.title}
+        </h3>
+
+        {step === 1 ? (
+          <>
+            <p className="text-sm text-[var(--c-n500)] mb-5">
+              <span className="font-medium text-[var(--c-n700)]">{identifier}</span> {copy.body}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={onCancel}
+                className="flex-1 rounded-lg border border-[var(--c-n200)] py-2.5 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)]"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={onContinue}
+                className="flex-1 rounded-lg py-2.5 text-sm font-medium text-white bg-[var(--c-burg)] hover:opacity-90"
+              >
+                Weiter
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-[var(--c-n500)] mb-3">
+              Letzte Bestätigung — bitte tippe <span className="font-mono font-medium text-[var(--c-n700)]">{identifier}</span> ein, um fortzufahren.
+            </p>
+            <input
+              autoFocus
+              type="text"
+              value={confirmText}
+              onChange={(e) => onConfirmTextChange(e.target.value)}
+              placeholder={identifier}
+              className="w-full mb-4 rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={onCancel}
+                className="flex-1 rounded-lg border border-[var(--c-n200)] py-2.5 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)]"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={onConfirm}
+                disabled={!matches || busy}
+                className="flex-1 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40"
+              >
+                {busy ? "Wird ausgeführt…" : copy.confirmLabel}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RoleBadge({ role }: { role: "user" | "admin" }) {
+  if (role !== "admin") return null;
+  return (
+    <span className="text-xs font-medium text-[var(--c-burg)] bg-[var(--c-burg)]/10 rounded px-1.5 py-0.5 uppercase tracking-wider">
+      Admin
+    </span>
+  );
+}
+
+function StatusBadge({ status }: { status: "pending" | "approved" | "rejected" }) {
+  const styles = {
+    pending: "text-[var(--c-gold)] bg-[var(--c-gold-light)]",
+    approved: "text-[var(--c-success)] bg-[var(--c-success-light)]",
+    rejected: "text-[var(--c-burg)] bg-[var(--c-burg-light)]",
+  } as const;
+  const labels = { pending: "Ausstehend", approved: "Freigeschaltet", rejected: "Abgelehnt" } as const;
+  return (
+    <span className={`text-xs font-medium rounded px-1.5 py-0.5 ${styles[status]}`}>
+      {labels[status]}
+    </span>
+  );
+}
+
+function UserManagement({
+  profiles,
+  currentUserId,
+  onAction,
+}: {
+  profiles: ProfileWithEmail[];
+  currentUserId: string;
+  onAction: (profile: ProfileWithEmail, kind: UserActionKind) => void;
+}) {
+  return (
+    <div className="mb-6 rounded-xl border border-[var(--c-n100)] bg-[var(--c-surface)] overflow-hidden">
+      <div className="px-4 py-3 border-b border-[var(--c-n100)]">
+        <h2 className="text-sm font-semibold text-[var(--c-ink)]">Nutzerverwaltung</h2>
+        <p className="text-xs text-[var(--c-n500)] mt-0.5">
+          {profiles.length} {profiles.length === 1 ? "Konto" : "Konten"} insgesamt
+        </p>
+      </div>
+      <ul className="divide-y divide-[var(--c-n50)]">
+        {profiles.map((p) => {
+          const isSelf = p.id === currentUserId;
+          const isPrimaryAdmin = p.email?.toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase();
+          return (
+            <li key={p.id} className="px-4 py-3 flex items-center gap-3">
+              <span className="font-medium text-[var(--c-ink)] text-sm">
+                {p.email ?? <span className="text-[var(--c-n400)] italic">unbekannte E-Mail</span>}
+              </span>
+              {p.username && <span className="text-xs text-[var(--c-n400)]">@{p.username}</span>}
+              <RoleBadge role={p.role} />
+              <StatusBadge status={p.status} />
+              {isSelf && (
+                <span className="text-xs text-[var(--c-n400)] italic">(du)</span>
+              )}
+              {isPrimaryAdmin && (
+                <span className="text-xs font-medium text-[var(--c-gold)] bg-[var(--c-gold-light)] rounded px-1.5 py-0.5 uppercase tracking-wider">
+                  Haupt-Admin
+                </span>
+              )}
+              <div className="ml-auto flex items-center gap-1">
+                {!isSelf && !isPrimaryAdmin && (
+                  <>
+                    {p.role === "admin" ? (
+                      <button
+                        onClick={() => onAction(p, "demote")}
+                        className="rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-n600)] hover:bg-[var(--c-n100)] transition-colors"
+                      >
+                        Admin-Status entfernen
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => onAction(p, "promote")}
+                        className="rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-n600)] hover:bg-[var(--c-n100)] transition-colors"
+                      >
+                        Zum Admin machen
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onAction(p, "delete")}
+                      className="rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-burg)] hover:bg-[var(--c-burg-light)] transition-colors"
+                    >
+                      Löschen
+                    </button>
+                  </>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
 
 export function AdminDashboard({
   initialRestaurants,
+  initialPendingProfiles,
+  initialAllProfiles,
+  currentUserId,
 }: {
   initialRestaurants: Restaurant[];
+  initialPendingProfiles: ProfileWithEmail[];
+  initialAllProfiles: ProfileWithEmail[];
+  currentUserId: string;
 }) {
   const [restaurants, setRestaurants] = useState(initialRestaurants);
   const [query, setQuery] = useState("");
+  const [draftOnly, setDraftOnly] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [isNew, setIsNew] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm());
+  const [currentReviewId, setCurrentReviewId] = useState<string | null>(null);
+  const [pastReviews, setPastReviews] = useState<ReviewWithCategories[]>([]);
+  const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Restaurant | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importStep, setImportStep] = useState<"pick" | "preview">("pick");
+  const [importParsing, setImportParsing] = useState(false);
+  const [importImporting, setImportImporting] = useState(false);
+  const [importRows, setImportRows] = useState<CsvImportRow[]>([]);
+  const [importSelected, setImportSelected] = useState<Set<number>>(new Set());
   const [isPending, startTransition] = useTransition();
+  const [pendingProfiles, setPendingProfiles] = useState(initialPendingProfiles);
+  const [decisionBusyId, setDecisionBusyId] = useState<string | null>(null);
+
+  function handleRegistrationDecision(id: string, decision: "approve" | "reject") {
+    setDecisionBusyId(id);
+    startTransition(async () => {
+      try {
+        if (decision === "approve") {
+          await approveProfile(id);
+          showToast("Konto freigeschaltet");
+        } else {
+          await rejectProfile(id);
+          showToast("Konto abgelehnt");
+        }
+        setPendingProfiles((prev) => prev.filter((p) => p.id !== id));
+      } catch (err) {
+        showToast((err as Error).message);
+      } finally {
+        setDecisionBusyId(null);
+      }
+    });
+  }
+
+  // ── User management (promote/demote/delete, double confirmation) ───────────
+  const [allProfiles, setAllProfiles] = useState(initialAllProfiles);
+  const [userAction, setUserAction] = useState<UserAction | null>(null);
+  const [userActionStep, setUserActionStep] = useState<1 | 2>(1);
+  const [userActionConfirmText, setUserActionConfirmText] = useState("");
+  const [userActionBusy, setUserActionBusy] = useState(false);
+
+  function openUserAction(profile: ProfileWithEmail, kind: UserActionKind) {
+    setUserAction({ profile, kind });
+    setUserActionStep(1);
+    setUserActionConfirmText("");
+  }
+
+  function closeUserAction() {
+    setUserAction(null);
+    setUserActionStep(1);
+    setUserActionConfirmText("");
+  }
+
+  function confirmUserAction() {
+    if (!userAction) return;
+    const { profile, kind } = userAction;
+    setUserActionBusy(true);
+    startTransition(async () => {
+      try {
+        if (kind === "promote") {
+          await promoteToAdmin(profile.id);
+          setAllProfiles((prev) => prev.map((p) => (p.id === profile.id ? { ...p, role: "admin" } : p)));
+          showToast("Zum Admin gemacht");
+        } else if (kind === "demote") {
+          await demoteFromAdmin(profile.id);
+          setAllProfiles((prev) => prev.map((p) => (p.id === profile.id ? { ...p, role: "user" } : p)));
+          showToast("Admin-Status entfernt");
+        } else {
+          await deleteUserAccount(profile.id);
+          setAllProfiles((prev) => prev.filter((p) => p.id !== profile.id));
+          setPendingProfiles((prev) => prev.filter((p) => p.id !== profile.id));
+          showToast("Konto gelöscht");
+        }
+        closeUserAction();
+      } catch (err) {
+        showToast((err as Error).message);
+      } finally {
+        setUserActionBusy(false);
+      }
+    });
+  }
 
   const patchForm = useCallback((patch: Partial<FormData>) => {
     setForm((prev) => ({ ...prev, ...patch }));
   }, []);
+
+  const patchReview = useCallback((patch: Partial<ReviewFormData>) => {
+    setForm((prev) => ({ ...prev, review: { ...prev.review, ...patch } }));
+  }, []);
+
+  const patchCategory = useCallback(
+    (category: ReviewCategory, patch: Partial<CategoryFormData>) => {
+      setForm((prev) => ({
+        ...prev,
+        review: {
+          ...prev.review,
+          categories: {
+            ...prev.review.categories,
+            [category]: { ...prev.review.categories[category], ...patch },
+          },
+        },
+      }));
+    },
+    []
+  );
 
   const handlePlaceSelect = useCallback((place: PlaceSelection) => {
     patchForm({
@@ -379,15 +1090,28 @@ export function AdminDashboard({
   function openNew() {
     setIsNew(true);
     setEditingId(null);
+    setCurrentReviewId(null);
+    setPastReviews([]);
     setForm(emptyForm());
     setPanelOpen(true);
   }
 
-  function openEdit(r: Restaurant) {
-    setIsNew(false);
-    setEditingId(r.id);
-    setForm(formFromRestaurant(r));
-    setPanelOpen(true);
+  async function openEdit(r: Restaurant) {
+    setLoadingEditId(r.id);
+    try {
+      const full = await getRestaurantById(r.id);
+      const [latest, ...past] = full.reviews;
+      setIsNew(false);
+      setEditingId(r.id);
+      setCurrentReviewId(latest?.id ?? null);
+      setPastReviews(past);
+      setForm(formFromRestaurant(r, latest ?? null));
+      setPanelOpen(true);
+    } catch (err) {
+      showToast((err as Error).message);
+    } finally {
+      setLoadingEditId(null);
+    }
   }
 
   function closePanel() {
@@ -400,27 +1124,42 @@ export function AdminDashboard({
   }
 
   function handleSave() {
-    const payload = {
+    const restaurantPayload = {
       name: form.name,
       google_place_id: form.google_place_id || null,
       lat: form.lat,
       lng: form.lng,
       cuisine: form.cuisine || null,
       price_level: form.price_level,
-      spoon_rating: form.spoon_rating,
-      official_review: form.official_review || null,
+      status: form.status,
+    };
+
+    const reviewPayload: ReviewPayload = {
+      visited_at: form.review.visited_at,
+      spoon_rating: form.review.spoon_rating,
+      fazit: form.review.fazit,
+      categories: form.review.categories,
     };
 
     startTransition(async () => {
       try {
         if (isNew) {
-          const created = await createRestaurant(payload);
+          const created = await createRestaurant(restaurantPayload, reviewPayload);
           setRestaurants((prev) => [created, ...prev]);
           showToast("Restaurant added");
         } else if (editingId) {
-          const updated = await updateRestaurant(editingId, payload);
+          const updated = await updateRestaurant(editingId, restaurantPayload);
+          if (form.review.asNewVisit) {
+            await createReview(editingId, reviewPayload);
+          } else if (currentReviewId) {
+            await updateReview(currentReviewId, editingId, reviewPayload);
+          } else {
+            await createReview(editingId, reviewPayload);
+          }
           setRestaurants((prev) =>
-            prev.map((r) => (r.id === updated.id ? updated : r))
+            prev.map((r) =>
+              r.id === updated.id ? { ...updated, spoon_rating: reviewPayload.spoon_rating } : r
+            )
           );
           showToast("Changes saved");
         }
@@ -446,53 +1185,131 @@ export function AdminDashboard({
     });
   }
 
-  const filtered = restaurants.filter(
-    (r) =>
-      r.name.toLowerCase().includes(query.toLowerCase()) ||
-      (r.cuisine ?? "").toLowerCase().includes(query.toLowerCase())
-  );
+  function openImport() {
+    setImportOpen(true);
+    setImportStep("pick");
+    setImportRows([]);
+    setImportSelected(new Set());
+  }
+
+  function closeImport() {
+    setImportOpen(false);
+  }
+
+  function handleImportFile(file: File) {
+    setImportParsing(true);
+    startTransition(async () => {
+      try {
+        const text = await file.text();
+        const rows = await previewCsvImport(text);
+        setImportRows(rows);
+        setImportSelected(new Set(rows.filter((r) => r.match === "new").map((r) => r.row)));
+        setImportStep("preview");
+      } catch (err) {
+        showToast((err as Error).message);
+      } finally {
+        setImportParsing(false);
+      }
+    });
+  }
+
+  function toggleImportRow(row: number) {
+    setImportSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(row)) next.delete(row);
+      else next.add(row);
+      return next;
+    });
+  }
+
+  function toggleAllImportNew(checked: boolean) {
+    setImportSelected(
+      checked ? new Set(importRows.filter((r) => r.match === "new").map((r) => r.row)) : new Set()
+    );
+  }
+
+  function handleConfirmImport() {
+    const selection = importRows
+      .filter((r) => r.match === "new" && importSelected.has(r.row))
+      .map((r) => ({ name: r.name, googlePlaceId: r.googlePlaceId }));
+
+    setImportImporting(true);
+    startTransition(async () => {
+      try {
+        const inserted = await confirmCsvImport(selection);
+        setRestaurants((prev) => [...inserted, ...prev]);
+        showToast(`${inserted.length} Restaurants als Entwurf importiert`);
+        closeImport();
+      } catch (err) {
+        showToast((err as Error).message);
+      } finally {
+        setImportImporting(false);
+      }
+    });
+  }
+
+  const filtered = restaurants
+    .filter((r) => !draftOnly || r.status === "draft")
+    .filter(
+      (r) =>
+        r.name.toLowerCase().includes(query.toLowerCase()) ||
+        (r.cuisine ?? "").toLowerCase().includes(query.toLowerCase())
+    );
 
   return (
     <APIProvider
       apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!}
       libraries={["places"]}
     >
-      <div className="min-h-screen bg-[#faf8f3]">
+      <div className="min-h-screen bg-[var(--c-bg)]">
         {/* ── Header ── */}
-        <header className="sticky top-0 z-20 border-b border-stone-100 bg-[#faf8f3]/95 backdrop-blur-sm">
+        <header className="sticky top-0 z-20 border-b border-[var(--c-n100)] bg-[var(--c-bg)]/95 backdrop-blur-sm">
           <div className="mx-auto max-w-6xl px-6 h-14 flex items-center gap-4">
-            <span className="font-serif text-lg font-semibold text-stone-900">
-              Guide <span style={{ color: "#4a1520" }}>Philippe</span>
+            <span className="font-serif text-lg font-semibold text-[var(--c-ink)]">
+              Guide <span className="text-[var(--c-burg)]">Philippe</span>
             </span>
-            <span className="text-xs font-medium text-stone-400 border border-stone-200 rounded px-1.5 py-0.5 uppercase tracking-wider">
+            <span className="text-xs font-medium text-[var(--c-n400)] border border-[var(--c-n200)] rounded px-1.5 py-0.5 uppercase tracking-wider">
               Admin
             </span>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-3">
               <Link
                 href="/"
-                className="text-xs text-stone-500 hover:text-stone-800 transition-colors"
+                className="text-xs text-[var(--c-n500)] hover:text-[var(--c-ink)] transition-colors"
               >
                 ← Public site
               </Link>
+              <ThemeToggle />
             </div>
           </div>
         </header>
 
         {/* ── Page content ── */}
         <main className="mx-auto max-w-6xl px-6 py-8">
+          <PendingRegistrations
+            profiles={pendingProfiles}
+            onDecision={handleRegistrationDecision}
+            busyId={decisionBusyId}
+          />
+
+          <UserManagement
+            profiles={allProfiles}
+            currentUserId={currentUserId}
+            onAction={openUserAction}
+          />
+
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
             <div>
-              <h1 className="font-serif text-2xl font-semibold text-stone-900">
+              <h1 className="font-serif text-2xl font-semibold text-[var(--c-ink)]">
                 Restaurants
               </h1>
-              <p className="text-sm text-stone-500 mt-0.5">
+              <p className="text-sm text-[var(--c-n500)] mt-0.5">
                 {restaurants.length} {restaurants.length === 1 ? "entry" : "entries"}
               </p>
             </div>
             <div className="sm:ml-auto flex gap-2">
               {/* Search */}
               <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--c-n400)]" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9z" clipRule="evenodd" />
                 </svg>
                 <input
@@ -500,12 +1317,28 @@ export function AdminDashboard({
                   placeholder="Search…"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="rounded-lg border border-stone-200 bg-white pl-8 pr-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-400/40 w-48"
+                  className="rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] pl-8 pr-3 py-2 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 w-48"
                 />
               </div>
               <button
+                onClick={() => setDraftOnly((v) => !v)}
+                className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                  draftOnly
+                    ? "border-[var(--c-gold)] bg-[var(--c-gold-light)] text-[var(--c-ink)]"
+                    : "border-[var(--c-n200)] bg-[var(--c-surface)] text-[var(--c-n600)] hover:bg-[var(--c-n50)]"
+                }`}
+              >
+                Nur Entwürfe
+              </button>
+              <button
+                onClick={openImport}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-4 py-2 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)] transition-colors"
+              >
+                CSV-Import
+              </button>
+              <button
                 onClick={openNew}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#4a1520] px-4 py-2 text-sm font-medium text-white hover:bg-[#5e1c28] transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--c-burg)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-colors"
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                   <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5z" />
@@ -516,33 +1349,38 @@ export function AdminDashboard({
           </div>
 
           {/* ── Table ── */}
-          <div className="rounded-xl border border-stone-100 bg-white overflow-hidden">
+          <div className="rounded-xl border border-[var(--c-n100)] bg-[var(--c-surface)] overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-stone-100 text-left">
-                  <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Name</th>
-                  <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider hidden md:table-cell">Cuisine</th>
-                  <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Price</th>
-                  <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Rating</th>
-                  <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider hidden lg:table-cell">Place ID</th>
+                <tr className="border-b border-[var(--c-n100)] text-left">
+                  <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">Name</th>
+                  <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider hidden md:table-cell">Cuisine</th>
+                  <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">Price</th>
+                  <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">Rating</th>
+                  <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider hidden lg:table-cell">Place ID</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-50">
+              <tbody className="divide-y divide-[var(--c-n50)]">
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-stone-400">
+                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-[var(--c-n400)]">
                       {query ? "No restaurants match your search." : "No restaurants yet. Add one!"}
                     </td>
                   </tr>
                 )}
                 {filtered.map((r) => (
-                  <tr key={r.id} className="hover:bg-stone-50/60 transition-colors group">
+                  <tr key={r.id} className="hover:bg-[var(--c-n50)]/60 transition-colors group">
                     <td className="px-4 py-3">
-                      <span className="font-medium text-stone-900">{r.name}</span>
+                      <span className="font-medium text-[var(--c-ink)]">{r.name}</span>
+                      {r.status === "draft" && (
+                        <span className="ml-2 text-xs font-medium text-[var(--c-gold)] bg-[var(--c-gold-light)] rounded px-1.5 py-0.5 uppercase tracking-wider align-middle">
+                          Entwurf
+                        </span>
+                      )}
                     </td>
-                    <td className="px-4 py-3 text-stone-500 hidden md:table-cell">
-                      {r.cuisine ?? <span className="text-stone-300">—</span>}
+                    <td className="px-4 py-3 text-[var(--c-n500)] hidden md:table-cell">
+                      {r.cuisine ?? <span className="text-[var(--c-n300)]">—</span>}
                     </td>
                     <td className="px-4 py-3">
                       <PriceBadge level={r.price_level} />
@@ -552,11 +1390,11 @@ export function AdminDashboard({
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell">
                       {r.google_place_id ? (
-                        <span className="font-mono text-xs text-stone-400 truncate max-w-[160px] block">
+                        <span className="font-mono text-xs text-[var(--c-n400)] truncate max-w-[160px] block">
                           {r.google_place_id}
                         </span>
                       ) : (
-                        <span className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded px-1.5 py-0.5">
+                        <span className="text-xs text-[var(--c-gold)] bg-[var(--c-gold-light)] border border-[var(--c-gold)]/30 rounded px-1.5 py-0.5">
                           No place ID
                         </span>
                       )}
@@ -565,13 +1403,14 @@ export function AdminDashboard({
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => openEdit(r)}
-                          className="rounded px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100 transition-colors"
+                          disabled={loadingEditId === r.id}
+                          className="rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-n600)] hover:bg-[var(--c-n100)] transition-colors disabled:opacity-50"
                         >
-                          Edit
+                          {loadingEditId === r.id ? "…" : "Edit"}
                         </button>
                         <button
                           onClick={() => setDeleteTarget(r)}
-                          className="rounded px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                          className="rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-burg)] hover:bg-[var(--c-burg-light)] transition-colors"
                         >
                           Delete
                         </button>
@@ -589,7 +1428,10 @@ export function AdminDashboard({
           open={panelOpen}
           isNew={isNew}
           form={form}
+          pastReviews={pastReviews}
           onFormChange={patchForm}
+          onReviewChange={patchReview}
+          onCategoryChange={patchCategory}
           onPlaceSelect={handlePlaceSelect}
           onSave={handleSave}
           onClose={closePanel}
@@ -604,10 +1446,37 @@ export function AdminDashboard({
           deleting={isPending}
         />
 
+        {/* ── CSV import modal ── */}
+        <ImportModal
+          open={importOpen}
+          step={importStep}
+          parsing={importParsing}
+          importing={importImporting}
+          rows={importRows}
+          selected={importSelected}
+          onFileSelected={handleImportFile}
+          onToggleRow={toggleImportRow}
+          onToggleAllNew={toggleAllImportNew}
+          onImport={handleConfirmImport}
+          onClose={closeImport}
+        />
+
+        {/* ── User action modal (promote/demote/delete, double confirmation) ── */}
+        <UserActionModal
+          action={userAction}
+          step={userActionStep}
+          confirmText={userActionConfirmText}
+          onConfirmTextChange={setUserActionConfirmText}
+          onContinue={() => setUserActionStep(2)}
+          onConfirm={confirmUserAction}
+          onCancel={closeUserAction}
+          busy={userActionBusy}
+        />
+
         {/* ── Toast ── */}
         {toast && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-stone-900 text-white text-sm font-medium shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
-            <svg className="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 20 20" fill="currentColor">
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-[var(--c-ink)] text-[var(--c-bg)] text-sm font-medium shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+            <svg className="w-3.5 h-3.5 text-[var(--c-success)]" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5z" clipRule="evenodd" />
             </svg>
             {toast}

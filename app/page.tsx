@@ -1,8 +1,6 @@
-import { Suspense } from "react";
-import { getRestaurants } from "@/app/actions/restaurants";
+import { getRestaurants, getCuisines } from "@/app/actions/restaurants";
 import RestaurantCard from "@/components/RestaurantCard";
-import FilterBar from "@/components/FilterBar";
-import { LocationSearch } from "@/components/LocationSearch";
+import { HeroSearch } from "@/components/HeroSearch";
 import { SearchResultsView } from "@/components/SearchResultsView";
 import type { RestaurantFilters } from "@/app/actions/restaurants";
 import type { PriceLevel, SpoonRating } from "@/types/database";
@@ -11,9 +9,9 @@ export const metadata = { title: "Guide Philippe" };
 
 type SearchParams = {
   q?: string;
-  cuisine?: string;
-  price_level?: string;
-  spoon_rating?: string;
+  cuisine?: string | string[];
+  price_level?: string | string[];
+  spoon_rating?: string | string[];
   location?: string;
   lat?: string;
   lng?: string;
@@ -22,6 +20,11 @@ type SearchParams = {
   sw_lat?: string;
   sw_lng?: string;
 };
+
+function toArray(v?: string | string[]): string[] {
+  if (v === undefined) return [];
+  return Array.isArray(v) ? v : [v];
+}
 
 export default async function Page({
   searchParams,
@@ -36,13 +39,15 @@ export default async function Page({
     params.sw_lat && params.sw_lng
   );
 
+  const cuisineFilters = toArray(params.cuisine);
+  const priceLevelFilters = toArray(params.price_level).map(Number) as PriceLevel[];
+  const spoonRatingFilters = toArray(params.spoon_rating).map(Number) as SpoonRating[];
+
   const filters: RestaurantFilters = {};
   if (params.q) filters.name_search = params.q;
-  if (params.cuisine) filters.cuisine = params.cuisine;
-  if (params.price_level) filters.price_level = Number(params.price_level) as PriceLevel;
-  if (params.spoon_rating !== undefined && params.spoon_rating !== "") {
-    filters.spoon_rating = Number(params.spoon_rating) as SpoonRating;
-  }
+  if (cuisineFilters.length) filters.cuisine = cuisineFilters;
+  if (priceLevelFilters.length) filters.price_level = priceLevelFilters;
+  if (spoonRatingFilters.length) filters.spoon_rating = spoonRatingFilters;
   if (isLocationSearch) {
     filters.bounds = {
       sw_lat: Number(params.sw_lat),
@@ -52,7 +57,10 @@ export default async function Page({
     };
   }
 
-  const restaurants = await getRestaurants(filters);
+  const [restaurants, cuisines] = await Promise.all([
+    getRestaurants(filters),
+    getCuisines(),
+  ]);
 
   // ── Location search mode: split list + map ────────────────────────────────
   if (isLocationSearch) {
@@ -62,19 +70,15 @@ export default async function Page({
       ne_lat: params.ne_lat!, ne_lng: params.ne_lng!,
       sw_lat: params.sw_lat!, sw_lng: params.sw_lng!,
     };
-    const cuisines = Array.from(
-      new Set(restaurants.map((r) => r.cuisine).filter(Boolean) as string[])
-    ).sort();
     return (
       <SearchResultsView
         restaurants={restaurants}
         center={{ lat: Number(params.lat), lng: Number(params.lng) }}
         locationParams={locationParams}
         activeFilters={{
-          price_level:  params.price_level ? Number(params.price_level) : undefined,
-          spoon_rating: params.spoon_rating !== undefined && params.spoon_rating !== ""
-            ? Number(params.spoon_rating) : undefined,
-          cuisine: params.cuisine,
+          price_level:  priceLevelFilters,
+          spoon_rating: spoonRatingFilters,
+          cuisine:      cuisineFilters,
         }}
         cuisines={cuisines}
       />
@@ -82,11 +86,9 @@ export default async function Page({
   }
 
   // ── Normal mode: hero + grid ──────────────────────────────────────────────
-  const cuisines = Array.from(
-    new Set(restaurants.map((r) => r.cuisine).filter(Boolean) as string[])
-  ).sort();
-
-  const hasFilters = params.q || params.cuisine || params.price_level || params.spoon_rating !== undefined;
+  const hasFilters = !!(
+    params.q || cuisineFilters.length || priceLevelFilters.length || spoonRatingFilters.length
+  );
   const restaurantHints = restaurants.map((r) => ({ id: r.id, name: r.name, cuisine: r.cuisine }));
 
   return (
@@ -184,26 +186,9 @@ export default async function Page({
             An honest, curated guide to exceptional dining.
           </p>
 
-          {/* Location search bar — position+zIndex ensures its dropdown stacking context
-              paints above the FilterBar's own stacking context (both created by fadeUp animation) */}
-          <div
-            style={{
-              maxWidth: 560,
-              margin: "0 auto 28px",
-              animation: "fadeUp 0.8s var(--ease) 0.35s both",
-              position: "relative",
-              zIndex: 10,
-            }}
-          >
-            <LocationSearch size="large" restaurants={restaurantHints} />
-          </div>
-
-          {/* Filter chips */}
-          <div style={{ animation: "fadeUp 0.8s var(--ease) 0.45s both", position: "relative", zIndex: 1 }}>
-            <Suspense>
-              <FilterBar cuisines={cuisines} />
-            </Suspense>
-          </div>
+          {/* Location search + filter chips: filters are staged locally and only
+              take effect once "Suchen" is pressed (see HeroSearch) */}
+          <HeroSearch cuisines={cuisines} restaurantHints={restaurantHints} />
         </div>
       </section>
 

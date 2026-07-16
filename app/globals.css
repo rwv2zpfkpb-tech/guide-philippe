@@ -14,6 +14,8 @@
   --c-gold-mid:     oklch(72%  0.050 74);
   --c-burg:         oklch(31%  0.080 17);
   --c-burg-light:   oklch(93%  0.016 17);
+  --c-success:      oklch(38%  0.090 145);
+  --c-success-light: oklch(93% 0.035 145);
   --c-n50:   oklch(95.5% 0.006 78);
   --c-n100:  oklch(92%   0.007 78);
   --c-n200:  oklch(86%   0.008 78);
@@ -53,6 +55,8 @@
     --c-gold-mid:    oklch(56% 0.050 74);
     --c-burg:        oklch(57% 0.080 17);
     --c-burg-light:  oklch(20% 0.030 17);
+    --c-success:       oklch(72% 0.090 145);
+    --c-success-light: oklch(22% 0.045 145);
     --c-n50:         oklch(16% 0.018 30);
     --c-n100:        oklch(22% 0.018 30);
     --c-n200:        oklch(30% 0.014 35);
@@ -81,6 +85,8 @@
   --c-gold-mid:    oklch(56% 0.050 74);
   --c-burg:        oklch(57% 0.080 17);
   --c-burg-light:  oklch(20% 0.030 17);
+  --c-success:       oklch(72% 0.090 145);
+  --c-success-light: oklch(22% 0.045 145);
   --c-n50:         oklch(16% 0.018 30);
   --c-n100:        oklch(22% 0.018 30);
   --c-n200:        oklch(30% 0.014 35);
@@ -108,6 +114,8 @@
   --c-gold-mid:    oklch(72%  0.050 74);
   --c-burg:        oklch(31%  0.080 17);
   --c-burg-light:  oklch(93%  0.016 17);
+  --c-success:       oklch(38%  0.090 145);
+  --c-success-light: oklch(93% 0.035 145);
   --c-n50:   oklch(95.5% 0.006 78);
   --c-n100:  oklch(92%   0.007 78);
   --c-n200:  oklch(86%   0.008 78);
@@ -183,6 +191,22 @@ gmp-placeautocomplete::part(input) {
   box-shadow: var(--s-lg);
   transform: translateY(-4px);
   border-top-color: var(--c-burg) !important;
+}
+
+.filter-chip:hover {
+  border-color: var(--c-burg) !important;
+  transform: translateY(-1px);
+}
+.filter-chip:active {
+  transform: scale(0.92);
+}
+.filter-chip.is-active {
+  animation: chipPop 0.32s var(--ease);
+}
+@keyframes chipPop {
+  0%   { transform: scale(0.88); }
+  55%  { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 
 @keyframes fadeUp {

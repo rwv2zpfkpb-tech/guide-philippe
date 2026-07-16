@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { getPendingProfiles, getAllProfiles } from "@/app/actions/profiles";
 import { AdminDashboard } from "./AdminDashboard";
 
 export const metadata = { title: "Admin — Guide Philippe" };
@@ -27,5 +28,15 @@ export default async function AdminDashboardPage() {
     .select("*")
     .order("created_at", { ascending: false });
 
-  return <AdminDashboard initialRestaurants={restaurants ?? []} />;
+  const pendingProfiles = await getPendingProfiles();
+  const allProfiles = await getAllProfiles();
+
+  return (
+    <AdminDashboard
+      initialRestaurants={restaurants ?? []}
+      initialPendingProfiles={pendingProfiles}
+      initialAllProfiles={allProfiles}
+      currentUserId={user.id}
+    />
+  );
 }

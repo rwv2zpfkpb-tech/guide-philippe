@@ -34,3 +34,22 @@ export async function requireAdmin(): Promise<AuthResult> {
 
   return { user, supabase };
 }
+
+// Throws if the caller is not authenticated AND approved by an admin.
+// RLS already enforces this on writes (see comments: approved insert) —
+// this just gives callers a clean error message instead of a raw RLS 403.
+export async function requireApproved(): Promise<AuthResult> {
+  const { user, supabase } = await requireAuth();
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("status")
+    .eq("id", user.id)
+    .single();
+
+  if (error || profile?.status !== "approved") {
+    throw new Error("Account not yet approved");
+  }
+
+  return { user, supabase };
+}

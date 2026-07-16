@@ -6,24 +6,44 @@ import { useRouter } from "next/navigation";
 
 export type RestaurantHint = { id: string; name: string; cuisine: string | null };
 
+export type SearchFilters = {
+  cuisine: string[];
+  price_level: number[];
+  spoon_rating: number[];
+};
+
 type Prediction = {
   placeId: string;
   mainText: string;
   secondaryText: string;
 };
 
+// Large variant: picking a suggestion only fills the field — it's remembered
+// here and only resolved/navigated-to once the user explicitly presses "Suchen".
+type PendingSelection =
+  | { type: "place"; placeId: string; text: string }
+  | { type: "restaurant"; name: string };
+
 type Props = {
   defaultValue?: string;
   size?: "large" | "compact";
   restaurants?: RestaurantHint[];
+  filters?: SearchFilters;
 };
+
+function appendFilters(p: URLSearchParams, filters: SearchFilters) {
+  filters.cuisine.forEach((c) => p.append("cuisine", c));
+  filters.price_level.forEach((v) => p.append("price_level", String(v)));
+  filters.spoon_rating.forEach((v) => p.append("spoon_rating", String(v)));
+}
 
 function navigateToLocation(
   router: ReturnType<typeof useRouter>,
   lat: number,
   lng: number,
   name: string,
-  viewport: google.maps.LatLngBounds | null | undefined
+  viewport: google.maps.LatLngBounds | null | undefined,
+  filters: SearchFilters
 ) {
   const p = new URLSearchParams({
     location: name,
@@ -34,13 +54,15 @@ function navigateToLocation(
     sw_lat: String(viewport ? viewport.getSouthWest().lat() : lat - 0.5),
     sw_lng: String(viewport ? viewport.getSouthWest().lng() : lng - 0.5),
   });
+  appendFilters(p, filters);
   router.push(`/?${p.toString()}`);
 }
 
 const NO_PREDICTIONS: Prediction[] = [];
 const NO_RESTAURANT_MATCHES: RestaurantHint[] = [];
+const NO_FILTERS: SearchFilters = { cuisine: [], price_level: [], spoon_rating: [] };
 
-function LocationSearchInput({ defaultValue = "", size = "large", restaurants = [] }: Props) {
+function LocationSearchInput({ defaultValue = "", size = "large", restaurants = [], filters = NO_FILTERS }: Props) {
   const [value, setValue] = useState(defaultValue);
   const [rawPredictions, setRawPredictions] = useState<Prediction[]>([]);
   // Derived rather than cleared via setState in the effect below — avoids a
@@ -48,6 +70,7 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
   const predictions = value.length >= 2 ? rawPredictions : NO_PREDICTIONS;
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [pendingSelection, setPendingSelection] = useState<PendingSelection | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef     = useRef<HTMLInputElement>(null);
@@ -111,7 +134,8 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
           place.location.lat(),
           place.location.lng(),
           place.formattedAddress ?? fallbackName,
-          place.viewport
+          place.viewport,
+          filters
         );
       } catch {
         // fallback: geocode by text
@@ -119,11 +143,11 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
         geocoder.geocode({ address: fallbackName }, (results, status) => {
           if (status !== "OK" || !results?.[0]) return;
           const loc = results[0].geometry.location;
-          navigateToLocation(router, loc.lat(), loc.lng(), results[0].formatted_address, results[0].geometry.viewport);
+          navigateToLocation(router, loc.lat(), loc.lng(), results[0].formatted_address, results[0].geometry.viewport, filters);
         });
       }
     },
-    [router]
+    [router, filters]
   );
 
   const submitText = useCallback(
@@ -143,25 +167,55 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
           router,
           loc.lat(), loc.lng(),
           results[0].formatted_address,
-          results[0].geometry.viewport
+          results[0].geometry.viewport,
+          filters
         );
       });
     },
-    [predictions, resolvePlace, router]
+    [predictions, resolvePlace, router, filters]
   );
 
+  // Large variant: selecting a suggestion only fills the field + remembers the
+  // pick — navigation happens exclusively via handleSearch ("Suchen" click).
+  // Compact variant (no visible button, used for in-map refinement) keeps the
+  // previous immediate-navigate behavior.
   const selectItem = useCallback(
     (index: number) => {
       setOpen(false);
       if (index < restaurantMatches.length) {
-        router.push(`/?q=${encodeURIComponent(restaurantMatches[index].name)}`);
+        const name = restaurantMatches[index].name;
+        if (isCompact) {
+          router.push(`/?q=${encodeURIComponent(name)}`);
+        } else {
+          setValue(name);
+          setPendingSelection({ type: "restaurant", name });
+        }
       } else {
         const pred = predictions[index - restaurantMatches.length];
-        resolvePlace(pred.placeId, pred.mainText);
+        if (isCompact) {
+          resolvePlace(pred.placeId, pred.mainText);
+        } else {
+          setValue(pred.mainText);
+          setPendingSelection({ type: "place", placeId: pred.placeId, text: pred.mainText });
+        }
       }
     },
-    [restaurantMatches, predictions, resolvePlace, router]
+    [restaurantMatches, predictions, resolvePlace, router, isCompact]
   );
+
+  const handleSearch = useCallback(() => {
+    if (pendingSelection?.type === "restaurant") {
+      const p = new URLSearchParams({ q: pendingSelection.name });
+      appendFilters(p, filters);
+      router.push(`/?${p.toString()}`);
+      return;
+    }
+    if (pendingSelection?.type === "place") {
+      resolvePlace(pendingSelection.placeId, pendingSelection.text);
+      return;
+    }
+    submitText(value);
+  }, [pendingSelection, resolvePlace, submitText, value, filters, router]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
@@ -177,10 +231,12 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
       e.preventDefault();
       if (activeIndex >= 0) {
         selectItem(activeIndex);
-      } else {
+      } else if (isCompact) {
         submitText(value);
         setOpen(false);
       }
+      // Large variant: plain Enter with nothing highlighted does nothing —
+      // the user must press "Suchen" explicitly.
     }
   };
 
@@ -239,7 +295,7 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
           ref={inputRef}
           type="text"
           value={value}
-          onChange={(e) => { setValue(e.target.value); setOpen(true); setActiveIndex(-1); }}
+          onChange={(e) => { setValue(e.target.value); setOpen(true); setActiveIndex(-1); setPendingSelection(null); }}
           onFocus={() => { if (value.length >= 2) setOpen(true); }}
           onKeyDown={handleKeyDown}
           placeholder={
@@ -265,7 +321,7 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
         {!isCompact && (
           <button
             type="button"
-            onClick={() => { submitText(value); setOpen(false); }}
+            onClick={() => { handleSearch(); setOpen(false); }}
             style={{
               flexShrink: 0,
               fontSize: "0.875rem", fontWeight: 500, letterSpacing: "0.03em",

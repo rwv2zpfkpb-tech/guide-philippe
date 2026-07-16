@@ -79,11 +79,11 @@ export function PlacesAutocomplete({
       input.placeholder     = placeholder;
       input.autocomplete    = "off";
       input.className       = [
-        "w-full rounded-lg border border-stone-200 bg-white",
-        "pl-9 pr-3 py-2.5 text-sm text-stone-900",
-        "placeholder:text-stone-400",
-        "focus:outline-none focus:ring-2 focus:ring-amber-400/40",
-        "focus:border-amber-400 transition-colors",
+        "w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)]",
+        "pl-9 pr-3 py-2.5 text-sm text-[var(--c-ink)]",
+        "placeholder:text-[var(--c-n400)]",
+        "focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40",
+        "focus:border-[var(--c-gold)] transition-colors",
       ].join(" ");
       containerRef.current.appendChild(input);
 
@@ -118,7 +118,7 @@ export function PlacesAutocomplete({
     <div className="relative">
       {/* Google Maps pin icon */}
       <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center z-10">
-        <svg className="h-4 w-4 text-stone-400" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <svg className="h-4 w-4 text-[var(--c-n400)]" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
           <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
         </svg>
       </div>

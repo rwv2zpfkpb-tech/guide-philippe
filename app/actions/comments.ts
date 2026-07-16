@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAuth, requireAdmin } from "@/utils/supabase/auth-helpers";
+import { requireAuth, requireApproved, requireAdmin } from "@/utils/supabase/auth-helpers";
 import { createClient } from "@/utils/supabase/server";
 import type { Comment } from "@/types/database";
 
@@ -10,13 +10,15 @@ import type { Comment } from "@/types/database";
 export async function addComment(
   restaurantId: string,
   content: string,
-  secondaryRating: number // 1–5
+  secondaryRating: number // 0–5
 ): Promise<Comment> {
-  const { user } = await requireAuth();
+  const { user } = await requireApproved();
 
-  if (!content.trim()) throw new Error("Comment content cannot be empty");
-  if (secondaryRating < 1 || secondaryRating > 5) {
-    throw new Error("Secondary rating must be between 1 and 5");
+  const trimmed = content.trim();
+  if (!trimmed) throw new Error("Comment content cannot be empty");
+  if (trimmed.length > 150) throw new Error("Comment content must be 150 characters or fewer");
+  if (secondaryRating < 0 || secondaryRating > 5) {
+    throw new Error("Secondary rating must be between 0 and 5");
   }
 
   const supabase = await createClient();
@@ -26,7 +28,7 @@ export async function addComment(
     .insert({
       restaurant_id: restaurantId,
       user_id: user.id,
-      content: content.trim(),
+      content: trimmed,
       secondary_rating: secondaryRating,
     })
     .select()
@@ -48,13 +50,18 @@ export async function updateComment(
 ): Promise<Comment> {
   await requireAuth();
 
-  if (!content.trim()) throw new Error("Comment content cannot be empty");
+  const trimmed = content.trim();
+  if (!trimmed) throw new Error("Comment content cannot be empty");
+  if (trimmed.length > 150) throw new Error("Comment content must be 150 characters or fewer");
+  if (secondaryRating < 0 || secondaryRating > 5) {
+    throw new Error("Secondary rating must be between 0 and 5");
+  }
 
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("comments")
-    .update({ content: content.trim(), secondary_rating: secondaryRating })
+    .update({ content: trimmed, secondary_rating: secondaryRating })
     .eq("id", commentId)
     .select()
     .single();

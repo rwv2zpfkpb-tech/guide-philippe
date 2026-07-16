@@ -1,8 +1,29 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-// Refreshes the Supabase session on every request so that
-// Server Components always see an up-to-date auth state.
+// Routes reachable without being logged in / approved.
+// - /login, /auth/confirm: the auth flow itself
+// - /pending: screen shown to logged-in-but-not-yet-approved accounts
+// - /api/auth/email: Supabase's Send Email Hook calls this server-to-server
+//   (no user session) — redirecting it to /login would break every auth mail.
+const PUBLIC_PATHS = ["/login", "/auth/confirm", "/pending", "/api/auth/email"];
+
+function isPublicPath(pathname: string) {
+  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+function redirectTo(request: NextRequest, path: string, cookieSource: NextResponse) {
+  const url = request.nextUrl.clone();
+  url.pathname = path;
+  url.search = "";
+  const response = NextResponse.redirect(url);
+  cookieSource.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
+  return response;
+}
+
+// Refreshes the Supabase session on every request and gates access:
+// visitors are redirected to /login, logged-in accounts that aren't
+// yet approved by an admin are redirected to /pending.
 export const updateSession = async (request: NextRequest) => {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -29,7 +50,26 @@ export const updateSession = async (request: NextRequest) => {
 
   // IMPORTANT: calling getUser() is what triggers the token refresh.
   // Do not remove this line.
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+  if (isPublicPath(pathname)) {
+    return supabaseResponse;
+  }
+
+  if (!user) {
+    return redirectTo(request, "/login", supabaseResponse);
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("status")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.status !== "approved") {
+    return redirectTo(request, "/pending", supabaseResponse);
+  }
 
   return supabaseResponse;
 };

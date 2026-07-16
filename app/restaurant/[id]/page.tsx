@@ -4,9 +4,98 @@ import { getRestaurantById } from "@/app/actions/restaurants";
 import { getPlaceDetails } from "@/app/actions/places";
 import { deleteComment } from "@/app/actions/comments";
 import { createClient } from "@/utils/supabase/server";
-import { SPOON_RATINGS } from "@/lib/ratings";
+import {
+  SPOON_RATINGS,
+  REVIEW_CATEGORY_ORDER,
+  REVIEW_CATEGORY_LABELS,
+  computeAverageRating,
+} from "@/lib/ratings";
 import { PriceLevelDots } from "@/components/PriceLevelDots";
+import { RatingDots } from "@/components/RatingDots";
+import { StarRating } from "@/components/StarRating";
+import type { ReviewWithCategories, RestaurantReviewCategory } from "@/types/database";
 import CommentForm from "./CommentForm";
+
+// ── Fazit + Kategorie-Blöcke eines einzelnen Aufenthalts ───────────────────────
+// Wiederverwendet für den aktuellen Aufenthalt und jeden Eintrag in "Vorherige
+// Aufenthalte" (dort innerhalb eines <details>-Elements).
+function ReviewContent({ review }: { review: ReviewWithCategories }) {
+  const categories = REVIEW_CATEGORY_ORDER
+    .map((cat) => review.categories.find((c) => c.category === cat))
+    .filter((c): c is RestaurantReviewCategory => !!c?.body?.trim());
+
+  return (
+    <div>
+      {review.fazit && (
+        <article style={{ marginBottom: categories.length ? 36 : 0 }}>
+          <div
+            style={{
+              fontFamily: "var(--font-cormorant)",
+              fontSize: "clamp(1.5rem, 2.5vw, 2rem)",
+              fontWeight: 500,
+              lineHeight: 1.15,
+              letterSpacing: "-0.01em",
+              color: "var(--c-ink)",
+              marginBottom: 16,
+            }}
+          >
+            {review.fazit.split(".")[0]}.
+          </div>
+          <p style={{ fontSize: "1rem", lineHeight: 1.75, color: "var(--c-ink)" }}>
+            {review.fazit}
+          </p>
+        </article>
+      )}
+
+      {categories.length > 0 && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 18,
+          }}
+        >
+          {categories.map((c) => (
+            <div
+              key={c.id}
+              style={{
+                border: "1px solid var(--c-n100)",
+                borderRadius: 14,
+                padding: "20px 22px",
+                background: "var(--c-surface)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  marginBottom: 12,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "0.8125rem",
+                    fontWeight: 600,
+                    letterSpacing: "0.02em",
+                    color: "var(--c-ink)",
+                  }}
+                >
+                  {c.heading?.trim() || REVIEW_CATEGORY_LABELS[c.category]}
+                </span>
+                <RatingDots value={c.rating} max={5} size={7} />
+              </div>
+              <p style={{ fontSize: "0.875rem", lineHeight: 1.65, color: "var(--c-n600)" }}>
+                {c.body}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default async function RestaurantPage({
   params,
@@ -33,6 +122,9 @@ export default async function RestaurantPage({
 
   const spoon = SPOON_RATINGS[restaurant.spoon_rating];
   const firstPhoto = placeDetails?.photoUris?.[0] ?? null;
+
+  const [currentReview, ...pastReviews] = restaurant.reviews;
+  const averageRating = computeAverageRating(restaurant.comments.map((c) => c.secondary_rating));
 
   return (
     <>
@@ -97,7 +189,7 @@ export default async function RestaurantPage({
             </div>
           )}
 
-          {/* Additional photos strip */}
+          {/* Additional photos strip — insgesamt genau 3 Google-Fotos (Hero + 2) */}
           {placeDetails && placeDetails.photoUris.length > 1 && (
             <div
               style={{
@@ -108,7 +200,7 @@ export default async function RestaurantPage({
                 gap: 6,
               }}
             >
-              {placeDetails.photoUris.slice(1, 4).map((uri, i) => (
+              {placeDetails.photoUris.slice(1, 3).map((uri, i) => (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={i}
@@ -257,22 +349,7 @@ export default async function RestaurantPage({
               }}
             >
               <div style={{ fontSize: "2.75rem", lineHeight: 1 }}>{spoon.emoji}</div>
-              <div style={{ display: "flex", gap: 7 }}>
-                {[0, 1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background:
-                        i <= restaurant.spoon_rating
-                          ? "var(--c-gold)"
-                          : "var(--c-n200)",
-                    }}
-                  />
-                ))}
-              </div>
+              <RatingDots value={restaurant.spoon_rating} max={3} size={8} />
               <div
                 style={{
                   fontSize: 10,
@@ -337,15 +414,15 @@ export default async function RestaurantPage({
           </div>
         )}
 
-        {/* Editorial review */}
-        {restaurant.official_review && (
+        {/* Editorial review — aktuellster Aufenthalt */}
+        {currentReview && (currentReview.fazit || currentReview.categories.length > 0) && (
           <article style={{ padding: "64px 0 56px" }}>
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 14,
-                marginBottom: 22,
+                marginBottom: 28,
                 fontSize: 10,
                 fontWeight: 500,
                 letterSpacing: "0.22em",
@@ -362,30 +439,73 @@ export default async function RestaurantPage({
               />
             </div>
 
+            <ReviewContent review={currentReview} />
+          </article>
+        )}
+
+        {/* Vorherige Aufenthalte — ausklappbar, vor den Nutzerbewertungen */}
+        {pastReviews.length > 0 && (
+          <section style={{ padding: "0 0 56px" }} aria-label="Vorherige Aufenthalte">
             <div
               style={{
-                fontFamily: "var(--font-cormorant)",
-                fontSize: "clamp(1.75rem, 3vw, 2.625rem)",
+                fontSize: 10,
                 fontWeight: 500,
-                lineHeight: 1.08,
-                letterSpacing: "-0.01em",
-                color: "var(--c-ink)",
-                marginBottom: 32,
+                letterSpacing: "0.22em",
+                textTransform: "uppercase",
+                color: "var(--c-n400)",
+                marginBottom: 18,
               }}
             >
-              {restaurant.official_review.split(".")[0]}.
+              Vorherige Aufenthalte
             </div>
 
-            <p
-              style={{
-                fontSize: "1.0625rem",
-                lineHeight: 1.78,
-                color: "var(--c-ink)",
-              }}
-            >
-              {restaurant.official_review}
-            </p>
-          </article>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {pastReviews.map((rev) => {
+                const revSpoon = SPOON_RATINGS[rev.spoon_rating];
+                return (
+                  <details
+                    key={rev.id}
+                    style={{
+                      border: "1px solid var(--c-n100)",
+                      borderRadius: 14,
+                      padding: "18px 22px",
+                      background: "white",
+                    }}
+                  >
+                    <summary
+                      style={{
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        fontSize: "0.9375rem",
+                        fontWeight: 500,
+                        color: "var(--c-ink)",
+                      }}
+                    >
+                      Vorheriger Aufenthalt am{" "}
+                      {new Date(rev.visited_at).toLocaleDateString("de-DE")}
+                      <span style={{ fontSize: "1.1rem" }}>{revSpoon.emoji}</span>
+                      <span
+                        style={{
+                          fontSize: "0.6875rem",
+                          fontWeight: 600,
+                          color: "var(--c-gold)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                        }}
+                      >
+                        {revSpoon.labelShort}
+                      </span>
+                    </summary>
+                    <div style={{ marginTop: 22 }}>
+                      <ReviewContent review={rev} />
+                    </div>
+                  </details>
+                );
+              })}
+            </div>
+          </section>
         )}
 
         {/* Comments ornament */}
@@ -438,19 +558,24 @@ export default async function RestaurantPage({
               display: "flex",
               alignItems: "baseline",
               justifyContent: "space-between",
+              gap: 16,
+              flexWrap: "wrap",
               marginBottom: 28,
             }}
           >
-            <h2
-              style={{
-                fontFamily: "var(--font-cormorant)",
-                fontSize: "2rem",
-                fontWeight: 500,
-                color: "var(--c-ink)",
-              }}
-            >
-              Reader Experiences
-            </h2>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 20, flexWrap: "wrap" }}>
+              <h2
+                style={{
+                  fontFamily: "var(--font-cormorant)",
+                  fontSize: "2rem",
+                  fontWeight: 500,
+                  color: "var(--c-ink)",
+                }}
+              >
+                Reader Experiences
+              </h2>
+              <StarRating average={averageRating} />
+            </div>
             <span style={{ fontSize: "0.8125rem", color: "var(--c-n400)" }}>
               {restaurant.comments.length}{" "}
               {restaurant.comments.length === 1 ? "Rezension" : "Rezensionen"}

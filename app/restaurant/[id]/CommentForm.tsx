@@ -3,7 +3,16 @@
 import { useTransition, useRef, useState } from "react";
 import { addComment } from "@/app/actions/comments";
 
-const STAR_LABELS = ["", "Schlecht", "Unterdurchschnittlich", "Gut", "Sehr gut", "Ausgezeichnet"];
+const STAR_LABELS = [
+  "Nicht empfehlenswert",
+  "Schlecht",
+  "Unterdurchschnittlich",
+  "Gut",
+  "Sehr gut",
+  "Ausgezeichnet",
+];
+
+const MAX_LENGTH = 150;
 
 interface CommentFormProps {
   restaurantId: string;
@@ -11,21 +20,23 @@ interface CommentFormProps {
 
 export default function CommentForm({ restaurantId }: CommentFormProps) {
   const [isPending, startTransition] = useTransition();
-  const [rating, setRating] = useState(0);
-  const [hover, setHover] = useState(0);
+  const [rating, setRating] = useState<number | null>(null);
+  const [hover, setHover] = useState<number | null>(null);
+  const [content, setContent] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
+
+  const active = hover ?? rating;
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = e.currentTarget;
-    const content = (form.elements.namedItem("content") as HTMLTextAreaElement).value.trim();
-
-    if (!content || !rating) return;
+    const trimmed = content.trim();
+    if (!trimmed || rating === null) return;
 
     startTransition(async () => {
-      await addComment(restaurantId, content, rating);
+      await addComment(restaurantId, trimmed, rating);
       formRef.current?.reset();
-      setRating(0);
+      setContent("");
+      setRating(null);
     });
   }
 
@@ -42,7 +53,7 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
         boxShadow: "var(--s-sm)",
       }}
     >
-      {/* Star rating */}
+      {/* Star rating (0–5) */}
       <div
         style={{
           display: "flex",
@@ -51,23 +62,52 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
           marginBottom: 16,
         }}
       >
+        <button
+          type="button"
+          onClick={() => setRating(0)}
+          onMouseEnter={() => setHover(0)}
+          onMouseLeave={() => setHover(null)}
+          style={{
+            fontSize: "0.6875rem",
+            fontWeight: 600,
+            lineHeight: 1,
+            background: "none",
+            border: `1.5px solid ${active === 0 ? "var(--c-gold)" : "var(--c-n200)"}`,
+            color: active === 0 ? "var(--c-gold)" : "var(--c-n400)",
+            borderRadius: "50%",
+            width: 22,
+            height: 22,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 0,
+            cursor: "pointer",
+            marginRight: 5,
+            transition: "color 0.1s, border-color 0.1s, transform 0.1s",
+            transform: active === 0 ? "scale(1.05)" : "scale(1)",
+          }}
+          aria-label="0 Sterne – nicht empfehlenswert"
+        >
+          0
+        </button>
+
         {[1, 2, 3, 4, 5].map((i) => (
           <button
             key={i}
             type="button"
             onClick={() => setRating(i)}
             onMouseEnter={() => setHover(i)}
-            onMouseLeave={() => setHover(0)}
+            onMouseLeave={() => setHover(null)}
             style={{
               fontSize: "1.375rem",
               lineHeight: 1,
               background: "none",
               border: "none",
-              color: i <= (hover || rating) ? "var(--c-gold)" : "var(--c-n200)",
+              color: active !== null && i <= active ? "var(--c-gold)" : "var(--c-n200)",
               padding: "2px 3px",
               cursor: "pointer",
               transition: "color 0.1s, transform 0.1s",
-              transform: i <= (hover || rating) ? "scale(1.05)" : "scale(1)",
+              transform: active !== null && i <= active ? "scale(1.05)" : "scale(1)",
             }}
             aria-label={`${i} Sterne`}
           >
@@ -77,13 +117,13 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
         <span
           style={{
             fontSize: "0.75rem",
-            color: rating ? "var(--c-gold)" : "var(--c-n400)",
+            color: rating !== null ? "var(--c-gold)" : "var(--c-n400)",
             marginLeft: 10,
             letterSpacing: "0.04em",
             transition: "color 0.15s",
           }}
         >
-          {rating ? STAR_LABELS[rating] : "Bewertung auswählen"}
+          {rating !== null ? STAR_LABELS[rating] : "Bewertung auswählen"}
         </span>
       </div>
 
@@ -92,6 +132,9 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
         name="content"
         required
         rows={4}
+        maxLength={MAX_LENGTH}
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
         placeholder="Teile deine Erfahrung — was ist aufgefallen, was hat überrascht, was würdest du einem Freund sagen…"
         style={{
           width: "100%",
@@ -117,6 +160,16 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
           e.target.style.boxShadow = "none";
         }}
       />
+      <p
+        style={{
+          marginTop: 6,
+          textAlign: "right",
+          fontSize: "0.6875rem",
+          color: "var(--c-n400)",
+        }}
+      >
+        {content.length}/{MAX_LENGTH}
+      </p>
 
       {/* Footer */}
       <div
@@ -125,7 +178,7 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
           alignItems: "center",
           justifyContent: "space-between",
           gap: 16,
-          marginTop: 16,
+          marginTop: 10,
         }}
       >
         <span
@@ -141,7 +194,7 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
         </span>
         <button
           type="submit"
-          disabled={isPending || !rating}
+          disabled={isPending || rating === null}
           style={{
             fontSize: "0.875rem",
             fontWeight: 500,
@@ -151,8 +204,8 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
             border: "none",
             background: "var(--c-ink)",
             color: "var(--c-bg)",
-            cursor: isPending || !rating ? "default" : "pointer",
-            opacity: isPending || !rating ? 0.45 : 1,
+            cursor: isPending || rating === null ? "default" : "pointer",
+            opacity: isPending || rating === null ? 0.45 : 1,
             transition: "background 0.2s, transform 0.2s, box-shadow 0.2s",
           }}
         >

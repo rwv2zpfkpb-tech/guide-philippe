@@ -12,9 +12,9 @@ import type { MapRestaurant } from "@/components/map/MapView";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type ActiveFilters = {
-  price_level?: number;
-  spoon_rating?: number;
-  cuisine?: string;
+  price_level: number[];
+  spoon_rating: number[];
+  cuisine: string[];
 };
 
 type LocationParams = {
@@ -117,6 +117,7 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
   return (
     <button
       onClick={onClick}
+      className={active ? "filter-chip is-active" : "filter-chip"}
       style={{
         fontSize: "0.75rem", fontWeight: 500, letterSpacing: "0.02em",
         padding: "6px 12px", borderRadius: 9999,
@@ -135,6 +136,7 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
 // ── Main component ────────────────────────────────────────────────────────────
 
 const PRICE_CHIPS = [
+  { value: 0, label: "Kostenlos" },
   { value: 1, label: "€" },
   { value: 2, label: "€€" },
   { value: 3, label: "€€€" },
@@ -160,54 +162,41 @@ export function SearchResultsView({
       spoon_rating: r.spoon_rating,
     }));
 
-  // Build a URL that keeps all location params + updates one filter
-  const buildUrl = (overrides: Partial<ActiveFilters & { clear: true }>) => {
-    const p = new URLSearchParams(locationParams);
-    if ("clear" in overrides) return `/?${p.toString()}`;
+  // Build a URL that keeps all location params + updates the given filter category
+  const buildUrl = (overrides: Partial<ActiveFilters>) => {
     const merged = { ...activeFilters, ...overrides };
-    if (merged.cuisine)      p.set("cuisine",      merged.cuisine);
-    if (merged.price_level)  p.set("price_level",  String(merged.price_level));
-    if (merged.spoon_rating !== undefined) p.set("spoon_rating", String(merged.spoon_rating));
+    const p = new URLSearchParams(locationParams);
+    merged.cuisine.forEach((c) => p.append("cuisine", c));
+    merged.price_level.forEach((v) => p.append("price_level", String(v)));
+    merged.spoon_rating.forEach((v) => p.append("spoon_rating", String(v)));
     return `/?${p.toString()}`;
   };
 
   const togglePrice = (v: number) => {
-    if (activeFilters.price_level === v) {
-      const p = new URLSearchParams(locationParams);
-      if (activeFilters.spoon_rating !== undefined) p.set("spoon_rating", String(activeFilters.spoon_rating));
-      if (activeFilters.cuisine)                    p.set("cuisine",      activeFilters.cuisine);
-      router.push(`/?${p.toString()}`);
-    } else {
-      router.push(buildUrl({ price_level: v }));
-    }
+    const next = activeFilters.price_level.includes(v)
+      ? activeFilters.price_level.filter((x) => x !== v)
+      : [...activeFilters.price_level, v];
+    router.push(buildUrl({ price_level: next }));
   };
 
   const toggleSpoon = (v: number) => {
-    if (activeFilters.spoon_rating === v) {
-      const p = new URLSearchParams(locationParams);
-      if (activeFilters.price_level) p.set("price_level", String(activeFilters.price_level));
-      if (activeFilters.cuisine)     p.set("cuisine",     activeFilters.cuisine);
-      router.push(`/?${p.toString()}`);
-    } else {
-      router.push(buildUrl({ spoon_rating: v }));
-    }
+    const next = activeFilters.spoon_rating.includes(v)
+      ? activeFilters.spoon_rating.filter((x) => x !== v)
+      : [...activeFilters.spoon_rating, v];
+    router.push(buildUrl({ spoon_rating: next }));
   };
 
   const toggleCuisine = (v: string) => {
-    if (activeFilters.cuisine === v) {
-      const p = new URLSearchParams(locationParams);
-      if (activeFilters.price_level)               p.set("price_level",  String(activeFilters.price_level));
-      if (activeFilters.spoon_rating !== undefined) p.set("spoon_rating", String(activeFilters.spoon_rating));
-      router.push(`/?${p.toString()}`);
-    } else {
-      router.push(buildUrl({ cuisine: v }));
-    }
+    const next = activeFilters.cuisine.includes(v)
+      ? activeFilters.cuisine.filter((x) => x !== v)
+      : [...activeFilters.cuisine, v];
+    router.push(buildUrl({ cuisine: next }));
   };
 
   const hasActiveFilters =
-    activeFilters.price_level !== undefined ||
-    activeFilters.spoon_rating !== undefined ||
-    activeFilters.cuisine;
+    activeFilters.price_level.length > 0 ||
+    activeFilters.spoon_rating.length > 0 ||
+    activeFilters.cuisine.length > 0;
 
   return (
     <>
@@ -286,7 +275,7 @@ export function SearchResultsView({
                 {cuisines.map((c) => (
                   <Chip
                     key={c} label={c}
-                    active={activeFilters.cuisine === c}
+                    active={activeFilters.cuisine.includes(c)}
                     onClick={() => toggleCuisine(c)}
                   />
                 ))}
@@ -306,7 +295,7 @@ export function SearchResultsView({
                   {PRICE_CHIPS.map((p) => (
                     <Chip
                       key={p.value} label={p.label}
-                      active={activeFilters.price_level === p.value}
+                      active={activeFilters.price_level.includes(p.value)}
                       onClick={() => togglePrice(p.value)}
                     />
                   ))}
@@ -323,7 +312,7 @@ export function SearchResultsView({
                   {SPOON_CHIPS.map((s) => (
                     <Chip
                       key={s.value} label={s.label}
-                      active={activeFilters.spoon_rating === s.value}
+                      active={activeFilters.spoon_rating.includes(s.value)}
                       onClick={() => toggleSpoon(s.value)}
                     />
                   ))}
