@@ -176,6 +176,7 @@ export default async function Page({
                 fontSize: "clamp(5.5rem, 12vw, 10.5rem)",
                 color: "var(--c-burg)",
                 lineHeight: 0.82,
+                paddingBottom: "0.09em",
               }}
             >
               Philippe

@@ -38,7 +38,7 @@ export function InstallPwaInstructions() {
     platform === "android" ? ["android", "ios"] : ["ios", "android"];
 
   return (
-    <section style={{ maxWidth: 1240, margin: "0 auto", padding: "8px 40px 72px" }}>
+    <section style={{ maxWidth: 1240, margin: "0 auto", padding: "8px clamp(16px, 4vw, 40px) 72px" }}>
       <div style={{ borderTop: "1px solid var(--c-n100)", paddingTop: 48 }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <h2
@@ -60,7 +60,7 @@ export function InstallPwaInstructions() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))",
             gap: 20,
             maxWidth: 760,
             margin: "0 auto",

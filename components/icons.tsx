@@ -9,14 +9,15 @@ type IconProps = { size?: number; className?: string };
 function Icon({
   size = 20,
   className,
+  fill = "none",
   children,
-}: IconProps & { children: React.ReactNode }) {
+}: IconProps & { children: React.ReactNode; fill?: string }) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={fill}
       stroke="currentColor"
       strokeWidth={1.6}
       strokeLinecap="round"

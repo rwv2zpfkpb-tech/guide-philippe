@@ -96,7 +96,7 @@
   {
     "featureType": "road.highway",
     "elementType": "geometry.stroke",
-    "stylers": [{ "color": "#b8952a" }, { "weight": 1.5 }]
+    "stylers": [{ "color": "#7a6530" }, { "weight": 0.4 }]
   },
   {
     "featureType": "road.highway",

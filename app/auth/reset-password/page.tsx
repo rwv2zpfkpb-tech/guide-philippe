@@ -22,6 +22,15 @@ export default async function ResetPasswordPage({
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     success = !error;
+    if (!success) {
+      // The PKCE code is single-use and may already have been consumed by a
+      // duplicate request (mail-link prescanning, a double tap, or a
+      // back-navigation reload landing on the same URL). If this browser
+      // already holds the session from that earlier successful exchange,
+      // let the user through instead of showing a false "invalid link" error.
+      const { data } = await supabase.auth.getUser();
+      success = !!data.user;
+    }
   }
 
   if (!success) {

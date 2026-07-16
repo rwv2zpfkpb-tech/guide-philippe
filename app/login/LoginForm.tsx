@@ -311,20 +311,6 @@ export default function LoginForm({ defaultTab }: { defaultTab: Tab }) {
         position: "relative",
       }}
     >
-      {/* Logo */}
-      <div
-        style={{
-          fontFamily: "var(--font-cormorant)",
-          fontSize: "1.25rem",
-          fontWeight: 700,
-          letterSpacing: "-0.025em",
-          color: "var(--c-ink)",
-          marginBottom: 8,
-        }}
-      >
-        Guide <span style={{ color: "var(--c-burg)" }}>Philippe</span>
-      </div>
-
       {/* Headline */}
       <div
         style={{
@@ -360,7 +346,7 @@ export default function LoginForm({ defaultTab }: { defaultTab: Tab }) {
               fontSize: "0.8125rem",
               fontWeight: 500,
               background: tab === t ? "var(--c-ink)" : "transparent",
-              color: tab === t ? "white" : "var(--c-n500)",
+              color: tab === t ? "var(--c-bg)" : "var(--c-n500)",
               border: "none",
               cursor: "pointer",
               transition: "background 0.2s, color 0.2s",

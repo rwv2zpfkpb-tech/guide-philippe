@@ -303,8 +303,8 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
             isCompact
               ? "Stadt oder Region…"
               : restaurants.length > 0
-                ? "Stadt, Region oder Restaurant…"
-                : "Stadt oder Region suchen…"
+                ? "Ort oder Restaurant…"
+                : "Ort oder Region…"
           }
           autoComplete="off"
           spellCheck={false}

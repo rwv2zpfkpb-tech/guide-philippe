@@ -39,13 +39,13 @@ export default async function Header() {
         style={{
           maxWidth: 1240,
           margin: "0 auto",
-          padding: "0 clamp(16px, 4vw, 40px)",
+          padding: "10px clamp(16px, 4vw, 40px)",
           minHeight: 64,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           flexWrap: "wrap",
-          rowGap: 6,
+          rowGap: 8,
         }}
       >
         <Link

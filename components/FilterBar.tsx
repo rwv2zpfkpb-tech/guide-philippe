@@ -79,7 +79,7 @@ function FilterRow({
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+    <div className="filter-row" style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
       <span style={rowLabel}>{label}</span>
       <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>{children}</div>
     </div>

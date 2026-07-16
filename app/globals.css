@@ -254,6 +254,21 @@ gmp-placeautocomplete::part(input) {
    stranded alone on its own otherwise-empty row (space-between has
    nothing to space it against). Stack + center it instead.
    ════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════
+   FILTER BAR — label + chip row
+   Label and chips share one flex row on wider screens; whether the
+   chips wrapped onto their own line used to depend on how many chips
+   a given category had (inconsistent). Below 640px always stack the
+   label above its chips so every category behaves the same way.
+   ════════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .filter-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+  }
+}
+
 @media (max-width: 640px) {
   .restaurant-hero-row {
     flex-direction: column;
