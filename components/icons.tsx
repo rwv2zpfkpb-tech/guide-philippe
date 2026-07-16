@@ -142,3 +142,25 @@ export function IconChevronDown(props: IconProps) {
     </Icon>
   );
 }
+
+// Used filled (fill="currentColor") for the "featured" toggle in the admin
+// table — outline-only would look identical on/off at a glance.
+export function IconStar(props: IconProps & { filled?: boolean }) {
+  const { filled, ...rest } = props;
+  return (
+    <Icon {...rest} {...(filled ? { fill: "currentColor" } : {})}>
+      <path d="m12 2.25 2.917 6.51 7.083.719-5.34 4.86 1.487 7.161L12 17.77l-6.147 3.73 1.487-7.16-5.34-4.86 7.083-.72L12 2.25Z" />
+    </Icon>
+  );
+}
+
+// Kebab menu trigger (Header user menu — sign out / change password).
+export function IconDotsVertical(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none" />
+    </Icon>
+  );
+}

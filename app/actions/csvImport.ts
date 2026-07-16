@@ -202,7 +202,12 @@ export async function confirmCsvImport(
       });
       if (reviewError) throw new Error(reviewError.message);
 
-      return restaurant;
+      // `restaurant` was fetched before the review insert above ran the
+      // sync_restaurant_spoon_rating trigger, so it still carries the
+      // pre-trigger default rating — patch it in-memory (same fix as
+      // createRestaurant in restaurants.ts) so the admin table shows the
+      // correct spoon emoji immediately instead of only after a refetch.
+      return { ...restaurant, spoon_rating: spoonRating };
     })
   );
 

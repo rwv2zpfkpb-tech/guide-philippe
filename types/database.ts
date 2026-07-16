@@ -73,6 +73,7 @@ export interface Database {
           price_level: PriceLevel | null
           spoon_rating: SpoonRating
           status: RestaurantStatus
+          featured: boolean
           created_at: string
         }
         Insert: {
@@ -89,6 +90,7 @@ export interface Database {
           price_level?: PriceLevel | null
           spoon_rating?: SpoonRating
           status?: RestaurantStatus
+          featured?: boolean
           created_at?: string
         }
         Update: {
@@ -105,6 +107,7 @@ export interface Database {
           price_level?: PriceLevel | null
           spoon_rating?: SpoonRating
           status?: RestaurantStatus
+          featured?: boolean
           created_at?: string
         }
         Relationships: []

@@ -9,6 +9,7 @@ import {
   deleteRestaurant,
   deleteRestaurants,
   getRestaurantById,
+  setFeatured,
 } from "@/app/actions/restaurants";
 import { getPlaceDetails } from "@/app/actions/places";
 import { createReview, updateReview, type ReviewPayload } from "@/app/actions/reviews";
@@ -27,7 +28,7 @@ import {
 } from "@/app/actions/profiles";
 import { PRIMARY_ADMIN_EMAIL } from "@/lib/admin";
 import { BackButton } from "@/components/BackButton";
-import { IconChevronDown } from "@/components/icons";
+import { IconChevronDown, IconStar } from "@/components/icons";
 import { PlacesAutocomplete, type PlaceSelection } from "@/components/admin/PlacesAutocomplete";
 import {
   SPOON_RATINGS,
@@ -1570,6 +1571,21 @@ export function AdminDashboard({
     });
   }
 
+  // Optimistic — flips the local row immediately, rolls back on error, rather
+  // than waiting on the round-trip before the star icon changes.
+  function handleToggleFeatured(r: Restaurant) {
+    const next = !r.featured;
+    setRestaurants((prev) => prev.map((x) => (x.id === r.id ? { ...x, featured: next } : x)));
+    startTransition(async () => {
+      try {
+        await setFeatured(r.id, next);
+      } catch (err) {
+        setRestaurants((prev) => prev.map((x) => (x.id === r.id ? { ...x, featured: !next } : x)));
+        showToast((err as Error).message);
+      }
+    });
+  }
+
   function openImport() {
     setImportOpen(true);
     setImportStep("pick");
@@ -1850,6 +1866,18 @@ export function AdminDashboard({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleToggleFeatured(r)}
+                          title={r.featured ? "Aus „Auswahl“ entfernen" : "Zur „Auswahl“ hinzufügen"}
+                          aria-pressed={r.featured}
+                          className={`rounded p-1.5 transition-colors ${
+                            r.featured
+                              ? "text-[var(--c-gold)] hover:bg-[var(--c-gold-light)]"
+                              : "text-[var(--c-n300)] hover:bg-[var(--c-n100)] hover:text-[var(--c-n500)]"
+                          }`}
+                        >
+                          <IconStar size={16} filled={r.featured} />
+                        </button>
                         <button
                           onClick={() => openEdit(r)}
                           disabled={loadingEditId === r.id}

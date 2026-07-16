@@ -48,6 +48,7 @@ export type RestaurantPayload = {
   cuisine?: string | null;
   price_level?: PriceLevel | null;
   status?: RestaurantStatus;
+  featured?: boolean;
 };
 
 // ── Read actions (no auth required) ──────────────────────────────────────────
@@ -97,6 +98,23 @@ export async function getRecentRestaurants(limit = 8): Promise<Restaurant[]> {
     .gte("created_at", cutoff.toISOString())
     .order("created_at", { ascending: false })
     .limit(limit);
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+// Handverlesene "Auswahl"-Reihe auf der Landing-Page — unabhängig von
+// "Neu hinzugefügt" (zeitbasiert), Admins schalten restaurants.featured
+// gezielt frei (s. setFeatured unten). RLS blendet Entwürfe für Nicht-Admins
+// bereits automatisch aus, kein explizites status-Filter nötig.
+export async function getFeaturedRestaurants(): Promise<Restaurant[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("restaurants")
+    .select("*")
+    .eq("featured", true)
+    .order("name", { ascending: true });
 
   if (error) throw new Error(error.message);
   return data ?? [];
@@ -193,6 +211,18 @@ export async function updateRestaurant(
   revalidatePath("/", "layout");
   revalidatePath(`/restaurant/${id}`);
   return data;
+}
+
+// Quick-Toggle für die Tabelle im Admin-Dashboard (Stern-Icon je Zeile) —
+// eigene Action statt über updateRestaurant, damit ein Klick nicht das
+// komplette Edit-Panel-Formular voraussetzt.
+export async function setFeatured(id: string, featured: boolean): Promise<void> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("restaurants").update({ featured }).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
 }
 
 export async function deleteRestaurant(id: string): Promise<void> {

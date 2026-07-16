@@ -1,4 +1,9 @@
-import { getRestaurants, getCuisines, getRecentRestaurants } from "@/app/actions/restaurants";
+import {
+  getRestaurants,
+  getCuisines,
+  getRecentRestaurants,
+  getFeaturedRestaurants,
+} from "@/app/actions/restaurants";
 import RestaurantCard from "@/components/RestaurantCard";
 import { HeroSearch } from "@/components/HeroSearch";
 import { SearchResultsView } from "@/components/SearchResultsView";
@@ -91,7 +96,10 @@ export default async function Page({
     params.q || cuisineFilters.length || priceLevelFilters.length || spoonRatingFilters.length
   );
   const restaurantHints = restaurants.map((r) => ({ id: r.id, name: r.name, cuisine: r.cuisine }));
-  const recentRestaurants = await getRecentRestaurants();
+  const [recentRestaurants, featuredRestaurants] = await Promise.all([
+    getRecentRestaurants(),
+    getFeaturedRestaurants(),
+  ]);
 
   return (
     <>
@@ -193,6 +201,35 @@ export default async function Page({
           <HeroSearch cuisines={cuisines} restaurantHints={restaurantHints} />
         </div>
       </section>
+
+      {/* ── AUSWAHL (redaktionell kuratiert, admin-gepflegt) ── */}
+      {featuredRestaurants.length > 0 && (
+        <section style={{ maxWidth: 1240, margin: "0 auto", padding: "8px 40px 0" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+            <h2
+              style={{
+                fontFamily: "var(--font-cormorant)",
+                fontSize: "1.5rem",
+                fontWeight: 600,
+                letterSpacing: "-0.01em",
+                color: "var(--c-ink)",
+              }}
+            >
+              Auswahl
+            </h2>
+            <span style={{ fontSize: 11, color: "var(--c-n400)", letterSpacing: "0.06em" }}>
+              Handverlesen von der Redaktion
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 12 }}>
+            {featuredRestaurants.map((r) => (
+              <div key={r.id} style={{ minWidth: 230, maxWidth: 230, flexShrink: 0 }}>
+                <RestaurantCard restaurant={r} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── RECENTLY ADDED (last 30 days) ─────────────────── */}
       {recentRestaurants.length > 0 && (

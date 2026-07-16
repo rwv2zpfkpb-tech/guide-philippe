@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
-import { signOut } from "@/app/actions/auth";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { ChangePasswordButton } from "@/components/ChangePasswordButton";
+import { UserMenu } from "@/components/UserMenu";
 
 export default async function Header() {
   const supabase = await createClient();
@@ -81,35 +80,9 @@ export default async function Header() {
             </Link>
           )}
           {user ? (
-            <>
-              <span
-                style={{
-                  fontSize: "0.8125rem",
-                  color: "var(--c-n500)",
-                  padding: "7px 4px",
-                }}
-              >
-                {profile?.username ?? user.email}
-              </span>
-              {user.email && <ChangePasswordButton email={user.email} />}
-              <form action={signOut}>
-                <button
-                  type="submit"
-                  style={{
-                    fontSize: "0.8125rem",
-                    fontWeight: 500,
-                    padding: "7px 18px",
-                    borderRadius: 6,
-                    border: "1px solid var(--c-n200)",
-                    background: "var(--c-surface)",
-                    color: "var(--c-ink)",
-                    cursor: "pointer",
-                  }}
-                >
-                  Abmelden
-                </button>
-              </form>
-            </>
+            user.email && (
+              <UserMenu email={user.email} label={profile?.username ?? user.email} />
+            )
           ) : (
             <Link
               href="/login"
