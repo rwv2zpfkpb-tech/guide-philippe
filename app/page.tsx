@@ -25,6 +25,7 @@ type SearchParams = {
   ne_lng?: string;
   sw_lat?: string;
   sw_lng?: string;
+  own_location?: string;
 };
 
 function toArray(v?: string | string[]): string[] {
@@ -87,6 +88,7 @@ export default async function Page({
           cuisine:      cuisineFilters,
         }}
         cuisines={cuisines}
+        ownLocation={params.own_location === "1"}
       />
     );
   }

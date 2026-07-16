@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import { useRouter } from "next/navigation";
-import { IconList } from "@/components/icons";
+import { IconList, IconLocate } from "@/components/icons";
 
 export type RestaurantHint = { id: string; name: string; cuisine: string | null };
 
@@ -44,17 +44,28 @@ function navigateToLocation(
   lng: number,
   name: string,
   viewport: google.maps.LatLngBounds | null | undefined,
-  filters: SearchFilters
+  filters: SearchFilters,
+  ownLocation = false
 ) {
+  // "Standort verwenden" resolves to a bare point (no viewport) — use a
+  // tighter fallback radius than the generic geocode-without-viewport
+  // fallback below, since the intent there is "restaurants near me" rather
+  // than "restaurants somewhere in this broad address' region".
+  const delta = ownLocation ? 0.06 : 0.5;
   const p = new URLSearchParams({
     location: name,
     lat:    String(lat),
     lng:    String(lng),
-    ne_lat: String(viewport ? viewport.getNorthEast().lat() : lat + 0.5),
-    ne_lng: String(viewport ? viewport.getNorthEast().lng() : lng + 0.5),
-    sw_lat: String(viewport ? viewport.getSouthWest().lat() : lat - 0.5),
-    sw_lng: String(viewport ? viewport.getSouthWest().lng() : lng - 0.5),
+    ne_lat: String(viewport ? viewport.getNorthEast().lat() : lat + delta),
+    ne_lng: String(viewport ? viewport.getNorthEast().lng() : lng + delta),
+    sw_lat: String(viewport ? viewport.getSouthWest().lat() : lat - delta),
+    sw_lng: String(viewport ? viewport.getSouthWest().lng() : lng - delta),
   });
+  // Marks this search as originating from the device's actual GPS position
+  // rather than a typed/selected place — read by app/page.tsx to pass a
+  // "myLocation" pin down to MapView and by SearchResultsView to default
+  // the sort control to "Entfernung".
+  if (ownLocation) p.set("own_location", "1");
   appendFilters(p, filters);
   router.push(`/?${p.toString()}`);
 }
@@ -78,6 +89,13 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
   // "Suchen" button (and compact-mode selections) look unresponsive for the
   // ~0.5-1s round trip.
   const [resolving, setResolving] = useState(false);
+
+  // "Standort verwenden" — geolocates the device via the browser API and
+  // searches from there directly. A reverse-geocode call still runs
+  // afterwards, but purely for a human-readable location label; navigation
+  // happens either way.
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef     = useRef<HTMLInputElement>(null);
@@ -189,6 +207,38 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
     },
     [predictions, resolvePlace, router, filters]
   );
+
+  const useMyLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocateError("Geolocation wird von diesem Browser nicht unterstützt.");
+      return;
+    }
+    setLocateError(null);
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        // Reverse-geocode purely for a human-readable label — falls back to
+        // a generic name if it fails, navigation happens either way.
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+          setLocating(false);
+          const name = status === "OK" && results?.[0] ? results[0].formatted_address : "Mein Standort";
+          navigateToLocation(router, lat, lng, name, null, filters, true);
+        });
+      },
+      (err) => {
+        setLocating(false);
+        setLocateError(
+          err.code === err.PERMISSION_DENIED
+            ? "Standortzugriff wurde verweigert."
+            : "Standort konnte nicht ermittelt werden."
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [router, filters]);
 
   // Large variant: selecting a suggestion only fills the field + remembers the
   // pick — navigation happens exclusively via handleSearch ("Suchen" click).
@@ -319,7 +369,7 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
           onChange={(e) => { setValue(e.target.value); setOpen(true); setActiveIndex(-1); setPendingSelection(null); }}
           onFocus={() => { if (value.length >= 2) setOpen(true); }}
           onKeyDown={handleKeyDown}
-          disabled={resolving}
+          disabled={resolving || locating}
           placeholder={
             isCompact
               ? "Stadt oder Region…"
@@ -336,16 +386,44 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
             fontFamily: "inherit",
             fontSize: isCompact ? "0.875rem" : "1rem",
             color: "var(--c-ink)",
-            opacity: resolving ? 0.6 : 1,
+            opacity: (resolving || locating) ? 0.6 : 1,
           }}
         />
+
+        {/* "Standort verwenden" — available in both variants; unlike the
+            Suchen button (large only) this acts immediately, there's
+            nothing to stage first. */}
+        <button
+          type="button"
+          onClick={useMyLocation}
+          disabled={locating || resolving}
+          aria-busy={locating}
+          aria-label="Meinen Standort verwenden"
+          title="Meinen Standort verwenden"
+          style={{
+            flexShrink: 0,
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            width: isCompact ? 30 : 34, height: isCompact ? 30 : 34,
+            borderRadius: "50%", border: "1px solid var(--c-n200)",
+            background: "var(--c-surface)", color: "var(--c-n500)",
+            cursor: locating ? "default" : "pointer",
+            opacity: locating ? 0.6 : 1,
+            fontFamily: "inherit",
+          }}
+        >
+          {locating ? (
+            <span className="gp-spinner-sm" aria-hidden />
+          ) : (
+            <IconLocate size={isCompact ? 14 : 16} />
+          )}
+        </button>
 
         {/* Search button (large only) */}
         {!isCompact && (
           <button
             type="button"
             onClick={() => { handleSearch(); setOpen(false); }}
-            disabled={resolving}
+            disabled={resolving || locating}
             aria-busy={resolving}
             style={{
               flexShrink: 0,
@@ -365,6 +443,12 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
           </button>
         )}
       </div>
+
+      {locateError && (
+        <p style={{ marginTop: 6, marginLeft: 4, fontSize: "0.75rem", color: "var(--c-burg)" }}>
+          {locateError}
+        </p>
+      )}
 
       {/* ── Dropdown ───────────────────────────────────────────────────── */}
       {showDropdown && (

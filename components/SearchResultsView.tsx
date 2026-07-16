@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MapView } from "@/components/map/MapView";
@@ -10,6 +10,7 @@ import { NavigateButton } from "@/components/NavigateButton";
 import { getPlaceDetails, type OpeningHours } from "@/app/actions/places";
 import { IconMap, IconList, IconChevronDown, IconClock } from "@/components/icons";
 import { SPOON_RATINGS, SPOON_RATING_COLORS, SPOON_RATING_ORDER } from "@/lib/ratings";
+import { haversineDistanceKm } from "@/lib/geo";
 import type { Restaurant } from "@/types/database";
 import type { MapRestaurant } from "@/components/map/MapView";
 
@@ -34,7 +35,20 @@ type Props = {
   locationParams: LocationParams;
   activeFilters: ActiveFilters;
   cuisines:      string[];
+  /** True when `center` is the device's actual GPS position ("Standort
+   *  verwenden"), not just an arbitrary searched place — shows a "you are
+   *  here" pin on the map and defaults the sort control to "Entfernung". */
+  ownLocation:   boolean;
 };
+
+type SortMode = "default" | "distance" | "price" | "rating";
+
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+  { value: "default",  label: "Standard" },
+  { value: "distance", label: "Entfernung" },
+  { value: "price",    label: "Preis" },
+  { value: "rating",   label: "Bewertung" },
+];
 
 // ── Compact list card ─────────────────────────────────────────────────────────
 // No thumbnail — restaurant photos only appear on the detail page. The spoon
@@ -250,14 +264,41 @@ function sameFilters(a: ActiveFilters, b: ActiveFilters): boolean {
 // without needing an effect to sync it back — React remounts a fresh
 // instance whenever the key changes instead.
 export function SearchResultsView(props: Props) {
-  const filterKey = JSON.stringify(props.activeFilters);
+  // ownLocation is folded in here too — a switch to/from "Standort
+  // verwenden" should re-derive the sortBy default below, same reasoning
+  // as the filter reset this key already existed for.
+  const filterKey = JSON.stringify({ ...props.activeFilters, ownLocation: props.ownLocation });
   return <SearchResultsViewInner key={filterKey} {...props} />;
 }
 
 function SearchResultsViewInner({
-  restaurants, center, locationParams, activeFilters, cuisines,
+  restaurants, center, locationParams, activeFilters, cuisines, ownLocation,
 }: Props) {
   const router = useRouter();
+
+  // Sorting is a pure client-side re-order of the already-fetched list (no
+  // refetch needed), so unlike the filter chips below it applies
+  // immediately rather than being staged behind an "Übernehmen" button.
+  // Defaults to "Entfernung" when the search itself originated from
+  // "Standort verwenden" — that's the whole point of using it.
+  const [sortBy, setSortBy] = useState<SortMode>(ownLocation ? "distance" : "default");
+
+  const sortedRestaurants = useMemo(() => {
+    if (sortBy === "default") return restaurants;
+    const distanceOf = (r: Restaurant) =>
+      r.lat != null && r.lng != null
+        ? haversineDistanceKm(center, { lat: r.lat, lng: r.lng })
+        : Infinity;
+    const copy = [...restaurants];
+    if (sortBy === "distance") {
+      copy.sort((a, b) => distanceOf(a) - distanceOf(b));
+    } else if (sortBy === "price") {
+      copy.sort((a, b) => (a.price_level ?? Infinity) - (b.price_level ?? Infinity));
+    } else if (sortBy === "rating") {
+      copy.sort((a, b) => b.spoon_rating - a.spoon_rating);
+    }
+    return copy;
+  }, [restaurants, sortBy, center]);
 
   // Filter chip clicks are staged locally and only take effect once
   // "Übernehmen" is pressed — avoids a full re-navigation per click.
@@ -273,7 +314,7 @@ function SearchResultsViewInner({
   // whichever was previously open.
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const mapRestaurants: MapRestaurant[] = restaurants
+  const mapRestaurants: MapRestaurant[] = sortedRestaurants
     .filter((r) => r.lat != null && r.lng != null)
     .map((r) => ({
       id: r.id, name: r.name,
@@ -378,6 +419,26 @@ function SearchResultsViewInner({
                   „{locationParams.location}&rdquo;
                 </span>
               </div>
+            </div>
+
+            {/* Sort control — applies immediately, no "Übernehmen" needed */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+              padding: "10px 24px", borderBottom: "1px solid var(--c-n100)", flexShrink: 0,
+            }}>
+              <span style={{
+                fontSize: 10, fontWeight: 500, letterSpacing: "0.14em",
+                textTransform: "uppercase", color: "var(--c-n400)", whiteSpace: "nowrap",
+              }}>
+                Sortieren
+              </span>
+              {SORT_OPTIONS.map((opt) => (
+                <Chip
+                  key={opt.value} label={opt.label}
+                  active={sortBy === opt.value}
+                  onClick={() => setSortBy(opt.value)}
+                />
+              ))}
             </div>
 
             {/* Filter bar */}
@@ -493,7 +554,7 @@ function SearchResultsViewInner({
                   </button>
                 </div>
               ) : (
-                restaurants.map((r, i) => (
+                sortedRestaurants.map((r, i) => (
                   <ResultCard
                     key={r.id}
                     restaurant={r}
@@ -513,6 +574,7 @@ function SearchResultsViewInner({
               center={center}
               zoom={11}
               className="w-full h-full"
+              myLocation={ownLocation ? center : null}
             />
           </div>
         </div>

@@ -30,7 +30,32 @@ type Props = {
   /** Initial map center — defaults to Paris */
   center?: { lat: number; lng: number };
   zoom?: number;
+  /** Device GPS position — renders a distinct "you are here" dot. Only set
+   *  when the current search actually originated from "Standort verwenden"
+   *  (own_location=1), not for an arbitrary searched place. */
+  myLocation?: { lat: number; lng: number } | null;
 };
+
+// "You are here" dot — deliberately the same blue in both themes (the
+// universal GPS-dot convention from native map apps) rather than a
+// SPOON_RATING_COLORS/app-token color, since it isn't a rating indicator.
+function MyLocationMarker({ position }: { position: { lat: number; lng: number } }) {
+  return (
+    <AdvancedMarker position={position} title="Dein Standort">
+      <div
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: "50%",
+          background: "#4285F4",
+          border: "3px solid var(--c-surface)",
+          boxShadow: "0 0 0 4px rgba(66,133,244,0.3), 0 2px 6px rgba(0,0,0,0.3)",
+        }}
+        aria-label="Dein Standort"
+      />
+    </AdvancedMarker>
+  );
+}
 
 // ── Single marker with InfoWindow ─────────────────────────────────────────────
 // Marker fill color is derived from SPOON_RATING_COLORS (shared brand tokens)
@@ -156,6 +181,7 @@ export function MapView({
   className = "w-full h-full",
   center,
   zoom = 13,
+  myLocation,
 }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const theme = useEffectiveTheme();
@@ -212,6 +238,7 @@ export function MapView({
             onClose={handleClose}
           />
         ))}
+        {myLocation && <MyLocationMarker position={myLocation} />}
       </Map>
     </APIProvider>
   );

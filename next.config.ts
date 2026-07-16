@@ -16,8 +16,11 @@ const securityHeaders = [
   // origins on outbound navigation/requests; same-origin still gets the
   // full referrer for analytics-less internal use.
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // Nothing in the app uses camera/mic/geolocation/USB — deny by default.
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), usb=()" },
+  // Nothing in the app uses camera/mic/USB — deny by default. Geolocation is
+  // allowed for same-origin only ("Standort verwenden" in LocationSearch.tsx,
+  // via navigator.geolocation) — it was blanket-denied here before that
+  // feature existed.
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self), usb=()" },
 ];
 
 const nextConfig: NextConfig = {

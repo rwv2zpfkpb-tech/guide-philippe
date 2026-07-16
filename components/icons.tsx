@@ -165,3 +165,15 @@ export function IconDotsVertical(props: IconProps) {
     </Icon>
   );
 }
+
+// "Standort verwenden" trigger (LocationSearch.tsx) — standard GPS
+// crosshair/locate glyph.
+export function IconLocate(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 2.75v3M12 18.25v3M2.75 12h3M18.25 12h3" />
+      <circle cx="12" cy="12" r="6.25" />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+    </Icon>
+  );
+}
