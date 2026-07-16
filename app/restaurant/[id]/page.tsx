@@ -16,7 +16,7 @@ import { RatingDots } from "@/components/RatingDots";
 import { StarRating } from "@/components/StarRating";
 import { NavigateButton } from "@/components/NavigateButton";
 import { BackButton } from "@/components/BackButton";
-import { IconPin, IconEmptyState } from "@/components/icons";
+import { IconPin, IconEmptyState, IconPhone, IconGlobe } from "@/components/icons";
 import type { ReviewWithCategories, RestaurantReviewCategory } from "@/types/database";
 import CommentForm from "./CommentForm";
 
@@ -64,8 +64,8 @@ function ReviewContent({ review }: { review: ReviewWithCategories }) {
       {categories.length > 0 && (
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            display: "flex",
+            flexDirection: "column",
             gap: 18,
           }}
         >
@@ -137,6 +137,12 @@ export default async function RestaurantPage({
   const spoon = SPOON_RATINGS[restaurant.spoon_rating];
   const spoonColors = SPOON_RATING_COLORS[restaurant.spoon_rating];
   const firstPhoto = placeDetails?.photoUris?.[0] ?? null;
+
+  // Live Google-Daten haben Vorrang, das gespeicherte Feld ist der Fallback
+  // (manuell erfasste Restaurants oder fehlgeschlagener Live-Lookup) — s.
+  // dasselbe Muster bei placeDetails?.formattedAddress || restaurant.address.
+  const phone = placeDetails?.phone || restaurant.phone;
+  const website = placeDetails?.website || restaurant.website;
 
   const [currentReview, ...pastReviews] = restaurant.reviews;
   const averageRating = computeAverageRating(restaurant.comments.map((c) => c.secondary_rating));
@@ -233,30 +239,62 @@ export default async function RestaurantPage({
         >
           {/* Left: name + meta */}
           <div style={{ flex: 1, minWidth: 280 }}>
-            {restaurant.cuisine && (
+            {/* Cuisine eyebrow (left) + price level (right) share one row so
+                the price sits directly opposite the cuisine label instead of
+                being buried in the small meta line below — and is styled
+                large/bold rather than matching the cuisine eyebrow's tiny
+                caps, so it doesn't get lost. */}
+            {(restaurant.cuisine || restaurant.price_level != null) && (
               <div
                 style={{
-                  fontSize: 10,
-                  fontWeight: 500,
-                  letterSpacing: "0.22em",
-                  textTransform: "uppercase",
-                  color: "var(--c-gold)",
-                  marginBottom: 10,
                   display: "flex",
                   alignItems: "center",
-                  gap: 10,
+                  justifyContent: "space-between",
+                  gap: 16,
+                  marginBottom: 10,
+                  flexWrap: "wrap",
                 }}
               >
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: 24,
-                    height: 1,
-                    background: "var(--c-gold-light)",
-                    flexShrink: 0,
-                  }}
-                />
-                {restaurant.cuisine}
+                {restaurant.cuisine ? (
+                  <div
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 500,
+                      letterSpacing: "0.22em",
+                      textTransform: "uppercase",
+                      color: "var(--c-gold)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: 24,
+                        height: 1,
+                        background: "var(--c-gold-light)",
+                        flexShrink: 0,
+                      }}
+                    />
+                    {restaurant.cuisine}
+                  </div>
+                ) : (
+                  <span />
+                )}
+                {restaurant.price_level != null && (
+                  <div
+                    style={{
+                      fontFamily: "var(--font-cormorant)",
+                      fontSize: "1.75rem",
+                      fontWeight: 700,
+                      lineHeight: 1,
+                      color: "var(--c-ink)",
+                    }}
+                  >
+                    <PriceLevelDots level={restaurant.price_level} />
+                  </div>
+                )}
               </div>
             )}
 
@@ -298,15 +336,9 @@ export default async function RestaurantPage({
                     <IconPin size={14} />
                   </span>
                   <span>{placeDetails?.formattedAddress || restaurant.address}</span>
-                  <span style={{ color: "var(--c-n300)" }}>·</span>
-                </>
-              )}
-              {restaurant.price_level != null && (
-                <>
-                  <span style={{ fontFamily: "var(--font-cormorant)", fontSize: "1rem", fontWeight: 500 }}>
-                    <PriceLevelDots level={restaurant.price_level} />
-                  </span>
-                  <span style={{ color: "var(--c-n300)" }}>·</span>
+                  {placeDetails?.regularOpeningHours && (
+                    <span style={{ color: "var(--c-n300)" }}>·</span>
+                  )}
                 </>
               )}
               {placeDetails?.regularOpeningHours && (
@@ -322,16 +354,60 @@ export default async function RestaurantPage({
               )}
             </div>
 
-            {restaurant.lat != null && restaurant.lng != null && (
-              <div style={{ marginTop: 22 }}>
-                <NavigateButton
-                  name={restaurant.name}
-                  lat={restaurant.lat}
-                  lng={restaurant.lng}
-                  googlePlaceId={restaurant.google_place_id}
-                />
+            {(restaurant.lat != null && restaurant.lng != null) || phone || website ? (
+              <div style={{ marginTop: 22, display: "flex", flexWrap: "wrap", gap: 10 }}>
+                {restaurant.lat != null && restaurant.lng != null && (
+                  <NavigateButton
+                    name={restaurant.name}
+                    lat={restaurant.lat}
+                    lng={restaurant.lng}
+                    googlePlaceId={restaurant.google_place_id}
+                  />
+                )}
+                {phone && (
+                  <a
+                    href={`tel:${phone.replace(/\s+/g, "")}`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 9,
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                      padding: "12px 22px",
+                      borderRadius: 9999,
+                      border: "1.5px solid var(--c-n200)",
+                      color: "var(--c-ink)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <IconPhone size={16} />
+                    Anrufen
+                  </a>
+                )}
+                {website && (
+                  <a
+                    href={website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 9,
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                      padding: "12px 22px",
+                      borderRadius: 9999,
+                      border: "1.5px solid var(--c-n200)",
+                      color: "var(--c-ink)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <IconGlobe size={16} />
+                    Website
+                  </a>
+                )}
               </div>
-            )}
+            ) : null}
           </div>
 
           {/* Right: spoon verdict — color-coded by rating tier (SPOON_RATING_COLORS)
@@ -471,6 +547,37 @@ export default async function RestaurantPage({
                 })}
               </div>
             </details>
+          </div>
+        )}
+
+        {/* Manueller Öffnungszeiten-Fallback — nur wenn Google keine Live-Daten
+            liefert (kein google_place_id, fehlgeschlagener Lookup, oder Google
+            kennt die Öffnungszeiten schlicht nicht). */}
+        {!placeDetails?.regularOpeningHours?.weekdayDescriptions && restaurant.opening_hours && (
+          <div style={{ padding: "40px 0 0" }}>
+            <div
+              style={{
+                border: "1px solid var(--c-n100)",
+                borderRadius: 12,
+                padding: "14px 18px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 10,
+                  fontWeight: 500,
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  color: "var(--c-n400)",
+                  marginBottom: 8,
+                }}
+              >
+                Öffnungszeiten
+              </div>
+              <p style={{ fontSize: "0.875rem", color: "var(--c-n600)", whiteSpace: "pre-line" }}>
+                {restaurant.opening_hours}
+              </p>
+            </div>
           </div>
         )}
 

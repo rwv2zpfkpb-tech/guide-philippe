@@ -66,6 +66,9 @@ export interface Database {
           lat: number | null
           lng: number | null
           address: string | null
+          phone: string | null
+          website: string | null
+          opening_hours: string | null
           cuisine: string | null
           price_level: PriceLevel | null
           spoon_rating: SpoonRating
@@ -79,6 +82,9 @@ export interface Database {
           lat?: number | null
           lng?: number | null
           address?: string | null
+          phone?: string | null
+          website?: string | null
+          opening_hours?: string | null
           cuisine?: string | null
           price_level?: PriceLevel | null
           spoon_rating?: SpoonRating
@@ -92,6 +98,9 @@ export interface Database {
           lat?: number | null
           lng?: number | null
           address?: string | null
+          phone?: string | null
+          website?: string | null
+          opening_hours?: string | null
           cuisine?: string | null
           price_level?: PriceLevel | null
           spoon_rating?: SpoonRating

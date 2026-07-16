@@ -42,6 +42,9 @@ export type RestaurantPayload = {
   lat?: number | null;
   lng?: number | null;
   address?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  opening_hours?: string | null;
   cuisine?: string | null;
   price_level?: PriceLevel | null;
   status?: RestaurantStatus;
@@ -197,6 +200,17 @@ export async function deleteRestaurant(id: string): Promise<void> {
   const supabase = await createClient();
 
   const { error } = await supabase.from("restaurants").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
+}
+
+// Bulk-Löschen für die Mehrfachauswahl im Admin-Dashboard — ein Request statt
+// einer Schleife aus Einzel-deleteRestaurant-Aufrufen.
+export async function deleteRestaurants(ids: string[]): Promise<void> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("restaurants").delete().in("id", ids);
   if (error) throw new Error(error.message);
   revalidatePath("/", "layout");
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { signOut } from "@/app/actions/auth";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ChangePasswordButton } from "@/components/ChangePasswordButton";
 
 export default async function Header() {
   const supabase = await createClient();
@@ -39,11 +40,13 @@ export default async function Header() {
         style={{
           maxWidth: 1240,
           margin: "0 auto",
-          padding: "0 40px",
-          height: 64,
+          padding: "0 clamp(16px, 4vw, 40px)",
+          minHeight: 64,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          flexWrap: "wrap",
+          rowGap: 6,
         }}
       >
         <Link
@@ -88,6 +91,7 @@ export default async function Header() {
               >
                 {profile?.username ?? user.email}
               </span>
+              {user.email && <ChangePasswordButton email={user.email} />}
               <form action={signOut}>
                 <button
                   type="submit"

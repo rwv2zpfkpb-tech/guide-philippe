@@ -3,7 +3,6 @@ import RestaurantCard from "@/components/RestaurantCard";
 import { HeroSearch } from "@/components/HeroSearch";
 import { SearchResultsView } from "@/components/SearchResultsView";
 import { InstallPwaInstructions } from "@/components/InstallPwaInstructions";
-import { IconEmptyState } from "@/components/icons";
 import type { RestaurantFilters } from "@/app/actions/restaurants";
 import type { PriceLevel, SpoonRating } from "@/types/database";
 
@@ -320,9 +319,7 @@ export default async function Page({
               color: "var(--c-n400)",
             }}
           >
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-              <IconEmptyState size={32} />
-            </div>
+            <div style={{ fontSize: "2rem", marginBottom: 16 }}>🫗</div>
             <p
               style={{
                 fontFamily: "var(--font-cormorant)",

@@ -158,11 +158,21 @@ export async function previewCsvImport(csvText: string): Promise<CsvImportRow[]>
 // Places-Autocomplete) und entfernt dort das „Als Entwurf speichern"-Häkchen,
 // sobald der Eintrag fertig ist.
 
-export async function confirmCsvImport(selection: CsvImportSelection[]): Promise<Restaurant[]> {
+// `bulkSpoonRating` lets the admin set the same spoon rating (0–3) for every
+// imported row in one go — useful when importing a Google-Maps-Liste that was
+// itself curated to a single rating tier (e.g. a "Worth Mentioning"-only
+// list), instead of having to correct all placeholder reviews afterwards in
+// the edit panel. Defaults to 1 ("Remembering") to match prior behaviour when
+// omitted.
+export async function confirmCsvImport(
+  selection: CsvImportSelection[],
+  bulkSpoonRating?: 0 | 1 | 2 | 3
+): Promise<Restaurant[]> {
   await requireAdmin();
   if (selection.length === 0) return [];
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
+  const spoonRating = bulkSpoonRating ?? 1;
 
   // Pro Zeile einzeln inserted (statt Batch-Insert) — hält Restaurant und
   // Notiz eindeutig zusammen, unabhängig davon, ob PostgREST die Rückgabe-
@@ -187,7 +197,7 @@ export async function confirmCsvImport(selection: CsvImportSelection[]): Promise
       const { error: reviewError } = await supabase.from("restaurant_reviews").insert({
         restaurant_id: restaurant.id,
         visited_at: today,
-        spoon_rating: 1,
+        spoon_rating: spoonRating,
         fazit: s.note ?? "",
       });
       if (reviewError) throw new Error(reviewError.message);

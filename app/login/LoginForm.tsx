@@ -2,11 +2,11 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import { signIn, signUp } from "@/app/actions/auth";
-import type { SignInState, SignUpState } from "@/app/actions/auth";
+import { signIn, signUp, requestPasswordReset } from "@/app/actions/auth";
+import type { SignInState, SignUpState, RequestPasswordResetState } from "@/app/actions/auth";
 import { IconMail } from "@/components/icons";
 
-type Tab = "login" | "signup";
+type Tab = "login" | "signup" | "forgot";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -80,6 +80,154 @@ export default function LoginForm({ defaultTab }: { defaultTab: Tab }) {
     signUp,
     null
   );
+  const [forgotState, forgotAction, forgotPending] = useActionState<
+    RequestPasswordResetState,
+    FormData
+  >(requestPasswordReset, null);
+
+  // ── Forgot password ──────────────────────────────────────────────────────────
+  if (tab === "forgot") {
+    if (forgotState && "success" in forgotState) {
+      return (
+        <div
+          style={{
+            background: "var(--c-surface)",
+            borderRadius: 22,
+            padding: 40,
+            maxWidth: 400,
+            width: "100%",
+            boxShadow: "var(--s-lg)",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 20, color: "var(--c-gold)" }}>
+            <IconMail size={40} />
+          </div>
+          <div
+            style={{
+              fontFamily: "var(--font-cormorant)",
+              fontSize: "1.75rem",
+              fontWeight: 500,
+              color: "var(--c-ink)",
+              marginBottom: 12,
+              lineHeight: 1.1,
+            }}
+          >
+            E-Mail verschickt
+          </div>
+          <p style={{ fontSize: "0.9375rem", color: "var(--c-n500)", lineHeight: 1.65, marginBottom: 28 }}>
+            Falls ein Konto mit dieser E-Mail-Adresse existiert, haben wir einen Link zum
+            Zurücksetzen des Passworts verschickt.
+          </p>
+          <button
+            type="button"
+            onClick={() => setTab("login")}
+            style={{
+              display: "inline-block",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+              padding: "10px 24px",
+              borderRadius: 8,
+              border: "1px solid var(--c-n200)",
+              background: "var(--c-surface)",
+              color: "var(--c-ink)",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            Zurück zum Login
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        style={{
+          background: "var(--c-surface)",
+          borderRadius: 22,
+          padding: 40,
+          maxWidth: 400,
+          width: "100%",
+          boxShadow: "var(--s-lg)",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font-cormorant)",
+            fontSize: "1.75rem",
+            fontWeight: 500,
+            color: "var(--c-ink)",
+            marginBottom: 8,
+            lineHeight: 1.1,
+          }}
+        >
+          Passwort vergessen?
+        </div>
+        <p style={{ fontSize: "0.875rem", color: "var(--c-n500)", marginBottom: 24 }}>
+          Gib deine E-Mail-Adresse ein — wir schicken dir einen Link zum Zurücksetzen.
+        </p>
+
+        {forgotState && "error" in forgotState && (
+          <div
+            style={{
+              fontSize: "0.875rem",
+              color: "var(--c-burg)",
+              background: "var(--c-burg-light)",
+              border: "1px solid oklch(83% 0.030 17)",
+              borderRadius: 8,
+              padding: "10px 14px",
+              marginBottom: 16,
+            }}
+          >
+            {forgotState.error}
+          </div>
+        )}
+
+        <form action={forgotAction} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <Field label="E-Mail" name="email" type="email" autoComplete="email" placeholder="du@beispiel.de" />
+          <button
+            type="submit"
+            disabled={forgotPending}
+            style={{
+              width: "100%",
+              fontFamily: "inherit",
+              fontSize: "0.9375rem",
+              fontWeight: 500,
+              padding: 13,
+              borderRadius: 8,
+              border: "none",
+              background: "var(--c-ink)",
+              color: "var(--c-bg)",
+              cursor: forgotPending ? "default" : "pointer",
+              opacity: forgotPending ? 0.6 : 1,
+              marginTop: 6,
+            }}
+          >
+            {forgotPending ? "Sende…" : "Link schicken"}
+          </button>
+        </form>
+
+        <p style={{ marginTop: 18, textAlign: "center", fontSize: "0.8125rem", color: "var(--c-n400)" }}>
+          <button
+            type="button"
+            onClick={() => setTab("login")}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--c-gold)",
+              fontSize: "0.8125rem",
+              fontFamily: "inherit",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            ← Zurück zum Login
+          </button>
+        </p>
+      </div>
+    );
+  }
 
   // ── Email confirmation sent ──────────────────────────────────────────────────
   if (tab === "signup" && signupState && "success" in signupState) {
@@ -268,6 +416,26 @@ export default function LoginForm({ defaultTab }: { defaultTab: Tab }) {
           autoComplete={tab === "login" ? "current-password" : "new-password"}
           placeholder="••••••••"
         />
+
+        {tab === "login" && (
+          <button
+            type="button"
+            onClick={() => setTab("forgot")}
+            style={{
+              alignSelf: "flex-end",
+              background: "none",
+              border: "none",
+              color: "var(--c-n400)",
+              fontSize: "0.75rem",
+              fontFamily: "inherit",
+              cursor: "pointer",
+              padding: 0,
+              marginTop: -6,
+            }}
+          >
+            Passwort vergessen?
+          </button>
+        )}
 
         {/* Submit */}
         <button

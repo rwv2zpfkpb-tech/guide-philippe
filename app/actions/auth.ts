@@ -82,3 +82,57 @@ export async function signOut() {
   revalidatePath("/", "layout");
   redirect("/");
 }
+
+// ── Password reset (forgot password + logged-in "change password") ──────────
+// Both flows funnel through the same Supabase mechanism: an e-mail with a
+// recovery link (rendered via lib/auth-emails.ts's "recovery" template,
+// delivered through the Send Email Hook) that lands on /auth/reset-password,
+// where the user sets a new password. There is no separate "old password"
+// form — this is the "reset via e-mail link" pattern the user asked for.
+
+export type RequestPasswordResetState = { error: string } | { success: true } | null;
+
+export async function requestPasswordReset(
+  _prevState: RequestPasswordResetState,
+  formData: FormData
+): Promise<RequestPasswordResetState> {
+  const email = (formData.get("email") as string)?.trim();
+  if (!email) return { error: "Bitte gib deine E-Mail-Adresse ein." };
+
+  const supabase = await createClient();
+  const origin = (await headers()).get("origin");
+
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/auth/reset-password`,
+  });
+
+  // Always report success regardless of whether the address is registered or
+  // the call errored — avoids leaking which e-mails have an account.
+  return { success: true };
+}
+
+export type UpdatePasswordState = { error: string } | { success: true } | null;
+
+export async function updatePassword(
+  _prevState: UpdatePasswordState,
+  formData: FormData
+): Promise<UpdatePasswordState> {
+  const password = formData.get("password") as string;
+  const confirmPassword = formData.get("confirmPassword") as string;
+
+  if (!password || password.length < 8) {
+    return { error: "Das Passwort muss mindestens 8 Zeichen lang sein." };
+  }
+  if (password !== confirmPassword) {
+    return { error: "Die Passwörter stimmen nicht überein." };
+  }
+
+  const supabase = await createClient();
+  // Requires an active session — the recovery link's PKCE code exchange
+  // (app/auth/reset-password/page.tsx) establishes it before this form renders.
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message };
+
+  revalidatePath("/", "layout");
+  return { success: true };
+}

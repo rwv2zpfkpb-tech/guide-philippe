@@ -8,7 +8,7 @@ import { LocationSearch } from "@/components/LocationSearch";
 import { PriceLevelDots } from "@/components/PriceLevelDots";
 import { NavigateButton } from "@/components/NavigateButton";
 import { getPlaceDetails, type OpeningHours } from "@/app/actions/places";
-import { IconEmptyState, IconMap, IconList, IconChevronDown, IconClock } from "@/components/icons";
+import { IconMap, IconList, IconChevronDown, IconClock } from "@/components/icons";
 import { SPOON_RATINGS, SPOON_RATING_COLORS, SPOON_RATING_ORDER } from "@/lib/ratings";
 import type { Restaurant } from "@/types/database";
 import type { MapRestaurant } from "@/components/map/MapView";
@@ -43,10 +43,19 @@ type Props = {
 // live opening hours + two explicit actions — going to the full detail page
 // and starting turn-by-turn navigation are separate, deliberate choices.
 
-function ResultCard({ restaurant, index }: { restaurant: Restaurant; index: number }) {
+function ResultCard({
+  restaurant,
+  index,
+  expanded,
+  onToggle,
+}: {
+  restaurant: Restaurant;
+  index: number;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   const rt = SPOON_RATINGS[restaurant.spoon_rating];
   const colors = SPOON_RATING_COLORS[restaurant.spoon_rating];
-  const [expanded, setExpanded] = useState(false);
   const [hoursLoading, setHoursLoading] = useState(false);
   const [hoursFetched, setHoursFetched] = useState(false);
   const [hours, setHours] = useState<OpeningHours | null>(null);
@@ -80,7 +89,7 @@ function ResultCard({ restaurant, index }: { restaurant: Restaurant; index: numb
     <div style={{ borderBottom: "1px solid var(--c-n100)" }}>
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={onToggle}
         aria-expanded={expanded}
         style={{
           display: "grid",
@@ -259,6 +268,10 @@ function SearchResultsViewInner({
   // reads as the same "map next to list" layout the viewport pans across,
   // rather than a hard swap. Desktop CSS neutralizes the transform entirely.
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
+
+  // Only one result row is expanded at a time — opening a new one collapses
+  // whichever was previously open.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const mapRestaurants: MapRestaurant[] = restaurants
     .filter((r) => r.lat != null && r.lng != null)
@@ -463,7 +476,7 @@ function SearchResultsViewInner({
                   display: "flex", flexDirection: "column", alignItems: "center",
                   justifyContent: "center", padding: "60px 24px", gap: 14, textAlign: "center",
                 }}>
-                  <IconEmptyState size={32} className="text-[var(--c-n400)]" />
+                  <div style={{ fontSize: "2rem" }}>🫗</div>
                   <p style={{ fontSize: "0.875rem", color: "var(--c-n500)" }}>
                     Keine Restaurants gefunden.
                   </p>
@@ -481,7 +494,13 @@ function SearchResultsViewInner({
                 </div>
               ) : (
                 restaurants.map((r, i) => (
-                  <ResultCard key={r.id} restaurant={r} index={i} />
+                  <ResultCard
+                    key={r.id}
+                    restaurant={r}
+                    index={i}
+                    expanded={expandedId === r.id}
+                    onToggle={() => setExpandedId((cur) => (cur === r.id ? null : r.id))}
+                  />
                 ))
               )}
             </div>

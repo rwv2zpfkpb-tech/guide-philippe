@@ -2,7 +2,10 @@ import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
 // Routes reachable without being logged in / approved.
-// - /login, /auth/confirm: the auth flow itself
+// - /login, /auth/confirm, /auth/reset-password: the auth flow itself
+//   (reset-password must stay public — its PKCE `code` exchange runs before
+//   any session cookie exists, so gating it would bounce the recovery link
+//   straight to /login and drop the code query param)
 // - /pending: screen shown to logged-in-but-not-yet-approved accounts
 // - /api/auth/email: Supabase's Send Email Hook calls this server-to-server
 //   (no user session) — redirecting it to /login would break every auth mail.
@@ -12,6 +15,7 @@ import { type NextRequest, NextResponse } from "next/server";
 const PUBLIC_PATHS = [
   "/login",
   "/auth/confirm",
+  "/auth/reset-password",
   "/pending",
   "/api/auth/email",
   "/manifest.webmanifest",

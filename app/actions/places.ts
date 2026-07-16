@@ -15,7 +15,9 @@ export type OpeningHours = {
 export type PlaceDetails = {
   formattedAddress: string;
   regularOpeningHours: OpeningHours | null;
-  photoUris: string[]; // resolved photo CDN URLs (up to 5)
+  photoUris: string[]; // resolved photo CDN URLs (up to 3 — the only call sites, the restaurant detail page and the admin edit panel, both show at most 3)
+  phone: string | null;
+  website: string | null;
 };
 
 export type ResolvedPlace = {
@@ -36,7 +38,8 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
     {
       headers: {
         "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": "formattedAddress,regularOpeningHours,photos",
+        "X-Goog-FieldMask":
+          "formattedAddress,regularOpeningHours,photos,internationalPhoneNumber,websiteUri",
       },
       // no-store: hours change daily, photos expire; always fetch fresh
       cache: "no-store",
@@ -55,10 +58,12 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
       weekdayDescriptions?: string[];
     };
     photos?: Array<{ name: string }>;
+    internationalPhoneNumber?: string;
+    websiteUri?: string;
   };
 
-  // Step 2 — resolve photo URIs in parallel (max 5)
-  const photoNames = (place.photos ?? []).slice(0, 5).map((p) => p.name);
+  // Step 2 — resolve photo URIs in parallel (max 3 — the only call sites show at most 3)
+  const photoNames = (place.photos ?? []).slice(0, 3).map((p) => p.name);
 
   const photoUris = (
     await Promise.all(
@@ -83,6 +88,8 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
         }
       : null,
     photoUris,
+    phone: place.internationalPhoneNumber ?? null,
+    website: place.websiteUri ?? null,
   };
 }
 

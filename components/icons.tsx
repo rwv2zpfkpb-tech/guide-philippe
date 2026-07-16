@@ -118,6 +118,23 @@ export function IconList(props: IconProps) {
   );
 }
 
+export function IconPhone(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M2.25 6.75c0 8.284 6.716 15 15 15h1.5a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106a1.125 1.125 0 0 0-1.173.417l-.97 1.293a11.25 11.25 0 0 1-5.62-5.62l1.293-.97a1.125 1.125 0 0 0 .417-1.173L8.963 3.102a1.125 1.125 0 0 0-1.091-.852H6.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+    </Icon>
+  );
+}
+
+export function IconGlobe(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" />
+      <path d="M3.6 9h16.8M3.6 15h16.8M12 3a14.5 14.5 0 0 1 3 9 14.5 14.5 0 0 1-3 9 14.5 14.5 0 0 1-3-9 14.5 14.5 0 0 1 3-9Z" />
+    </Icon>
+  );
+}
+
 export function IconChevronDown(props: IconProps) {
   return (
     <Icon {...props}>

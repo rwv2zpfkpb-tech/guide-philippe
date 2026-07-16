@@ -7,6 +7,7 @@ import {
   createRestaurant,
   updateRestaurant,
   deleteRestaurant,
+  deleteRestaurants,
   getRestaurantById,
 } from "@/app/actions/restaurants";
 import { getPlaceDetails } from "@/app/actions/places";
@@ -47,12 +48,6 @@ import type {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const CUISINES = [
-  "French", "Italian", "Japanese", "Asian", "Mediterranean",
-  "American", "Chinese", "Indian", "Spanish", "Middle Eastern",
-  "Vietnamese", "Thai", "Greek", "Turkish", "Other",
-];
-
 const SPOON_OPTIONS = SPOON_RATING_ORDER.map((value) => ({
   value,
   emoji: SPOON_RATINGS[value].emoji,
@@ -85,11 +80,16 @@ type FormData = {
   lat: number | null;
   lng: number | null;
   address: string;
+  phone: string;
+  website: string;
+  opening_hours: string;
   cuisine: string;
   price_level: PriceLevel | null;
   status: RestaurantStatus;
   review: ReviewFormData;
 };
+
+type ContactField = "phone" | "website" | "opening_hours";
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -107,6 +107,9 @@ const emptyForm = (): FormData => ({
   lat: null,
   lng: null,
   address: "",
+  phone: "",
+  website: "",
+  opening_hours: "",
   cuisine: "",
   price_level: null,
   status: "published",
@@ -131,6 +134,9 @@ function formFromRestaurant(r: Restaurant, latest: ReviewWithCategories | null):
     lat: r.lat,
     lng: r.lng,
     address: r.address ?? "",
+    phone: r.phone ?? "",
+    website: r.website ?? "",
+    opening_hours: r.opening_hours ?? "",
     cuisine: r.cuisine ?? "",
     price_level: r.price_level,
     status: r.status,
@@ -173,7 +179,81 @@ function PriceBadge({ level }: { level: PriceLevel | null }) {
   );
 }
 
+// ── Cuisine combobox ─────────────────────────────────────────────────────────
+// Free-text input with a real filtered dropdown (not a native <input list>,
+// whose disclosure arrow/filtering behaves inconsistently across browsers and
+// looked like a dropdown that "didn't work"). Suggestions come from the
+// cuisine values already used across existing restaurants (getCuisines()),
+// not a hardcoded list — filtered by substring match as the admin types
+// (e.g. "ca" matches "Café"). Still a free-text field: anything typed that
+// isn't in the list is kept as-is.
+
+function CuisineCombobox({
+  value,
+  onChange,
+  suggestions,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  suggestions: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const filtered = suggestions.filter((s) =>
+    s.toLowerCase().includes(value.trim().toLowerCase())
+  );
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setOpen(false);
+        }}
+        placeholder="z. B. Italienisch…"
+        className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] pl-3 pr-8 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
+      />
+      <IconChevronDown
+        size={14}
+        className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--c-n400)] transition-transform ${open ? "rotate-180" : ""}`}
+      />
+      {open && filtered.length > 0 && (
+        <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] shadow-lg py-1">
+          {filtered.map((s) => (
+            <li key={s}>
+              <button
+                type="button"
+                // Fires before the input's onBlur closes the list.
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onChange(s);
+                  setOpen(false);
+                }}
+                className="block w-full text-left px-3 py-1.5 text-sm text-[var(--c-ink)] hover:bg-[var(--c-n50)]"
+              >
+                {s}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 // ── Edit / Create slide-over ──────────────────────────────────────────────────
+
+const CONTACT_FIELD_LABELS: Record<ContactField, string> = {
+  phone: "Telefonnummer",
+  website: "Website",
+  opening_hours: "Öffnungszeiten",
+};
 
 function EditPanel({
   open,
@@ -184,6 +264,9 @@ function EditPanel({
   placePhotos,
   placePhotosLoading,
   pastReviews,
+  cuisineSuggestions,
+  visibleContactFields,
+  onToggleContactField,
   onFormChange,
   onReviewChange,
   onCategoryChange,
@@ -200,6 +283,9 @@ function EditPanel({
   placePhotosLoading: boolean;
   form: FormData;
   pastReviews: ReviewWithCategories[];
+  cuisineSuggestions: string[];
+  visibleContactFields: Set<ContactField>;
+  onToggleContactField: (field: ContactField) => void;
   onFormChange: (patch: Partial<FormData>) => void;
   onReviewChange: (patch: Partial<ReviewFormData>) => void;
   onCategoryChange: (category: ReviewCategory, patch: Partial<CategoryFormData>) => void;
@@ -322,8 +408,8 @@ function EditPanel({
                   <p className="mt-2 text-xs text-[var(--c-n400)]">Lade Fotos von Google Maps…</p>
                 )}
                 {!placePhotosLoading && placePhotos.length > 0 && (
-                  <div className="mt-2 grid grid-cols-3 sm:grid-cols-5 gap-2">
-                    {placePhotos.map((uri, i) => (
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {placePhotos.slice(0, 3).map((uri, i) => (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         key={i}
@@ -360,20 +446,73 @@ function EditPanel({
               Cuisine
             </label>
             {/* Auto-filled from Google Maps on place selection, but a free-text
-                input (not a fixed select) so it always stays editable/correctable. */}
-            <input
-              type="text"
-              list="cuisine-suggestions"
+                input (not a fixed select) so it always stays editable/correctable.
+                Suggestions in the dropdown come from cuisines already used
+                across existing restaurants, filtered as you type. */}
+            <CuisineCombobox
               value={form.cuisine}
-              onChange={(e) => onFormChange({ cuisine: e.target.value })}
-              placeholder="z. B. Italian…"
-              className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
+              onChange={(v) => onFormChange({ cuisine: v })}
+              suggestions={cuisineSuggestions}
             />
-            <datalist id="cuisine-suggestions">
-              {CUISINES.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
+          </div>
+
+          {/* ── Kontakt & Öffnungszeiten (optional) ── */}
+          <div>
+            <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
+              Kontakt & Öffnungszeiten
+            </label>
+            <p className="text-xs text-[var(--c-n400)] mb-2">
+              Telefon/Website werden bei einer Google-Auswahl automatisch übernommen, falls verfügbar — hier korrigierbar. Öffnungszeiten sind ein manueller Fallback, falls Google keine Live-Öffnungszeiten liefert.
+            </p>
+            <div className="flex flex-wrap gap-2 mb-2.5">
+              {(Object.keys(CONTACT_FIELD_LABELS) as ContactField[]).map((field) => {
+                const active = visibleContactFields.has(field);
+                return (
+                  <button
+                    key={field}
+                    type="button"
+                    onClick={() => onToggleContactField(field)}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      active
+                        ? "border-[var(--c-gold)] bg-[var(--c-gold-light)] text-[var(--c-ink)]"
+                        : "border-[var(--c-n200)] bg-[var(--c-surface)] text-[var(--c-n500)] hover:border-[var(--c-n300)]"
+                    }`}
+                  >
+                    {active ? "− " : "+ "}
+                    {CONTACT_FIELD_LABELS[field]}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="space-y-2.5">
+              {visibleContactFields.has("phone") && (
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => onFormChange({ phone: e.target.value })}
+                  placeholder="Telefonnummer, z. B. +49 30 1234567"
+                  className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
+                />
+              )}
+              {visibleContactFields.has("website") && (
+                <input
+                  type="url"
+                  value={form.website}
+                  onChange={(e) => onFormChange({ website: e.target.value })}
+                  placeholder="Website, z. B. https://restaurant.de"
+                  className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)]"
+                />
+              )}
+              {visibleContactFields.has("opening_hours") && (
+                <textarea
+                  value={form.opening_hours}
+                  onChange={(e) => onFormChange({ opening_hours: e.target.value })}
+                  rows={3}
+                  placeholder="z. B. Mo–Fr 12–22 Uhr, Sa/So geschlossen"
+                  className="w-full rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)] resize-none"
+                />
+              )}
+            </div>
           </div>
 
           {/* ── Price level ── */}
@@ -502,7 +641,7 @@ function EditPanel({
             <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
               Kategorien
             </label>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-3">
               {REVIEW_CATEGORY_ORDER.map((category) => {
                 const cat = form.review.categories[category];
                 return (
@@ -592,26 +731,36 @@ function EditPanel({
 // ── Delete modal ──────────────────────────────────────────────────────────────
 
 function DeleteModal({
-  restaurant,
+  restaurants,
   onClose,
   onConfirm,
   deleting,
 }: {
-  restaurant: Restaurant | null;
+  restaurants: Restaurant[];
   onClose: () => void;
   onConfirm: () => void;
   deleting: boolean;
 }) {
-  if (!restaurant) return null;
+  if (restaurants.length === 0) return null;
+  const isBulk = restaurants.length > 1;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
       <div className="w-full max-w-sm rounded-2xl bg-[var(--c-surface)] p-6 shadow-xl">
         <h3 className="font-serif text-lg font-semibold text-[var(--c-ink)] mb-1">
-          Delete restaurant?
+          {isBulk ? `${restaurants.length} Restaurants löschen?` : "Delete restaurant?"}
         </h3>
         <p className="text-sm text-[var(--c-n500)] mb-5">
-          <span className="font-medium text-[var(--c-n700)]">{restaurant.name}</span> and all its
-          comments will be permanently removed.
+          {isBulk ? (
+            <>
+              <span className="font-medium text-[var(--c-n700)]">{restaurants.length} Restaurants</span> und
+              alle zugehörigen Kommentare werden unwiderruflich gelöscht.
+            </>
+          ) : (
+            <>
+              <span className="font-medium text-[var(--c-n700)]">{restaurants[0].name}</span> and all its
+              comments will be permanently removed.
+            </>
+          )}
         </p>
         <div className="flex gap-3">
           <button
@@ -642,9 +791,11 @@ function ImportModal({
   importing,
   rows,
   selected,
+  bulkSpoonRating,
   onFileSelected,
   onToggleRow,
   onToggleAllNew,
+  onBulkSpoonRatingChange,
   onImport,
   onClose,
 }: {
@@ -654,9 +805,11 @@ function ImportModal({
   importing: boolean;
   rows: CsvImportRow[];
   selected: Set<number>;
+  bulkSpoonRating: 0 | 1 | 2 | 3;
   onFileSelected: (file: File) => void;
   onToggleRow: (row: number) => void;
   onToggleAllNew: (checked: boolean) => void;
+  onBulkSpoonRatingChange: (value: 0 | 1 | 2 | 3) => void;
   onImport: () => void;
   onClose: () => void;
 }) {
@@ -702,6 +855,36 @@ function ImportModal({
 
           {step === "preview" && (
             <div className="space-y-4">
+              {newRows.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
+                    Spoon-Rating für neue Einträge
+                  </label>
+                  <p className="text-xs text-[var(--c-n400)] mb-2">
+                    Gilt für alle importierten Einträge — praktisch, wenn diese CSV-Liste bereits
+                    einer einzigen Bewertungsstufe entspricht (z.B. nur „Worth Mentioning“).
+                  </p>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {SPOON_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => onBulkSpoonRatingChange(opt.value)}
+                        title={opt.label}
+                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                          bulkSpoonRating === opt.value
+                            ? "border-[var(--c-burg)] bg-[var(--c-burg)] text-white"
+                            : "border-[var(--c-n200)] bg-[var(--c-surface)] text-[var(--c-n600)] hover:bg-[var(--c-n50)]"
+                        }`}
+                      >
+                        <span>{opt.emoji}</span>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">
@@ -1053,11 +1236,13 @@ export function AdminDashboard({
   initialPendingProfiles,
   initialAllProfiles,
   currentUserId,
+  cuisineSuggestions,
 }: {
   initialRestaurants: Restaurant[];
   initialPendingProfiles: ProfileWithEmail[];
   initialAllProfiles: ProfileWithEmail[];
   currentUserId: string;
+  cuisineSuggestions: string[];
 }) {
   const [restaurants, setRestaurants] = useState(initialRestaurants);
   const [query, setQuery] = useState("");
@@ -1067,12 +1252,14 @@ export function AdminDashboard({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm());
   const [manualEntry, setManualEntry] = useState(false);
+  const [visibleContactFields, setVisibleContactFields] = useState<Set<ContactField>>(new Set());
   const [placePhotos, setPlacePhotos] = useState<string[]>([]);
   const [placePhotosLoading, setPlacePhotosLoading] = useState(false);
   const [currentReviewId, setCurrentReviewId] = useState<string | null>(null);
   const [pastReviews, setPastReviews] = useState<ReviewWithCategories[]>([]);
   const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Restaurant | null>(null);
+  const [deleteTargets, setDeleteTargets] = useState<Restaurant[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [importStep, setImportStep] = useState<"pick" | "preview">("pick");
@@ -1080,6 +1267,7 @@ export function AdminDashboard({
   const [importImporting, setImportImporting] = useState(false);
   const [importRows, setImportRows] = useState<CsvImportRow[]>([]);
   const [importSelected, setImportSelected] = useState<Set<number>>(new Set());
+  const [importBulkSpoonRating, setImportBulkSpoonRating] = useState<0 | 1 | 2 | 3>(1);
   const [isPending, startTransition] = useTransition();
   const [pendingProfiles, setPendingProfiles] = useState(initialPendingProfiles);
   const [decisionBusyId, setDecisionBusyId] = useState<string | null>(null);
@@ -1204,7 +1392,22 @@ export function AdminDashboard({
     setPlacePhotosLoading(true);
     getPlaceDetails(placeId)
       .then((details) => {
-        if (!cancelled) setPlacePhotos(details.photoUris);
+        if (cancelled) return;
+        setPlacePhotos(details.photoUris);
+        // Only fill in fields that are still empty — reopening an existing
+        // restaurant shouldn't clobber a phone/website the admin already
+        // saved/corrected by hand.
+        setForm((prev) => ({
+          ...prev,
+          phone: prev.phone || details.phone || "",
+          website: prev.website || details.website || "",
+        }));
+        setVisibleContactFields((prev) => {
+          const next = new Set(prev);
+          if (details.phone) next.add("phone");
+          if (details.website) next.add("website");
+          return next;
+        });
       })
       .catch(() => {
         if (!cancelled) setPlacePhotos([]);
@@ -1224,6 +1427,7 @@ export function AdminDashboard({
     setPastReviews([]);
     setForm(emptyForm());
     setManualEntry(false);
+    setVisibleContactFields(new Set());
     setPanelOpen(true);
   }
 
@@ -1240,12 +1444,36 @@ export function AdminDashboard({
       // Restaurants without a google_place_id were (or need to be) entered
       // manually — default straight to the manual fields in that case.
       setManualEntry(!r.google_place_id);
+      // Only show the optional contact fields that already have a value —
+      // the admin can still add the others via the toggle chips.
+      setVisibleContactFields(
+        new Set(
+          (["phone", "website", "opening_hours"] as ContactField[]).filter(
+            (f) => full[f]
+          )
+        )
+      );
       setPanelOpen(true);
     } catch (err) {
       showToast((err as Error).message);
     } finally {
       setLoadingEditId(null);
     }
+  }
+
+  function toggleContactField(field: ContactField) {
+    setVisibleContactFields((prev) => {
+      const next = new Set(prev);
+      if (next.has(field)) {
+        next.delete(field);
+        // Clear the value too — otherwise a hidden field would still be
+        // saved even though the admin just "removed" it from the form.
+        patchForm({ [field]: "" });
+      } else {
+        next.add(field);
+      }
+      return next;
+    });
   }
 
   function closePanel() {
@@ -1264,6 +1492,9 @@ export function AdminDashboard({
       lat: form.lat,
       lng: form.lng,
       address: form.address || null,
+      phone: form.phone || null,
+      website: form.website || null,
+      opening_hours: form.opening_hours || null,
       cuisine: form.cuisine || null,
       price_level: form.price_level,
       status: form.status,
@@ -1306,17 +1537,36 @@ export function AdminDashboard({
   }
 
   function handleDelete() {
-    if (!deleteTarget) return;
-    const id = deleteTarget.id;
+    if (deleteTargets.length === 0) return;
+    const ids = deleteTargets.map((r) => r.id);
+    const isBulk = ids.length > 1;
     startTransition(async () => {
       try {
-        await deleteRestaurant(id);
-        setRestaurants((prev) => prev.filter((r) => r.id !== id));
-        setDeleteTarget(null);
-        showToast("Restaurant deleted");
+        if (isBulk) {
+          await deleteRestaurants(ids);
+        } else {
+          await deleteRestaurant(ids[0]);
+        }
+        setRestaurants((prev) => prev.filter((r) => !ids.includes(r.id)));
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          ids.forEach((id) => next.delete(id));
+          return next;
+        });
+        setDeleteTargets([]);
+        showToast(isBulk ? `${ids.length} Restaurants gelöscht` : "Restaurant deleted");
       } catch (err) {
         showToast((err as Error).message);
       }
+    });
+  }
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
   }
 
@@ -1325,6 +1575,7 @@ export function AdminDashboard({
     setImportStep("pick");
     setImportRows([]);
     setImportSelected(new Set());
+    setImportBulkSpoonRating(1);
   }
 
   function closeImport() {
@@ -1371,7 +1622,7 @@ export function AdminDashboard({
     setImportImporting(true);
     startTransition(async () => {
       try {
-        const inserted = await confirmCsvImport(selection);
+        const inserted = await confirmCsvImport(selection, importBulkSpoonRating);
         setRestaurants((prev) => [...inserted, ...prev]);
         showToast(`${inserted.length} Restaurants als Entwurf importiert`);
         closeImport();
@@ -1493,11 +1744,47 @@ export function AdminDashboard({
             </div>
           </div>
 
+          {/* ── Bulk-Auswahl-Leiste ── */}
+          {selectedIds.size > 0 && (
+            <div className="mb-3 flex items-center gap-3 rounded-lg border border-[var(--c-burg)]/30 bg-[var(--c-burg-light)] px-4 py-2.5">
+              <span className="text-sm font-medium text-[var(--c-ink)]">
+                {selectedIds.size} ausgewählt
+              </span>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="text-xs font-medium text-[var(--c-n500)] hover:text-[var(--c-n700)]"
+              >
+                Auswahl aufheben
+              </button>
+              <button
+                onClick={() =>
+                  setDeleteTargets(restaurants.filter((r) => selectedIds.has(r.id)))
+                }
+                className="ml-auto rounded-lg bg-[var(--c-burg)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 transition-colors"
+              >
+                Löschen
+              </button>
+            </div>
+          )}
+
           {/* ── Table ── */}
           <div className="rounded-xl border border-[var(--c-n100)] bg-[var(--c-surface)] overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--c-n100)] text-left">
+                  <th className="px-4 py-3 w-8">
+                    <input
+                      type="checkbox"
+                      checked={filtered.length > 0 && filtered.every((r) => selectedIds.has(r.id))}
+                      onChange={(e) =>
+                        setSelectedIds(
+                          e.target.checked ? new Set(filtered.map((r) => r.id)) : new Set()
+                        )
+                      }
+                      className="rounded border-[var(--c-n300)]"
+                      aria-label="Alle auswählen"
+                    />
+                  </th>
                   <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">Name</th>
                   <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider hidden md:table-cell">Cuisine</th>
                   <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">Price</th>
@@ -1509,13 +1796,22 @@ export function AdminDashboard({
               <tbody className="divide-y divide-[var(--c-n50)]">
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-[var(--c-n400)]">
+                    <td colSpan={7} className="px-4 py-10 text-center text-sm text-[var(--c-n400)]">
                       {query ? "No restaurants match your search." : "No restaurants yet. Add one!"}
                     </td>
                   </tr>
                 )}
                 {filtered.map((r) => (
                   <tr key={r.id} className="hover:bg-[var(--c-n50)]/60 transition-colors group">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(r.id)}
+                        onChange={() => toggleSelected(r.id)}
+                        className="rounded border-[var(--c-n300)]"
+                        aria-label={`${r.name} auswählen`}
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <Link
                         href={`/restaurant/${r.id}`}
@@ -1562,7 +1858,7 @@ export function AdminDashboard({
                           {loadingEditId === r.id ? "…" : "Edit"}
                         </button>
                         <button
-                          onClick={() => setDeleteTarget(r)}
+                          onClick={() => setDeleteTargets([r])}
                           className="rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-burg)] hover:bg-[var(--c-burg-light)] transition-colors"
                         >
                           Delete
@@ -1586,6 +1882,9 @@ export function AdminDashboard({
           placePhotos={form.google_place_id ? placePhotos : []}
           placePhotosLoading={placePhotosLoading}
           pastReviews={pastReviews}
+          cuisineSuggestions={cuisineSuggestions}
+          visibleContactFields={visibleContactFields}
+          onToggleContactField={toggleContactField}
           onFormChange={patchForm}
           onReviewChange={patchReview}
           onCategoryChange={patchCategory}
@@ -1597,8 +1896,8 @@ export function AdminDashboard({
 
         {/* ── Delete modal ── */}
         <DeleteModal
-          restaurant={deleteTarget}
-          onClose={() => setDeleteTarget(null)}
+          restaurants={deleteTargets}
+          onClose={() => setDeleteTargets([])}
           onConfirm={handleDelete}
           deleting={isPending}
         />
@@ -1611,9 +1910,11 @@ export function AdminDashboard({
           importing={importImporting}
           rows={importRows}
           selected={importSelected}
+          bulkSpoonRating={importBulkSpoonRating}
           onFileSelected={handleImportFile}
           onToggleRow={toggleImportRow}
           onToggleAllNew={toggleAllImportNew}
+          onBulkSpoonRatingChange={setImportBulkSpoonRating}
           onImport={handleConfirmImport}
           onClose={closeImport}
         />
