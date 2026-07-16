@@ -11,18 +11,22 @@ export type ProfileWithEmail = Profile & { email: string | null };
 // `profiles` has no email column (lives on auth.users), and `username` is a
 // required signup field but not DB-enforced — so we always attach email via
 // the service-role client to make sure admins can tell accounts apart.
+//
+// One listUsers() call instead of one getUserById() per profile — this used
+// to fire N parallel admin-API requests (N = every registered account) on
+// every admin dashboard load, which doesn't scale as the user base grows
+// (per CLAUDE.md, the dashboard already assumes 100+ accounts is plausible).
+// perPage=1000 comfortably covers a personal restaurant-guide's user base in
+// a single request; revisit with real pagination if that's ever not true.
 async function attachEmails(profiles: Profile[]): Promise<ProfileWithEmail[]> {
   if (profiles.length === 0) return [];
 
   const adminClient = createAdminClient();
-  const emails = await Promise.all(
-    profiles.map(async (p) => {
-      const { data } = await adminClient.auth.admin.getUserById(p.id);
-      return data?.user?.email ?? null;
-    })
-  );
+  const { data, error } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+  if (error) return profiles.map((p) => ({ ...p, email: null }));
 
-  return profiles.map((p, i) => ({ ...p, email: emails[i] }));
+  const emailById = new Map(data.users.map((u) => [u.id, u.email ?? null]));
+  return profiles.map((p) => ({ ...p, email: emailById.get(p.id) ?? null }));
 }
 
 // ── List accounts awaiting approval (admin-only) ──────────────────────────────

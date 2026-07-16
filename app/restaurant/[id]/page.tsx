@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getRestaurantById } from "@/app/actions/restaurants";
 import { getPlaceDetails } from "@/app/actions/places";
-import { deleteComment } from "@/app/actions/comments";
+import { DeleteCommentButton } from "@/components/DeleteCommentButton";
 import { createClient } from "@/utils/supabase/server";
 import {
   SPOON_RATINGS,
@@ -823,7 +823,6 @@ export default async function RestaurantPage({
 
             {restaurant.comments.map((comment) => {
               const isOwner = user?.id === comment.user_id;
-              const deleteAction = deleteComment.bind(null, comment.id, restaurant.id);
               const initials = (comment.profiles?.username ?? "?")
                 .slice(0, 2)
                 .toUpperCase();
@@ -879,21 +878,7 @@ export default async function RestaurantPage({
                         {comment.profiles?.username ?? "Anonym"}
                       </span>
                       {isOwner && (
-                        <form action={deleteAction} style={{ display: "inline" }}>
-                          <button
-                            type="submit"
-                            style={{
-                              fontSize: "0.75rem",
-                              color: "var(--c-n400)",
-                              background: "none",
-                              border: "none",
-                              cursor: "pointer",
-                              letterSpacing: "0.04em",
-                            }}
-                          >
-                            Löschen
-                          </button>
-                        </form>
+                        <DeleteCommentButton commentId={comment.id} restaurantId={restaurant.id} />
                       )}
                     </div>
 

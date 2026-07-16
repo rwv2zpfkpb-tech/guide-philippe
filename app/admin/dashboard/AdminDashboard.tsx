@@ -28,7 +28,7 @@ import {
 } from "@/app/actions/profiles";
 import { PRIMARY_ADMIN_EMAIL } from "@/lib/admin";
 import { BackButton } from "@/components/BackButton";
-import { IconChevronDown, IconStar } from "@/components/icons";
+import { IconChevronDown, IconStar, IconClock } from "@/components/icons";
 import { PlacesAutocomplete, type PlaceSelection } from "@/components/admin/PlacesAutocomplete";
 import {
   SPOON_RATINGS,
@@ -303,6 +303,7 @@ function EditPanel({
   onManualEntryToggle,
   placePhotos,
   placePhotosLoading,
+  hasLiveOpeningHours,
   pastReviews,
   cuisineSuggestions,
   visibleContactFields,
@@ -321,6 +322,7 @@ function EditPanel({
   onManualEntryToggle: () => void;
   placePhotos: string[];
   placePhotosLoading: boolean;
+  hasLiveOpeningHours: boolean;
   form: FormData;
   pastReviews: ReviewWithCategories[];
   cuisineSuggestions: string[];
@@ -525,6 +527,28 @@ function EditPanel({
             <p className="text-xs text-[var(--c-n400)] mb-2">
               Telefon/Website werden bei einer Google-Auswahl automatisch übernommen, falls verfügbar — hier korrigierbar. Öffnungszeiten sind ein manueller Fallback, falls Google keine Live-Öffnungszeiten liefert.
             </p>
+            {!manualEntry && form.google_place_id && !placePhotosLoading && (
+              <div
+                className={`mb-2.5 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${
+                  hasLiveOpeningHours
+                    ? "border-[var(--c-success)]/30 bg-[var(--c-success-light)]"
+                    : "border-[var(--c-n200)] bg-[var(--c-n50)]"
+                }`}
+              >
+                {hasLiveOpeningHours ? (
+                  <svg className="w-3.5 h-3.5 mt-0.5 text-[var(--c-success)] shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <IconClock size={14} className="mt-0.5 text-[var(--c-n400)] shrink-0" />
+                )}
+                <span className="text-[var(--c-n600)]">
+                  {hasLiveOpeningHours
+                    ? "Google liefert Live-Öffnungszeiten für diesen Ort — die Detailseite zeigt sie automatisch, manuelle Eingabe unten ist optional."
+                    : "Google liefert für diesen Ort keine Live-Öffnungszeiten — hier manuell eintragen, falls bekannt."}
+                </span>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2 mb-2.5">
               {(Object.keys(CONTACT_FIELD_LABELS) as ContactField[]).map((field) => {
                 const active = visibleContactFields.has(field);
@@ -1134,14 +1158,14 @@ function PendingRegistrations({
                 disabled={busyId === p.id}
                 className="rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-success)] hover:bg-[var(--c-success-light)] transition-colors disabled:opacity-50"
               >
-                Freischalten
+                {busyId === p.id ? "…" : "Freischalten"}
               </button>
               <button
                 onClick={() => onDecision(p.id, "reject")}
                 disabled={busyId === p.id}
                 className="rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-burg)] hover:bg-[var(--c-burg-light)] transition-colors disabled:opacity-50"
               >
-                Ablehnen
+                {busyId === p.id ? "…" : "Ablehnen"}
               </button>
             </div>
           </li>
@@ -1373,6 +1397,11 @@ export function AdminDashboard({
   const [visibleContactFields, setVisibleContactFields] = useState<Set<ContactField>>(new Set());
   const [placePhotos, setPlacePhotos] = useState<string[]>([]);
   const [placePhotosLoading, setPlacePhotosLoading] = useState(false);
+  // True once a getPlaceDetails() fetch confirms Google has live opening
+  // hours for this place — surfaced as a green-check indicator next to the
+  // manual "Öffnungszeiten" field so the admin knows it's a fallback that
+  // (for this place) isn't actually needed.
+  const [hasLiveOpeningHours, setHasLiveOpeningHours] = useState(false);
   const [currentReviewId, setCurrentReviewId] = useState<string | null>(null);
   const [pastReviews, setPastReviews] = useState<ReviewWithCategories[]>([]);
   const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
@@ -1505,13 +1534,17 @@ export function AdminDashboard({
     if (!placeId) return;
     let cancelled = false;
     // Loading-Flag muss synchron vor dem Fetch gesetzt werden, damit die UI
-    // sofort "Lade Fotos…" statt kurzzeitig veralteter Fotos zeigt.
+    // sofort "Lade Fotos…" statt kurzzeitig veralteter Fotos zeigt. Der
+    // Öffnungszeiten-Hinweis unten ist ebenfalls hinter `!placePhotosLoading`
+    // versteckt, solange der Fetch läuft — daher muss `hasLiveOpeningHours`
+    // hier nicht zusätzlich synchron zurückgesetzt werden.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPlacePhotosLoading(true);
     getPlaceDetails(placeId)
       .then((details) => {
         if (cancelled) return;
         setPlacePhotos(details.photoUris);
+        setHasLiveOpeningHours(details.regularOpeningHours !== null);
         // Only fill in fields that are still empty — reopening an existing
         // restaurant shouldn't clobber a phone/website the admin already
         // saved/corrected by hand.
@@ -1528,7 +1561,9 @@ export function AdminDashboard({
         });
       })
       .catch(() => {
-        if (!cancelled) setPlacePhotos([]);
+        if (cancelled) return;
+        setPlacePhotos([]);
+        setHasLiveOpeningHours(false);
       })
       .finally(() => {
         if (!cancelled) setPlacePhotosLoading(false);
@@ -2030,6 +2065,7 @@ export function AdminDashboard({
           onManualEntryToggle={() => setManualEntry((v) => !v)}
           placePhotos={form.google_place_id ? placePhotos : []}
           placePhotosLoading={placePhotosLoading}
+          hasLiveOpeningHours={hasLiveOpeningHours}
           pastReviews={pastReviews}
           cuisineSuggestions={cuisineSuggestions}
           visibleContactFields={visibleContactFields}

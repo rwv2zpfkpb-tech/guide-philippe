@@ -248,6 +248,21 @@ gmp-placeautocomplete::part(input) {
   animation: gp-spin 0.7s linear infinite;
 }
 
+/* Small inline variant — used inside buttons/pills for in-place busy states
+   (e.g. resolving a location search before navigating) rather than the
+   full-page loading.tsx spinner. Border color inherits currentColor so it
+   reads correctly on both light and dark button backgrounds. */
+.gp-spinner-sm {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  opacity: 0.7;
+  animation: gp-spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
 /* ════════════════════════════════════════════════════════════════
    RESTAURANT DETAIL — hero identity row
    On narrow viewports flex-wrap used to leave the spoon-verdict box

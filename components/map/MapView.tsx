@@ -179,10 +179,15 @@ export function MapView({
   return (
     <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!}>
       <Map
-        // Google's Map ID is immutable on an existing map instance — force a
-        // clean remount when the theme (and therefore mapId) changes instead
-        // of silently keeping the old style.
-        key={mapId ?? "no-map-id"}
+        // defaultCenter/defaultZoom below are uncontrolled — vis.gl only
+        // applies them on mount, so panning/zooming during a session isn't
+        // fought by React. That means a *new* search (e.g. via the compact
+        // search bar inside SearchResultsView) wouldn't otherwise move the
+        // map at all, since `center` changing alone doesn't remount it.
+        // Keying on the center (in addition to the Map ID, for the
+        // light/dark remount below) forces a clean remount whenever the
+        // searched location actually changes.
+        key={`${mapId ?? "no-map-id"}-${mapCenter.lat}-${mapCenter.lng}`}
         className={className}
         defaultCenter={mapCenter}
         defaultZoom={zoom}

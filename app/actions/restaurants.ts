@@ -58,9 +58,14 @@ export async function getRestaurants(
 ): Promise<Restaurant[]> {
   const supabase = await createClient();
 
+  // Explicit filter rather than relying on RLS alone: RLS only hides drafts
+  // from non-admins, so an admin browsing the normal site (not the admin
+  // dashboard, which queries restaurants directly) would otherwise see
+  // draft entries mixed into public search/grid results.
   let query = supabase
     .from("restaurants")
     .select("*")
+    .eq("status", "published")
     .order("created_at", { ascending: false });
 
   if (filters?.cuisine?.length) query = query.in("cuisine", filters.cuisine);
@@ -84,8 +89,8 @@ export async function getRestaurants(
 }
 
 // Restaurants added within the last 30 days, newest first — powers the
-// "Neu hinzugefügt" strip on the landing page. RLS already hides drafts
-// from non-admins, so no explicit status filter is needed here.
+// "Neu hinzugefügt" strip on the landing page. Drafts are excluded
+// explicitly (not just via RLS) — see getRestaurants() above for why.
 export async function getRecentRestaurants(limit = 8): Promise<Restaurant[]> {
   const supabase = await createClient();
 
@@ -95,6 +100,7 @@ export async function getRecentRestaurants(limit = 8): Promise<Restaurant[]> {
   const { data, error } = await supabase
     .from("restaurants")
     .select("*")
+    .eq("status", "published")
     .gte("created_at", cutoff.toISOString())
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -105,8 +111,8 @@ export async function getRecentRestaurants(limit = 8): Promise<Restaurant[]> {
 
 // Handverlesene "Auswahl"-Reihe auf der Landing-Page — unabhängig von
 // "Neu hinzugefügt" (zeitbasiert), Admins schalten restaurants.featured
-// gezielt frei (s. setFeatured unten). RLS blendet Entwürfe für Nicht-Admins
-// bereits automatisch aus, kein explizites status-Filter nötig.
+// gezielt frei (s. setFeatured unten). Entwürfe werden explizit ausgefiltert
+// (nicht nur per RLS) — s. getRestaurants() oben.
 export async function getFeaturedRestaurants(): Promise<Restaurant[]> {
   const supabase = await createClient();
 
@@ -114,6 +120,7 @@ export async function getFeaturedRestaurants(): Promise<Restaurant[]> {
     .from("restaurants")
     .select("*")
     .eq("featured", true)
+    .eq("status", "published")
     .order("name", { ascending: true });
 
   if (error) throw new Error(error.message);
@@ -126,6 +133,7 @@ export async function getCuisines(): Promise<string[]> {
   const { data, error } = await supabase
     .from("restaurants")
     .select("cuisine")
+    .eq("status", "published")
     .not("cuisine", "is", null);
 
   if (error) throw new Error(error.message);

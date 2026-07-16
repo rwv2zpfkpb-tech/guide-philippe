@@ -72,6 +72,12 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [pendingSelection, setPendingSelection] = useState<PendingSelection | null>(null);
+  // True while a selected place/text is being resolved to lat/lng via the
+  // Google Places/Geocoder API — happens *before* router.push, so it isn't
+  // covered by the route-level loading.tsx spinner. Without this the
+  // "Suchen" button (and compact-mode selections) look unresponsive for the
+  // ~0.5-1s round trip.
+  const [resolving, setResolving] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef     = useRef<HTMLInputElement>(null);
@@ -125,11 +131,15 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
 
   const resolvePlace = useCallback(
     async (placeId: string, fallbackName: string) => {
+      setResolving(true);
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const place = new (google.maps.places as any).Place({ id: placeId });
         await place.fetchFields({ fields: ["location", "formattedAddress", "viewport"] });
-        if (!place.location) return;
+        if (!place.location) {
+          setResolving(false);
+          return;
+        }
         navigateToLocation(
           router,
           place.location.lat(),
@@ -138,10 +148,12 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
           place.viewport,
           filters
         );
+        setResolving(false);
       } catch {
         // fallback: geocode by text
         const geocoder = new google.maps.Geocoder();
         geocoder.geocode({ address: fallbackName }, (results, status) => {
+          setResolving(false);
           if (status !== "OK" || !results?.[0]) return;
           const loc = results[0].geometry.location;
           navigateToLocation(router, loc.lat(), loc.lng(), results[0].formatted_address, results[0].geometry.viewport, filters);
@@ -160,8 +172,10 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
         return;
       }
       // Fallback: geocode directly
+      setResolving(true);
       const geocoder = new google.maps.Geocoder();
       geocoder.geocode({ address: text }, (results, status) => {
+        setResolving(false);
         if (status !== "OK" || !results?.[0]) return;
         const loc = results[0].geometry.location;
         navigateToLocation(
@@ -281,16 +295,22 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
           }
         }}
       >
-        {/* Search icon */}
-        <svg
-          width={isCompact ? 14 : 16} height={isCompact ? 14 : 16}
-          viewBox="0 0 24 24" fill="none" stroke="var(--c-n400)"
-          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          style={{ flexShrink: 0 }} aria-hidden
-        >
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
+        {/* Search icon — swapped for a spinner while a selection is being
+            resolved to coordinates (the gap before router.push, not covered
+            by the route-level loading.tsx). */}
+        {resolving ? (
+          <div className="gp-spinner-sm" style={{ color: "var(--c-n400)" }} aria-hidden />
+        ) : (
+          <svg
+            width={isCompact ? 14 : 16} height={isCompact ? 14 : 16}
+            viewBox="0 0 24 24" fill="none" stroke="var(--c-n400)"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            style={{ flexShrink: 0 }} aria-hidden
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        )}
 
         <input
           ref={inputRef}
@@ -299,6 +319,7 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
           onChange={(e) => { setValue(e.target.value); setOpen(true); setActiveIndex(-1); setPendingSelection(null); }}
           onFocus={() => { if (value.length >= 2) setOpen(true); }}
           onKeyDown={handleKeyDown}
+          disabled={resolving}
           placeholder={
             isCompact
               ? "Stadt oder Region…"
@@ -315,6 +336,7 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
             fontFamily: "inherit",
             fontSize: isCompact ? "0.875rem" : "1rem",
             color: "var(--c-ink)",
+            opacity: resolving ? 0.6 : 1,
           }}
         />
 
@@ -323,18 +345,23 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
           <button
             type="button"
             onClick={() => { handleSearch(); setOpen(false); }}
+            disabled={resolving}
+            aria-busy={resolving}
             style={{
               flexShrink: 0,
+              display: "inline-flex", alignItems: "center", gap: 8,
               fontSize: "0.875rem", fontWeight: 500, letterSpacing: "0.03em",
               padding: "10px 24px", border: "none", borderRadius: 9999,
               background: "var(--c-burg)", color: "white",
-              cursor: "pointer", fontFamily: "inherit",
-              transition: "background .2s",
+              cursor: resolving ? "default" : "pointer", fontFamily: "inherit",
+              opacity: resolving ? 0.75 : 1,
+              transition: "background .2s, opacity .2s",
             }}
-            onMouseOver={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "oklch(26% 0.080 17)"; }}
+            onMouseOver={(e) => { if (!resolving) (e.currentTarget as HTMLButtonElement).style.background = "oklch(26% 0.080 17)"; }}
             onMouseOut={(e)  => { (e.currentTarget as HTMLButtonElement).style.background = "var(--c-burg)"; }}
           >
-            Suchen
+            {resolving && <span className="gp-spinner-sm" aria-hidden />}
+            {resolving ? "Sucht…" : "Suchen"}
           </button>
         )}
       </div>

@@ -83,6 +83,21 @@ function extractPlaceId(url: string): string | null {
   return null;
 }
 
+// The preview's "Maps ↗" link (ImportModal, AdminDashboard.tsx) renders this
+// value directly as an <a href>. It comes straight from an admin-uploaded
+// CSV's "URL" column, so a crafted file (e.g. someone sending a fake Google
+// Takeout export) could otherwise smuggle a `javascript:`/`data:` URI into a
+// real link in the admin's authenticated session. Only allow the schemes an
+// actual Maps link would ever use.
+function sanitizeMapsUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 // ── Preview (dry run): parse + match against existing restaurants ────────────
 
 export async function previewCsvImport(csvText: string): Promise<CsvImportRow[]> {
@@ -134,7 +149,7 @@ export async function previewCsvImport(csvText: string): Promise<CsvImportRow[]>
         row: r.row,
         name: r.name,
         googlePlaceId: placeId,
-        mapsUrl: r.mapsUrl || null,
+        mapsUrl: r.mapsUrl ? sanitizeMapsUrl(r.mapsUrl) : null,
         note: r.note || null,
         match: existingMatch ? "existing" : "new",
         existingId: existingMatch?.id ?? null,
@@ -149,9 +164,11 @@ export async function previewCsvImport(csvText: string): Promise<CsvImportRow[]>
 // einem ersten Aufenthalt (Invariante: jedes Restaurant hat ≥1
 // restaurant_reviews-Zeile). Damit möglichst viel schon "eingepflegt" ist statt
 // leer:
-// - Kartendaten (google_place_id + lat/lng) werden pro Zeile per
-//   `resolvePlaceForImport` aufgelöst (direkte ID-Auflösung, sonst Textsuche
-//   nach dem Namen) — bestmöglicher Vorschlag, kein garantierter Treffer.
+// - Kartendaten (google_place_id + lat/lng) sowie Adresse + Cuisine-Vorschlag
+//   werden pro Zeile per `resolvePlaceForImport` aufgelöst (direkte
+//   ID-Auflösung, sonst Textsuche nach dem Namen) — bestmöglicher Vorschlag,
+//   kein garantierter Treffer, und nur übernommen, wenn dabei auch eine
+//   google_place_id verwendet werden konnte (s. Kollisions-Handling unten).
 // - Ein vorhandener CSV-Kommentar ("Note"/"Notiz") wird direkt als Fazit des
 //   Platzhalter-Aufenthalts übernommen statt leer zu bleiben.
 // Der Admin prüft/korrigiert beides über den normalen Edit-Panel-Flow (inkl.
@@ -210,6 +227,8 @@ export async function confirmCsvImport(
         google_place_id: googlePlaceId,
         lat: googlePlaceId ? place?.lat ?? null : null,
         lng: googlePlaceId ? place?.lng ?? null : null,
+        address: googlePlaceId ? place?.address ?? null : null,
+        cuisine: googlePlaceId ? place?.cuisine ?? null : null,
         status: "draft" as const,
       })
       .select()

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
+import { guessCuisine } from "@/lib/cuisine";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -22,38 +23,6 @@ type Props = {
   placeholder?:          string;
   componentRestrictions?: google.maps.places.ComponentRestrictions;
 };
-
-// Google place "types" that carry no cuisine information — skip these when
-// looking for a usable type to turn into a cuisine guess.
-const GENERIC_PLACE_TYPES = new Set([
-  "restaurant", "food", "point_of_interest", "establishment", "store",
-]);
-
-function prettifyPlaceType(type: string): string {
-  return type
-    .replace(/_restaurant$/, "")
-    .split("_")
-    .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
-
-// Turns a Google primary-type display name / type id / types list into a
-// short, human cuisine label (e.g. "italian_restaurant" → "Italian").
-// Returns null when nothing usable is available — the admin fills it in by hand.
-function guessCuisine(
-  primaryTypeDisplayName?: string | null,
-  primaryType?: string | null,
-  types?: string[] | null
-): string | null {
-  if (primaryTypeDisplayName?.trim()) {
-    return primaryTypeDisplayName.replace(/\s*restaurant$/i, "").trim() || primaryTypeDisplayName;
-  }
-  const candidate =
-    (primaryType && !GENERIC_PLACE_TYPES.has(primaryType) ? primaryType : null) ??
-    types?.find((t) => t.endsWith("_restaurant") && !GENERIC_PLACE_TYPES.has(t));
-  return candidate ? prettifyPlaceType(candidate) : null;
-}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 // Must be rendered inside an <APIProvider> with the places library available.

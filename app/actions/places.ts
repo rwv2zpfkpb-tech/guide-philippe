@@ -1,5 +1,7 @@
 "use server";
 
+import { guessCuisine } from "@/lib/cuisine";
+
 // Google Places API (New) — REST endpoint.
 // The API key stays server-side; it is never sent to the browser.
 
@@ -24,6 +26,8 @@ export type ResolvedPlace = {
   googlePlaceId: string;
   lat: number;
   lng: number;
+  address: string | null;
+  cuisine: string | null;
 };
 
 // ── Action ────────────────────────────────────────────────────────────────────
@@ -108,11 +112,18 @@ export async function resolvePlaceForImport(
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_PLACES_API_KEY env var is not set");
 
+  // Same field set (location + address + cuisine-guess inputs) for both the
+  // direct ID lookup and the text-search fallback below, so the import
+  // always comes back with an address/cuisine suggestion when a place is
+  // found — not just lat/lng — mirroring what the admin's manual Google
+  // search (PlacesAutocomplete) already fills in.
+  const fields = "id,location,formattedAddress,primaryTypeDisplayName,primaryType,types";
+
   if (placeId) {
     const res = await fetch(`${BASE}/places/${encodeURIComponent(placeId)}`, {
       headers: {
         "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": "id,location",
+        "X-Goog-FieldMask": fields,
       },
       cache: "no-store",
     });
@@ -120,9 +131,19 @@ export async function resolvePlaceForImport(
       const data = (await res.json()) as {
         id?: string;
         location?: { latitude: number; longitude: number };
+        formattedAddress?: string;
+        primaryTypeDisplayName?: { text?: string };
+        primaryType?: string;
+        types?: string[];
       };
       if (data.id && data.location) {
-        return { googlePlaceId: data.id, lat: data.location.latitude, lng: data.location.longitude };
+        return {
+          googlePlaceId: data.id,
+          lat: data.location.latitude,
+          lng: data.location.longitude,
+          address: data.formattedAddress ?? null,
+          cuisine: guessCuisine(data.primaryTypeDisplayName?.text, data.primaryType, data.types),
+        };
       }
     }
     // Fällt durch zur Textsuche, falls die extrahierte ID keine echte Place-ID war.
@@ -132,7 +153,7 @@ export async function resolvePlaceForImport(
     method: "POST",
     headers: {
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": "places.id,places.location",
+      "X-Goog-FieldMask": fields.split(",").map((f) => `places.${f}`).join(","),
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ textQuery: name }),
@@ -141,11 +162,24 @@ export async function resolvePlaceForImport(
   if (!searchRes.ok) return null;
 
   const searchData = (await searchRes.json()) as {
-    places?: Array<{ id?: string; location?: { latitude: number; longitude: number } }>;
+    places?: Array<{
+      id?: string;
+      location?: { latitude: number; longitude: number };
+      formattedAddress?: string;
+      primaryTypeDisplayName?: { text?: string };
+      primaryType?: string;
+      types?: string[];
+    }>;
   };
   const top = searchData.places?.[0];
   if (top?.id && top.location) {
-    return { googlePlaceId: top.id, lat: top.location.latitude, lng: top.location.longitude };
+    return {
+      googlePlaceId: top.id,
+      lat: top.location.latitude,
+      lng: top.location.longitude,
+      address: top.formattedAddress ?? null,
+      cuisine: guessCuisine(top.primaryTypeDisplayName?.text, top.primaryType, top.types),
+    };
   }
   return null;
 }
