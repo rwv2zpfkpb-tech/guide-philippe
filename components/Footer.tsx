@@ -1,4 +1,24 @@
-export default function Footer() {
+"use client";
+
+import { Suspense } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+
+// The search-results view (app/page.tsx, "/" with location params) renders its
+// own fixed-height list/map layout that fills the viewport below the header —
+// only its internal results list scrolls. Rendering the footer underneath it
+// would push the page taller than 100vh and make the whole document scroll,
+// so it's hidden for that specific view instead.
+function FooterInner() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isLocationSearch =
+    pathname === "/" &&
+    searchParams.has("lat") && searchParams.has("lng") &&
+    searchParams.has("ne_lat") && searchParams.has("ne_lng") &&
+    searchParams.has("sw_lat") && searchParams.has("sw_lng");
+
+  if (isLocationSearch) return null;
+
   return (
     <footer
       style={{
@@ -57,5 +77,13 @@ export default function Footer() {
         </span>
       </div>
     </footer>
+  );
+}
+
+export default function Footer() {
+  return (
+    <Suspense>
+      <FooterInner />
+    </Suspense>
   );
 }
