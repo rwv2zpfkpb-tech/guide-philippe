@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getRestaurantById } from "@/app/actions/restaurants";
+import { getRestaurantById, refreshGooglePlaceDataIfStale } from "@/app/actions/restaurants";
 import { getPlaceDetails } from "@/app/actions/places";
+import { isOpenNow } from "@/lib/openingHours";
 import { DeleteCommentButton } from "@/components/DeleteCommentButton";
 import { createClient } from "@/utils/supabase/server";
 import {
@@ -130,19 +131,33 @@ export default async function RestaurantPage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Nur noch Fotos kommen live von Google (nicht persistierbar) — Adresse/
+  // Telefon/Website/Öffnungszeiten kommen aus der DB (befüllt beim
+  // Bearbeiten im Admin-Panel/CSV-Import/"Von Google synchronisieren"),
+  // damit nicht bei jedem Seitenaufruf ein zusätzlicher Places-Request
+  // anfällt.
   const placeDetails = restaurant.google_place_id
     ? await getPlaceDetails(restaurant.google_place_id).catch(() => null)
     : null;
+
+  // 6-Monate-Verfallsdatum (lib/googleSync.ts): sind die gespeicherten
+  // Google-Daten abgelaufen, schreibt dieser Aufruf die gerade schon
+  // geladene placeDetails-Antwort in die DB zurück — kein zusätzlicher
+  // Places-Request, da placeDetails ohnehin für die Fotos oben geholt wurde.
+  // No-op (gibt `restaurant` unverändert zurück), solange die Daten noch
+  // frisch sind.
+  if (placeDetails) {
+    restaurant = await refreshGooglePlaceDataIfStale(restaurant, placeDetails);
+  }
 
   const spoon = SPOON_RATINGS[restaurant.spoon_rating];
   const spoonColors = SPOON_RATING_COLORS[restaurant.spoon_rating];
   const firstPhoto = placeDetails?.photoUris?.[0] ?? null;
 
-  // Live Google-Daten haben Vorrang, das gespeicherte Feld ist der Fallback
-  // (manuell erfasste Restaurants oder fehlgeschlagener Live-Lookup) — s.
-  // dasselbe Muster bei placeDetails?.formattedAddress || restaurant.address.
-  const phone = placeDetails?.phone || restaurant.phone;
-  const website = placeDetails?.website || restaurant.website;
+  const phone = restaurant.phone;
+  const website = restaurant.website;
+  const weekdayDescriptions = restaurant.google_opening_hours;
+  const openNow = isOpenNow(weekdayDescriptions);
 
   const [currentReview, ...pastReviews] = restaurant.reviews;
   const averageRating = computeAverageRating(restaurant.comments.map((c) => c.secondary_rating));
@@ -323,7 +338,7 @@ export default async function RestaurantPage({
                 lineHeight: 1,
               }}
             >
-              {(placeDetails?.formattedAddress || restaurant.address) && (
+              {restaurant.address && (
                 <>
                   <span
                     style={{
@@ -335,21 +350,19 @@ export default async function RestaurantPage({
                   >
                     <IconPin size={14} />
                   </span>
-                  <span>{placeDetails?.formattedAddress || restaurant.address}</span>
-                  {placeDetails?.regularOpeningHours && (
+                  <span>{restaurant.address}</span>
+                  {openNow !== null && (
                     <span style={{ color: "var(--c-n300)" }}>·</span>
                   )}
                 </>
               )}
-              {placeDetails?.regularOpeningHours && (
+              {openNow !== null && (
                 <span
                   style={{
-                    color: placeDetails.regularOpeningHours.openNow
-                      ? "oklch(45% 0.12 145)"
-                      : "oklch(45% 0.12 25)",
+                    color: openNow ? "oklch(45% 0.12 145)" : "oklch(45% 0.12 25)",
                   }}
                 >
-                  {placeDetails.regularOpeningHours.openNow ? "Jetzt geöffnet" : "Geschlossen"}
+                  {openNow ? "Jetzt geöffnet" : "Geschlossen"}
                 </span>
               )}
             </div>
@@ -473,7 +486,7 @@ export default async function RestaurantPage({
             "open" is set), a chevron makes the expandability obvious. Google
             liefert "Tag: Zeiten"-Strings (Mo–So); hier in zwei Spalten
             aufgeteilt und der heutige Wochentag hervorgehoben. */}
-        {placeDetails?.regularOpeningHours?.weekdayDescriptions && (
+        {weekdayDescriptions && weekdayDescriptions.length > 0 && (
           <div style={{ padding: "40px 0 0" }}>
             <details
               className="oh-details"
@@ -515,7 +528,7 @@ export default async function RestaurantPage({
                 </svg>
               </summary>
               <div style={{ borderTop: "1px solid var(--c-n100)" }}>
-                {placeDetails.regularOpeningHours.weekdayDescriptions.map((d, i) => {
+                {weekdayDescriptions.map((d, i) => {
                   const sep = d.indexOf(":");
                   const day = sep === -1 ? d : d.slice(0, sep);
                   const hours = sep === -1 ? "" : d.slice(sep + 1).trim();
@@ -535,7 +548,7 @@ export default async function RestaurantPage({
                         color: isToday ? "var(--c-ink)" : "var(--c-n600)",
                         fontWeight: isToday ? 600 : 400,
                         borderBottom:
-                          i < placeDetails.regularOpeningHours!.weekdayDescriptions.length - 1
+                          i < weekdayDescriptions.length - 1
                             ? "1px solid var(--c-n100)"
                             : "none",
                       }}
@@ -550,10 +563,11 @@ export default async function RestaurantPage({
           </div>
         )}
 
-        {/* Manueller Öffnungszeiten-Fallback — nur wenn Google keine Live-Daten
-            liefert (kein google_place_id, fehlgeschlagener Lookup, oder Google
-            kennt die Öffnungszeiten schlicht nicht). */}
-        {!placeDetails?.regularOpeningHours?.weekdayDescriptions && restaurant.opening_hours && (
+        {/* Manueller Öffnungszeiten-Fallback — nur wenn Google keine
+            gespeicherten Öffnungszeiten liefert (kein google_place_id,
+            fehlgeschlagener Lookup/Sync, oder Google kennt die
+            Öffnungszeiten schlicht nicht). */}
+        {(!weekdayDescriptions || weekdayDescriptions.length === 0) && restaurant.opening_hours && (
           <div style={{ padding: "40px 0 0" }}>
             <div
               style={{

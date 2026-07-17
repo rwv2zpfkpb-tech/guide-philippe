@@ -229,6 +229,10 @@ export async function confirmCsvImport(
         lng: googlePlaceId ? place?.lng ?? null : null,
         address: googlePlaceId ? place?.address ?? null : null,
         cuisine: googlePlaceId ? place?.cuisine ?? null : null,
+        phone: googlePlaceId ? place?.phone ?? null : null,
+        website: googlePlaceId ? place?.website ?? null : null,
+        google_opening_hours: googlePlaceId ? place?.openingHours ?? null : null,
+        google_synced_at: googlePlaceId ? new Date().toISOString() : null,
         status: "draft" as const,
       })
       .select()

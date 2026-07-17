@@ -10,6 +10,7 @@ import {
   deleteRestaurants,
   getRestaurantById,
   setFeatured,
+  syncGooglePlaceData,
 } from "@/app/actions/restaurants";
 import { getPlaceDetails } from "@/app/actions/places";
 import { createReview, updateReview, type ReviewPayload } from "@/app/actions/reviews";
@@ -87,6 +88,8 @@ type FormData = {
   phone: string;
   website: string;
   opening_hours: string;
+  google_opening_hours: string[] | null;
+  google_synced_at: string | null;
   cuisine: string;
   price_level: PriceLevel | null;
   status: RestaurantStatus;
@@ -150,6 +153,8 @@ const emptyForm = (): FormData => ({
   phone: "",
   website: "",
   opening_hours: "",
+  google_opening_hours: null,
+  google_synced_at: null,
   cuisine: "",
   price_level: null,
   status: "published",
@@ -177,6 +182,8 @@ function formFromRestaurant(r: Restaurant, latest: ReviewWithCategories | null):
     phone: r.phone ?? "",
     website: r.website ?? "",
     opening_hours: r.opening_hours ?? "",
+    google_opening_hours: r.google_opening_hours ?? null,
+    google_synced_at: r.google_synced_at ?? null,
     cuisine: r.cuisine ?? "",
     price_level: r.price_level,
     status: r.status,
@@ -855,8 +862,9 @@ function EditPanel({
             <button
               onClick={onSave}
               disabled={saveDisabled}
-              className="flex-1 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
+              {saving && <span className="gp-spinner-sm" />}
               {saving ? "Speichert…" : isNew ? "Restaurant hinzufügen" : "Änderungen speichern"}
             </button>
           </div>
@@ -910,8 +918,9 @@ function DeleteModal({
           <button
             onClick={onConfirm}
             disabled={deleting}
-            className="flex-1 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
+            {deleting && <span className="gp-spinner-sm" />}
             {deleting ? "Löscht…" : "Ja, löschen"}
           </button>
         </div>
@@ -972,7 +981,8 @@ function ImportModal({
           {step === "pick" && (
             <div>
               <label className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[var(--c-n200)] px-4 py-10 text-center cursor-pointer hover:border-[var(--c-gold)] transition-colors">
-                <span className="text-sm font-medium text-[var(--c-ink)]">
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-[var(--c-ink)]">
+                  {parsing && <span className="gp-spinner-sm" />}
                   {parsing ? "Wird analysiert…" : "CSV-Datei auswählen"}
                 </span>
                 <span className="text-xs text-[var(--c-n400)]">.csv aus Google Takeout</span>
@@ -1106,8 +1116,9 @@ function ImportModal({
             <button
               onClick={onImport}
               disabled={importing || selectedCount === 0}
-              className="flex-1 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
+              {importing && <span className="gp-spinner-sm" />}
               {importing ? "Importiere…" : `${selectedCount} als Entwurf importieren`}
             </button>
           )}
@@ -1156,16 +1167,18 @@ function PendingRegistrations({
               <button
                 onClick={() => onDecision(p.id, "approve")}
                 disabled={busyId === p.id}
-                className="rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-success)] hover:bg-[var(--c-success-light)] transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-success)] hover:bg-[var(--c-success-light)] transition-colors disabled:opacity-50"
               >
-                {busyId === p.id ? "…" : "Freischalten"}
+                {busyId === p.id && <span className="gp-spinner-sm" />}
+                Freischalten
               </button>
               <button
                 onClick={() => onDecision(p.id, "reject")}
                 disabled={busyId === p.id}
-                className="rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-burg)] hover:bg-[var(--c-burg-light)] transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-burg)] hover:bg-[var(--c-burg-light)] transition-colors disabled:opacity-50"
               >
-                {busyId === p.id ? "…" : "Ablehnen"}
+                {busyId === p.id && <span className="gp-spinner-sm" />}
+                Ablehnen
               </button>
             </div>
           </li>
@@ -1272,8 +1285,9 @@ function UserActionModal({
               <button
                 onClick={onConfirm}
                 disabled={!matches || busy}
-                className="flex-1 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-40"
               >
+                {busy && <span className="gp-spinner-sm" />}
                 {busy ? "Wird ausgeführt…" : copy.confirmLabel}
               </button>
             </div>
@@ -1418,6 +1432,27 @@ export function AdminDashboard({
   const [isPending, startTransition] = useTransition();
   const [pendingProfiles, setPendingProfiles] = useState(initialPendingProfiles);
   const [decisionBusyId, setDecisionBusyId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  function handleSyncGooglePlaceData() {
+    setSyncing(true);
+    startTransition(async () => {
+      try {
+        const result = await syncGooglePlaceData();
+        setRestaurants((prev) =>
+          prev.map((r) => result.restaurants.find((u) => u.id === r.id) ?? r)
+        );
+        showToast(
+          `${result.restaurants.length} von Google aktualisiert` +
+            (result.failed ? `, ${result.failed} fehlgeschlagen` : "")
+        );
+      } catch (err) {
+        showToast((err as Error).message);
+      } finally {
+        setSyncing(false);
+      }
+    });
+  }
 
   function handleRegistrationDecision(id: string, decision: "approve" | "reject") {
     setDecisionBusyId(id);
@@ -1547,11 +1582,19 @@ export function AdminDashboard({
         setHasLiveOpeningHours(details.regularOpeningHours !== null);
         // Only fill in fields that are still empty — reopening an existing
         // restaurant shouldn't clobber a phone/website the admin already
-        // saved/corrected by hand.
+        // saved/corrected by hand. google_opening_hours has no manual edit
+        // UI of its own (opening_hours below stays the manual fallback), so
+        // it's always refreshed from this response.
         setForm((prev) => ({
           ...prev,
           phone: prev.phone || details.phone || "",
           website: prev.website || details.website || "",
+          google_opening_hours: details.regularOpeningHours?.weekdayDescriptions ?? null,
+          // Stempel für das 6-Monate-Verfallsdatum (lib/googleSync.ts) — nur
+          // bei einem tatsächlich erfolgreichen Fetch gesetzt (dieser
+          // .then()-Zweig), damit ein fehlgeschlagener Refresh nicht
+          // fälschlich als "gerade synchronisiert" gilt.
+          google_synced_at: new Date().toISOString(),
         }));
         setVisibleContactFields((prev) => {
           const next = new Set(prev);
@@ -1648,6 +1691,8 @@ export function AdminDashboard({
       phone: form.phone || null,
       website: form.website || null,
       opening_hours: form.opening_hours || null,
+      google_opening_hours: form.google_opening_hours,
+      google_synced_at: form.google_synced_at,
       cuisine: form.cuisine || null,
       price_level: form.price_level,
       status: form.status,
@@ -1907,6 +1952,15 @@ export function AdminDashboard({
                 CSV-Import
               </button>
               <button
+                onClick={handleSyncGooglePlaceData}
+                disabled={syncing}
+                title="Adresse/Telefon/Website/Öffnungszeiten für alle Restaurants mit Google-Place-ID neu von Google laden"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-4 py-2 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)] transition-colors disabled:opacity-50"
+              >
+                {syncing && <span className="gp-spinner-sm" />}
+                {syncing ? "Synchronisiert…" : "Von Google synchronisieren"}
+              </button>
+              <button
                 onClick={openNew}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--c-burg)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-colors"
               >
@@ -1941,8 +1995,124 @@ export function AdminDashboard({
             </div>
           )}
 
-          {/* ── Table ── */}
-          <div className="rounded-xl border border-[var(--c-n100)] bg-[var(--c-surface)] overflow-hidden">
+          {/* ── Mobile card list (< sm) ── */}
+          <div className="sm:hidden space-y-3">
+            {filtered.length > 0 && (
+              <label className="flex items-center gap-2 px-1 text-sm text-[var(--c-n500)]">
+                <input
+                  type="checkbox"
+                  checked={filtered.every((r) => selectedIds.has(r.id))}
+                  onChange={(e) =>
+                    setSelectedIds(
+                      e.target.checked ? new Set(filtered.map((r) => r.id)) : new Set()
+                    )
+                  }
+                  className="rounded border-[var(--c-n300)]"
+                />
+                Alle auswählen
+              </label>
+            )}
+            {filtered.length === 0 && (
+              <p className="rounded-xl border border-[var(--c-n100)] bg-[var(--c-surface)] px-4 py-10 text-center text-sm text-[var(--c-n400)]">
+                {query ? "Keine Restaurants entsprechen deiner Suche." : "Noch keine Restaurants. Füge eins hinzu!"}
+              </p>
+            )}
+            {filtered.map((r) => (
+              <div
+                key={r.id}
+                className="rounded-xl border border-[var(--c-n100)] bg-[var(--c-surface)] p-4"
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(r.id)}
+                    onChange={() => toggleSelected(r.id)}
+                    aria-label={`${r.name} auswählen`}
+                    className="mt-1 rounded border-[var(--c-n300)]"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/restaurant/${r.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-[var(--c-ink)] hover:text-[var(--c-burg)] hover:underline transition-colors"
+                      title="Öffentliche Seite in neuem Tab ansehen"
+                    >
+                      {r.name}
+                    </Link>
+                    {r.status === "draft" && (
+                      <span className="ml-2 text-xs font-medium text-[var(--c-gold)] bg-[var(--c-gold-light)] rounded px-1.5 py-0.5 uppercase tracking-wider align-middle">
+                        Entwurf
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleToggleFeatured(r)}
+                    title={r.featured ? "Aus „Auswahl“ entfernen" : "Zur „Auswahl“ hinzufügen"}
+                    aria-pressed={r.featured}
+                    className={`rounded p-1.5 transition-colors ${
+                      r.featured
+                        ? "text-[var(--c-gold)] hover:bg-[var(--c-gold-light)]"
+                        : "text-[var(--c-n300)] hover:bg-[var(--c-n100)] hover:text-[var(--c-n500)]"
+                    }`}
+                  >
+                    <IconStar size={16} filled={r.featured} />
+                  </button>
+                </div>
+
+                <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <div className="text-[var(--c-n400)] uppercase tracking-wider">Küche</div>
+                    <div className="mt-0.5 text-[var(--c-n600)]">
+                      {r.cuisine ?? <span className="text-[var(--c-n300)]">—</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[var(--c-n400)] uppercase tracking-wider">Preis</div>
+                    <div className="mt-0.5">
+                      <PriceBadge level={r.price_level} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[var(--c-n400)] uppercase tracking-wider">Bewertung</div>
+                    <div className="mt-0.5">
+                      <SpoonBadge rating={r.spoon_rating} />
+                    </div>
+                  </div>
+                </div>
+
+                {r.google_place_id ? (
+                  <p className="mt-2 truncate font-mono text-xs text-[var(--c-n400)]">
+                    {r.google_place_id}
+                  </p>
+                ) : (
+                  <span className="mt-2 inline-block text-xs text-[var(--c-gold)] bg-[var(--c-gold-light)] border border-[var(--c-gold)]/30 rounded px-1.5 py-0.5">
+                    Keine Platz-ID
+                  </span>
+                )}
+
+                <div className="mt-3 flex items-center gap-2 border-t border-[var(--c-n50)] pt-3">
+                  <button
+                    onClick={() => openEdit(r)}
+                    disabled={loadingEditId === r.id}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-[var(--c-n200)] px-2.5 py-2 text-xs font-medium text-[var(--c-n600)] hover:bg-[var(--c-n100)] transition-colors disabled:opacity-50"
+                  >
+                    {loadingEditId === r.id && <span className="gp-spinner-sm" />}
+                    Bearbeiten
+                  </button>
+                  <button
+                    onClick={() => setDeleteTargets([r])}
+                    className="flex-1 rounded-lg border border-[var(--c-burg)]/30 px-2.5 py-2 text-xs font-medium text-[var(--c-burg)] hover:bg-[var(--c-burg-light)] transition-colors"
+                  >
+                    Löschen
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Table (>= sm) ── */}
+          <div className="hidden sm:block rounded-xl border border-[var(--c-n100)] bg-[var(--c-surface)] overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--c-n100)] text-left">
@@ -2039,9 +2209,10 @@ export function AdminDashboard({
                         <button
                           onClick={() => openEdit(r)}
                           disabled={loadingEditId === r.id}
-                          className="rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-n600)] hover:bg-[var(--c-n100)] transition-colors disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-n600)] hover:bg-[var(--c-n100)] transition-colors disabled:opacity-50"
                         >
-                          {loadingEditId === r.id ? "…" : "Bearbeiten"}
+                          {loadingEditId === r.id && <span className="gp-spinner-sm" />}
+                          Bearbeiten
                         </button>
                         <button
                           onClick={() => setDeleteTargets([r])}

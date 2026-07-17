@@ -10,6 +10,7 @@ import { SearchResultsView } from "@/components/SearchResultsView";
 import { InstallPwaInstructions } from "@/components/InstallPwaInstructions";
 import type { RestaurantFilters } from "@/app/actions/restaurants";
 import type { PriceLevel, SpoonRating } from "@/types/database";
+import { haversineDistanceKm, MAX_SEARCH_RADIUS_KM } from "@/lib/geo";
 
 export const metadata = { title: "Guide Philippe" };
 
@@ -55,14 +56,14 @@ export default async function Page({
   if (cuisineFilters.length) filters.cuisine = cuisineFilters;
   if (priceLevelFilters.length) filters.price_level = priceLevelFilters;
   if (spoonRatingFilters.length) filters.spoon_rating = spoonRatingFilters;
-  if (isLocationSearch) {
-    filters.bounds = {
-      sw_lat: Number(params.sw_lat),
-      sw_lng: Number(params.sw_lng),
-      ne_lat: Number(params.ne_lat),
-      ne_lng: Number(params.ne_lng),
-    };
-  }
+  // A location search (typed/selected place or "Standort verwenden") never
+  // uses Google's per-place viewport as a DB bounds filter — that size
+  // varies wildly by place type (city-sized for "Berlin" vs. a few hundred
+  // meters for a single street address like "Sächsische Straße") and
+  // unpredictably dropped curated restaurants that were obviously still
+  // "in the area". Instead a fixed straight-line radius cutoff is applied
+  // below, once the search center is known (s. MAX_SEARCH_RADIUS_KM,
+  // Roadmap-Schritt 15/16/17).
 
   const [restaurants, cuisines] = await Promise.all([
     getRestaurants(filters),
@@ -71,6 +72,19 @@ export default async function Page({
 
   // ── Location search mode: split list + map ────────────────────────────────
   if (isLocationSearch) {
+    const center = { lat: Number(params.lat), lng: Number(params.lng) };
+    // Straight-line-distance cutoff, not a Google-viewport-derived bbox (s.
+    // lib/geo.ts) — keeps a search for one city from pulling in restaurants
+    // from a completely different one, without the bug where a narrow
+    // per-place viewport (e.g. a single street) excluded restaurants that
+    // were obviously still in the same city (Roadmap-Schritt 16/17).
+    // Restaurants without coordinates can't be distance-checked, so they're
+    // excluded from location search results (same as the old bounds filter).
+    const nearbyRestaurants = restaurants.filter(
+      (r) =>
+        r.lat != null && r.lng != null &&
+        haversineDistanceKm(center, { lat: r.lat, lng: r.lng }) <= MAX_SEARCH_RADIUS_KM
+    );
     const locationParams = {
       location: params.location ?? "",
       lat:    params.lat!,    lng:    params.lng!,
@@ -79,8 +93,8 @@ export default async function Page({
     };
     return (
       <SearchResultsView
-        restaurants={restaurants}
-        center={{ lat: Number(params.lat), lng: Number(params.lng) }}
+        restaurants={nearbyRestaurants}
+        center={center}
         locationParams={locationParams}
         activeFilters={{
           price_level:  priceLevelFilters,

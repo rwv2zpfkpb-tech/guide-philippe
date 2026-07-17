@@ -28,6 +28,9 @@ export type ResolvedPlace = {
   lng: number;
   address: string | null;
   cuisine: string | null;
+  phone: string | null;
+  website: string | null;
+  openingHours: string[] | null;
 };
 
 // ── Action ────────────────────────────────────────────────────────────────────
@@ -112,12 +115,15 @@ export async function resolvePlaceForImport(
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_PLACES_API_KEY env var is not set");
 
-  // Same field set (location + address + cuisine-guess inputs) for both the
-  // direct ID lookup and the text-search fallback below, so the import
-  // always comes back with an address/cuisine suggestion when a place is
-  // found — not just lat/lng — mirroring what the admin's manual Google
-  // search (PlacesAutocomplete) already fills in.
-  const fields = "id,location,formattedAddress,primaryTypeDisplayName,primaryType,types";
+  // Same field set (location + address + cuisine-guess inputs + contact/
+  // opening-hours) for both the direct ID lookup and the text-search
+  // fallback below, so the import always comes back with everything we can
+  // persist when a place is found — not just lat/lng — mirroring what the
+  // admin's manual Google search (PlacesAutocomplete) already fills in, and
+  // saving a follow-up getPlaceDetails() call once the admin opens the
+  // imported draft to edit it.
+  const fields =
+    "id,location,formattedAddress,primaryTypeDisplayName,primaryType,types,internationalPhoneNumber,websiteUri,regularOpeningHours";
 
   if (placeId) {
     // languageCode/regionCode: ohne das liefert Google primaryTypeDisplayName
@@ -142,6 +148,9 @@ export async function resolvePlaceForImport(
         primaryTypeDisplayName?: { text?: string };
         primaryType?: string;
         types?: string[];
+        internationalPhoneNumber?: string;
+        websiteUri?: string;
+        regularOpeningHours?: { weekdayDescriptions?: string[] };
       };
       if (data.id && data.location) {
         return {
@@ -150,6 +159,9 @@ export async function resolvePlaceForImport(
           lng: data.location.longitude,
           address: data.formattedAddress ?? null,
           cuisine: guessCuisine(data.primaryTypeDisplayName?.text, data.primaryType, data.types),
+          phone: data.internationalPhoneNumber ?? null,
+          website: data.websiteUri ?? null,
+          openingHours: data.regularOpeningHours?.weekdayDescriptions ?? null,
         };
       }
     }
@@ -178,6 +190,9 @@ export async function resolvePlaceForImport(
       primaryTypeDisplayName?: { text?: string };
       primaryType?: string;
       types?: string[];
+      internationalPhoneNumber?: string;
+      websiteUri?: string;
+      regularOpeningHours?: { weekdayDescriptions?: string[] };
     }>;
   };
   const top = searchData.places?.[0];
@@ -188,6 +203,9 @@ export async function resolvePlaceForImport(
       lng: top.location.longitude,
       address: top.formattedAddress ?? null,
       cuisine: guessCuisine(top.primaryTypeDisplayName?.text, top.primaryType, top.types),
+      phone: top.internationalPhoneNumber ?? null,
+      website: top.websiteUri ?? null,
+      openingHours: top.regularOpeningHours?.weekdayDescriptions ?? null,
     };
   }
   return null;

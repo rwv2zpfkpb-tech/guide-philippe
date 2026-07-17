@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MapView } from "@/components/map/MapView";
 import { LocationSearch } from "@/components/LocationSearch";
 import { PriceLevelDots } from "@/components/PriceLevelDots";
 import { NavigateButton } from "@/components/NavigateButton";
-import { getPlaceDetails, type OpeningHours } from "@/app/actions/places";
-import { IconMap, IconList, IconChevronDown, IconClock } from "@/components/icons";
+import { IconMap, IconList, IconChevronDown, IconClock, IconPin } from "@/components/icons";
 import { SPOON_RATINGS, SPOON_RATING_COLORS, SPOON_RATING_ORDER } from "@/lib/ratings";
-import { haversineDistanceKm } from "@/lib/geo";
+import { haversineDistanceKm, formatDistanceKm } from "@/lib/geo";
+import { isOpenNow } from "@/lib/openingHours";
 import type { Restaurant } from "@/types/database";
 import type { MapRestaurant } from "@/components/map/MapView";
 
@@ -62,42 +62,29 @@ function ResultCard({
   index,
   expanded,
   onToggle,
+  center,
 }: {
   restaurant: Restaurant;
   index: number;
   expanded: boolean;
   onToggle: () => void;
+  /** Search center — restaurants reaching this component always have
+   *  lat/lng (filtered server-side, s. app/page.tsx), so the distance is
+   *  always computable. */
+  center: { lat: number; lng: number };
 }) {
   const rt = SPOON_RATINGS[restaurant.spoon_rating];
   const colors = SPOON_RATING_COLORS[restaurant.spoon_rating];
-  const [hoursLoading, setHoursLoading] = useState(false);
-  const [hoursFetched, setHoursFetched] = useState(false);
-  const [hours, setHours] = useState<OpeningHours | null>(null);
-
-  // Lazy-fetch opening hours only once actually expanded — avoids firing a
-  // Places API call per row for the entire results list up front.
-  useEffect(() => {
-    if (!expanded || hoursFetched || !restaurant.google_place_id) return;
-    let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setHoursLoading(true);
-    getPlaceDetails(restaurant.google_place_id)
-      .then((details) => {
-        if (!cancelled) setHours(details.regularOpeningHours);
-      })
-      .catch(() => {
-        if (!cancelled) setHours(null);
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setHoursLoading(false);
-          setHoursFetched(true);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [expanded, hoursFetched, restaurant.google_place_id]);
+  const distanceKm =
+    restaurant.lat != null && restaurant.lng != null
+      ? haversineDistanceKm(center, { lat: restaurant.lat, lng: restaurant.lng })
+      : null;
+  // Adresse + Öffnungszeiten kommen direkt aus der DB (kein Places-API-Call
+  // mehr beim Aufklappen — s. restaurants.address/google_opening_hours,
+  // befüllt beim Bearbeiten im Admin-Panel/CSV-Import/"Von Google
+  // synchronisieren").
+  const address = restaurant.address;
+  const openNow = isOpenNow(restaurant.google_opening_hours);
 
   return (
     <div style={{ borderBottom: "1px solid var(--c-n100)" }}>
@@ -158,6 +145,11 @@ function ResultCard({
           <div style={{ fontSize: "0.6875rem", fontWeight: 600, color: colors.text, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
             {rt.labelShort}
           </div>
+          {distanceKm != null && (
+            <div style={{ fontSize: "0.6875rem", color: "var(--c-n400)", whiteSpace: "nowrap" }}>
+              {formatDistanceKm(distanceKm)}
+            </div>
+          )}
         </div>
 
         {/* Expand indicator */}
@@ -168,16 +160,20 @@ function ResultCard({
 
       {expanded && (
         <div style={{ padding: "0 24px 18px 60px" }}>
+          {/* Address */}
+          {address && (
+            <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: "0.8125rem", color: "var(--c-n500)", marginBottom: 8 }}>
+              <IconPin size={14} className="text-[var(--c-n400)]" />
+              <span>{address}</span>
+            </div>
+          )}
+
           {/* Opening hours */}
           <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: "0.8125rem", color: "var(--c-n500)", marginBottom: 14 }}>
             <IconClock size={14} className="text-[var(--c-n400)]" />
-            {!restaurant.google_place_id ? (
-              <span>Keine Öffnungszeiten verfügbar</span>
-            ) : hoursLoading ? (
-              <span>Lädt…</span>
-            ) : hours ? (
-              <span style={{ color: hours.openNow ? "var(--c-success)" : "var(--c-burg)", fontWeight: 500 }}>
-                {hours.openNow ? "Jetzt geöffnet" : "Geschlossen"}
+            {openNow !== null ? (
+              <span style={{ color: openNow ? "var(--c-success)" : "var(--c-burg)", fontWeight: 500 }}>
+                {openNow ? "Jetzt geöffnet" : "Geschlossen"}
               </span>
             ) : (
               <span>Keine Öffnungszeiten verfügbar</span>
@@ -561,6 +557,7 @@ function SearchResultsViewInner({
                     index={i}
                     expanded={expandedId === r.id}
                     onToggle={() => setExpandedId((cur) => (cur === r.id ? null : r.id))}
+                    center={center}
                   />
                 ))
               )}

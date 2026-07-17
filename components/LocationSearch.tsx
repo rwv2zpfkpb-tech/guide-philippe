@@ -47,11 +47,16 @@ function navigateToLocation(
   filters: SearchFilters,
   ownLocation = false
 ) {
-  // "Standort verwenden" resolves to a bare point (no viewport) — use a
-  // tighter fallback radius than the generic geocode-without-viewport
-  // fallback below, since the intent there is "restaurants near me" rather
-  // than "restaurants somewhere in this broad address' region".
-  const delta = ownLocation ? 0.06 : 0.5;
+  // ne_lat/ne_lng/sw_lat/sw_lng are carried along in the URL purely as
+  // round-trip metadata (SearchResultsView re-serializes them when the
+  // staged filters/sort change) — they are NOT used as a DB filter on the
+  // server (see app/page.tsx), only lat/lng (map center) matter there.
+  // Using Google's per-place viewport as a hard geographic cutoff used to
+  // drop obviously-nearby restaurants unpredictably, since viewport size
+  // varies wildly by place type (city-sized for "Berlin", a few hundred
+  // meters for a single street address) — same reasoning as the
+  // "Standort verwenden" fix, s. Roadmap-Schritt 15/17.
+  const delta = 0.5;
   const p = new URLSearchParams({
     location: name,
     lat:    String(lat),
