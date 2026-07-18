@@ -1,11 +1,10 @@
 import type { NextConfig } from "next";
 
 // Baseline hardening headers — the app previously shipped with none set at
-// all. Deliberately no Content-Security-Policy here: Google Maps/Places (JS
-// SDK + tiles + fonts) and Resend-delivered auth e-mails pull from enough
-// third-party origins that a CSP would need to be built and verified against
-// a live browser session to avoid silently breaking the map or auth flow —
-// left as a follow-up rather than guessed at.
+// all. Content-Security-Policy is NOT set here: it needs a fresh nonce per
+// request (for the one inline <script> in app/layout.tsx, plus Next's own
+// framework scripts under 'strict-dynamic'), which next.config.ts's static
+// headers() can't generate — see proxy.ts/utils/supabase/proxy.ts instead.
 const securityHeaders = [
   // The app has no legitimate reason to be iframed elsewhere — blocks
   // clickjacking (e.g. an invisible iframe over the admin dashboard).

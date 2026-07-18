@@ -65,6 +65,8 @@ const PRICE_OPTIONS: { value: PriceLevel; label: string }[] = [
   { value: 4, label: "€€€€" },
 ];
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+
 // ── Form state ────────────────────────────────────────────────────────────────
 
 type CategoryFormData = { heading: string; body: string; rating: number | null };
@@ -1475,6 +1477,8 @@ export function AdminDashboard({
   const [priceFilter, setPriceFilter] = useState<PriceLevel[]>([]);
   const [ratingFilter, setRatingFilter] = useState<SpoonRating[]>([]);
   const [cuisineFilter, setCuisineFilter] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [panelOpen, setPanelOpen] = useState(false);
   const [isNew, setIsNew] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -2024,6 +2028,29 @@ export function AdminDashboard({
 
   function toggleFilterValue<T>(list: T[], setList: (v: T[]) => void, value: T) {
     setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
+    setPage(1);
+  }
+
+  // `page` can point past the end once a filter/search shrinks `filtered`
+  // (e.g. leaving page 5 of a now 2-page list) — clamped here rather than
+  // reset via a useEffect, so the table always renders a valid, non-empty
+  // page without an extra render pass.
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const pageStart = (currentPage - 1) * pageSize;
+  const pageItems = filtered.slice(pageStart, pageStart + pageSize);
+
+  // Header/"Alle auswählen"-Checkbox wirkt bewusst nur auf die aktuell
+  // sichtbare Seite (Standardverhalten paginierter Tabellen, z.B.
+  // Gmail/GitHub) — nicht auf alle gefilterten Treffer über alle Seiten
+  // hinweg, das wäre beim Anklicken überraschend. Auswahlen auf anderen
+  // Seiten bleiben dabei erhalten (Union/Differenz statt Ersetzen).
+  function toggleSelectAllOnPage(checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      pageItems.forEach((r) => (checked ? next.add(r.id) : next.delete(r.id)));
+      return next;
+    });
   }
 
   return (
@@ -2126,7 +2153,7 @@ export function AdminDashboard({
                   type="text"
                   placeholder="Name, Küche, Adresse, Fazit…"
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => { setQuery(e.target.value); setPage(1); }}
                   className="rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] pl-8 pr-3 py-2 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 w-full sm:w-64"
                 />
               </div>
@@ -2144,7 +2171,7 @@ export function AdminDashboard({
               ).map((opt) => (
                 <button
                   key={opt.value}
-                  onClick={() => setStatusFilter(opt.value)}
+                  onClick={() => { setStatusFilter(opt.value); setPage(1); }}
                   className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                     statusFilter === opt.value
                       ? "border-[var(--c-burg)] bg-[var(--c-burg)] text-white"
@@ -2163,7 +2190,7 @@ export function AdminDashboard({
                 cuisines={allCuisines}
                 selected={cuisineFilter}
                 onToggle={(c) => toggleFilterValue(cuisineFilter, setCuisineFilter, c)}
-                onClear={() => setCuisineFilter([])}
+                onClear={() => { setCuisineFilter([]); setPage(1); }}
               />
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -2208,6 +2235,7 @@ export function AdminDashboard({
                 onClick={() => {
                   setQuery("");
                   setStatusFilter("all");
+                  setPage(1);
                   setPriceFilter([]);
                   setRatingFilter([]);
                   setCuisineFilter([]);
@@ -2244,19 +2272,15 @@ export function AdminDashboard({
 
           {/* ── Mobile card list (< sm) ── */}
           <div className="sm:hidden space-y-3">
-            {filtered.length > 0 && (
+            {pageItems.length > 0 && (
               <label className="flex items-center gap-2 px-1 text-sm text-[var(--c-n500)]">
                 <input
                   type="checkbox"
-                  checked={filtered.every((r) => selectedIds.has(r.id))}
-                  onChange={(e) =>
-                    setSelectedIds(
-                      e.target.checked ? new Set(filtered.map((r) => r.id)) : new Set()
-                    )
-                  }
+                  checked={pageItems.every((r) => selectedIds.has(r.id))}
+                  onChange={(e) => toggleSelectAllOnPage(e.target.checked)}
                   className="rounded border-[var(--c-n300)]"
                 />
-                Alle auswählen
+                Alle auf dieser Seite auswählen
               </label>
             )}
             {filtered.length === 0 && (
@@ -2264,7 +2288,7 @@ export function AdminDashboard({
                 {query ? "Keine Restaurants entsprechen deiner Suche." : "Noch keine Restaurants. Füge eins hinzu!"}
               </p>
             )}
-            {filtered.map((r) => (
+            {pageItems.map((r) => (
               <div
                 key={r.id}
                 className="rounded-xl border border-[var(--c-n100)] bg-[var(--c-surface)] p-4"
@@ -2366,14 +2390,10 @@ export function AdminDashboard({
                   <th className="px-4 py-3 w-8">
                     <input
                       type="checkbox"
-                      checked={filtered.length > 0 && filtered.every((r) => selectedIds.has(r.id))}
-                      onChange={(e) =>
-                        setSelectedIds(
-                          e.target.checked ? new Set(filtered.map((r) => r.id)) : new Set()
-                        )
-                      }
+                      checked={pageItems.length > 0 && pageItems.every((r) => selectedIds.has(r.id))}
+                      onChange={(e) => toggleSelectAllOnPage(e.target.checked)}
                       className="rounded border-[var(--c-n300)]"
-                      aria-label="Alle auswählen"
+                      aria-label="Alle auf dieser Seite auswählen"
                     />
                   </th>
                   <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">Name</th>
@@ -2392,7 +2412,7 @@ export function AdminDashboard({
                     </td>
                   </tr>
                 )}
-                {filtered.map((r) => (
+                {pageItems.map((r) => (
                   <tr key={r.id} className="hover:bg-[var(--c-n50)]/60 transition-colors group">
                     <td className="px-4 py-3">
                       <input
@@ -2474,6 +2494,55 @@ export function AdminDashboard({
               </tbody>
             </table>
           </div>
+
+          {/* ── Pagination — shared control below both the mobile card list
+              and the desktop table (both already render only `pageItems`). ── */}
+          {filtered.length > 0 && (
+            <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3 text-sm text-[var(--c-n500)]">
+              <div className="flex items-center gap-2">
+                <label htmlFor="admin-page-size">Pro Seite</label>
+                <select
+                  id="admin-page-size"
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-2 py-1.5 text-sm text-[var(--c-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40"
+                >
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="sm:ml-auto flex items-center justify-between sm:justify-end gap-3">
+                <span>
+                  {pageStart + 1}–{Math.min(pageStart + pageSize, filtered.length)} von {filtered.length}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPage(currentPage - 1)}
+                    disabled={currentPage <= 1}
+                    className="rounded-lg border border-[var(--c-n200)] px-3 py-1.5 text-xs font-medium text-[var(--c-n600)] hover:bg-[var(--c-n50)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Zurück
+                  </button>
+                  <span className="px-2 text-xs whitespace-nowrap">
+                    Seite {currentPage} von {pageCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage(currentPage + 1)}
+                    disabled={currentPage >= pageCount}
+                    className="rounded-lg border border-[var(--c-n200)] px-3 py-1.5 text-xs font-medium text-[var(--c-n600)] hover:bg-[var(--c-n50)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Weiter
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
 
         {/* ── Edit / Create panel ── */}

@@ -141,14 +141,13 @@ export default async function RestaurantPage({
     : null;
 
   // 6-Monate-Verfallsdatum (lib/googleSync.ts): sind die gespeicherten
-  // Google-Daten abgelaufen, schreibt dieser Aufruf die gerade schon
-  // geladene placeDetails-Antwort in die DB zurück — kein zusätzlicher
-  // Places-Request, da placeDetails ohnehin für die Fotos oben geholt wurde.
-  // No-op (gibt `restaurant` unverändert zurück), solange die Daten noch
-  // frisch sind.
-  if (placeDetails) {
-    restaurant = await refreshGooglePlaceDataIfStale(restaurant, placeDetails);
-  }
+  // Google-Daten abgelaufen, lädt dieser Aufruf Restaurant + Google-Daten
+  // selbst serverseitig neu und schreibt sie zurück (s. Kommentar an der
+  // Funktion in restaurants.ts, aus Sicherheitsgründen nimmt sie bewusst
+  // nur die ID entgegen statt fertiger Objekte vom Aufrufer). No-op (gibt
+  // `restaurant` unverändert zurück), solange die Daten noch frisch sind.
+  const refreshed = await refreshGooglePlaceDataIfStale(restaurant.id);
+  if (refreshed) restaurant = { ...restaurant, ...refreshed };
 
   const spoon = SPOON_RATINGS[restaurant.spoon_rating];
   const spoonColors = SPOON_RATING_COLORS[restaurant.spoon_rating];

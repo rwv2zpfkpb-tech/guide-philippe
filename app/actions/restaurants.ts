@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/utils/supabase/auth-helpers";
 import { createClient } from "@/utils/supabase/server";
 import { createReview, type ReviewPayload } from "@/app/actions/reviews";
-import { getPlaceDetails, type PlaceDetails } from "@/app/actions/places";
+import { getPlaceDetails } from "@/app/actions/places";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { isGoogleDataStale } from "@/lib/googleSync";
 import type {
@@ -265,21 +265,43 @@ export async function syncGooglePlaceData(): Promise<{ restaurants: Restaurant[]
 // Restaurant-Detailseite (nicht nur Admins — die ganze App ist ohnehin
 // login-pflichtig, s. proxy.ts), aber nur ein No-op, solange
 // google_synced_at jünger als GOOGLE_DATA_STALE_DAYS ist (lib/googleSync.ts,
-// ~6 Monate). `details` kommt vom Aufrufer (Restaurant-Detailseite ruft
-// getPlaceDetails() ohnehin schon für die Fotos auf) — kein zusätzlicher
-// Places-Request hier, nur ein DB-Write bei tatsächlich abgelaufenen Daten.
-// Normale Nutzer dürfen laut RLS ("restaurants: admin update") keine
-// restaurants-Zeile schreiben, daher der Service-Role-Client — geschrieben
-// werden ausschließlich Google-eigene, gerade frisch abgerufene Felder,
-// kein user-editierbarer Input. Ein Schreibfehler bricht die Seite nicht ab
-// (stiller Fallback aufs bisherige `restaurant`) — der nächste Seitenaufruf
-// versucht es einfach erneut.
-export async function refreshGooglePlaceDataIfStale<T extends Restaurant>(
-  restaurant: T,
-  details: PlaceDetails
-): Promise<T> {
+// ~6 Monate).
+//
+// SICHERHEIT: nimmt bewusst nur die `restaurantId` entgegen und lädt
+// Restaurant **und** Google-Daten selbst server-seitig neu, statt (wie
+// zuvor) `restaurant`/`details`-Objekte vom Aufrufer zu übernehmen. Jede
+// exportierte Funktion in einer "use server"-Datei ist ein öffentlicher
+// HTTP-Endpunkt, unabhängig davon, ob sie je von Client-Code referenziert
+// wird (Next.js registriert sie serverseitig trotzdem) — ein Client hätte
+// hier sonst beliebige `restaurant`/`details`-Felder (Adresse/Telefon/
+// Website/Öffnungszeiten, sogar für eine fremde `restaurant.id`) mitgeben
+// und über den Service-Role-Client (RLS-Bypass!) in eine beliebige
+// restaurants-Zeile schreiben können, ganz ohne Admin-Rechte. Mit der
+// Restaurant-Zeile aus einem eigenen (RLS-gebundenen) SELECT und einem
+// eigenen `getPlaceDetails()`-Aufruf ist der einzige vom Aufrufer
+// kontrollierte Input die `restaurantId` selbst — das schlimmste, was sich
+// damit auslösen lässt, ist ein vorgezogener, aber inhaltlich echter
+// Google-Sync für ein einzelnes (für den Aufrufer laut RLS sichtbares)
+// Restaurant. Verursacht dadurch im Stale-Fall einen zusätzlichen
+// Places-Request (statt den ohnehin schon für die Fotos geladenen
+// wiederzuverwenden) — im Normalfall (nicht abgelaufen) bleibt es aber ein
+// reiner No-op ohne jeden zusätzlichen Request.
+export async function refreshGooglePlaceDataIfStale(
+  restaurantId: string
+): Promise<Restaurant | null> {
+  const supabase = await createClient();
+  const { data: restaurant, error } = await supabase
+    .from("restaurants")
+    .select("*")
+    .eq("id", restaurantId)
+    .single();
+  if (error || !restaurant) return null;
+
   if (!restaurant.google_place_id) return restaurant;
   if (!isGoogleDataStale(restaurant.google_synced_at)) return restaurant;
+
+  const details = await getPlaceDetails(restaurant.google_place_id).catch(() => null);
+  if (!details) return restaurant;
 
   const patch: Partial<RestaurantPayload> = {
     address: restaurant.address || details.formattedAddress || null,
@@ -290,11 +312,11 @@ export async function refreshGooglePlaceDataIfStale<T extends Restaurant>(
   };
 
   const adminSupabase = createAdminClient();
-  const { error } = await adminSupabase
+  const { error: updateError } = await adminSupabase
     .from("restaurants")
     .update(patch)
     .eq("id", restaurant.id);
-  if (error) return restaurant;
+  if (updateError) return restaurant;
 
   return { ...restaurant, ...patch };
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { guessCuisine } from "@/lib/cuisine";
+import { requireAdmin } from "@/utils/supabase/auth-helpers";
 
 // Google Places API (New) — REST endpoint.
 // The API key stays server-side; it is never sent to the browser.
@@ -112,6 +113,14 @@ export async function resolvePlaceForImport(
   name: string,
   placeId: string | null
 ): Promise<ResolvedPlace | null> {
+  // Only ever meant to run as part of the admin-only CSV import
+  // (confirmCsvImport() in csvImport.ts, which already calls requireAdmin()
+  // itself) — but every exported function in a "use server" file is its own
+  // public HTTP endpoint regardless of who calls it internally, so without
+  // its own check any approved-but-non-admin account could invoke this
+  // directly to burn the Google Places API quota/budget.
+  await requireAdmin();
+
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_PLACES_API_KEY env var is not set");
 

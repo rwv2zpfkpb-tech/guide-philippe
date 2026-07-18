@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import NavigationProgress from "@/components/NavigationProgress";
 import { HeaderHeightObserver } from "@/components/HeaderHeightObserver";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -39,6 +40,12 @@ export default async function RootLayout({
   const saved = cookieStore.get("gp-theme")?.value;
   const dataTheme = saved === "dark" || saved === "light" ? saved : undefined;
 
+  // Set by proxy.ts on every request (Content-Security-Policy nonce) — this
+  // inline <script> below is the only hand-authored inline script in the
+  // app and needs it explicitly; Next.js applies the nonce automatically to
+  // its own framework/chunk scripts, but not to raw dangerouslySetInnerHTML.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html
       lang="de"
@@ -61,13 +68,18 @@ export default async function RootLayout({
 :root[data-theme=light]{color-scheme:light;--c-bg:oklch(97.5% 0.008 78);--c-surface:white;--c-ink:oklch(13% 0.012 255);--c-burg:oklch(31% 0.080 17);--c-burg-light:oklch(93% 0.016 17);--c-gold:oklch(58% 0.070 72);--c-gold-light:oklch(91% 0.032 76);--c-gold-mid:oklch(72% 0.050 74);--c-n50:oklch(95.5% 0.006 78);--c-n100:oklch(92% 0.007 78);--c-n200:oklch(86% 0.008 78);--c-n300:oklch(76% 0.008 78);--c-n400:oklch(63% 0.007 78);--c-n500:oklch(52% 0.007 78);--c-n600:oklch(41% 0.007 78);--c-n700:oklch(30% 0.008 78);--hero-from:oklch(90% 0.024 17);--hero-mid:oklch(95% 0.014 17)}
 html,body{background:var(--c-bg);color:var(--c-ink)}
         `}} />
-        {/* Sets data-theme before CSS loads — inline script + inline style work together */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var c=document.cookie.match(/gp-theme=(dark|light)/);var t=c?c[1]:(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.dataset.theme=t;}catch(e){}})()` }} />
+        {/* Sets data-theme before CSS loads — inline script + inline style work together.
+            suppressHydrationWarning: React deliberately reports the nonce attribute as ""
+            on the client (so it can't be read via XSS/DOM scraping) even though the actual
+            server-rendered HTML carries the real value the browser uses for CSP matching —
+            an expected mismatch, not a bug. */}
+        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `(function(){try{var c=document.cookie.match(/gp-theme=(dark|light)/);var t=c?c[1]:(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.dataset.theme=t;}catch(e){}})()` }} />
         <meta name="color-scheme" content={dataTheme ?? "light dark"} />
       </head>
       <body className="min-h-full flex flex-col">
         <NavigationProgress />
         <HeaderHeightObserver />
+        <ServiceWorkerRegister />
         <Header />
         {children}
         <Footer />
