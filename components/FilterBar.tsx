@@ -1,6 +1,7 @@
 "use client";
 
 import { SPOON_RATINGS, SPOON_RATING_ORDER } from "@/lib/ratings";
+import { CuisineFilterDropdown } from "@/components/CuisineFilterDropdown";
 
 const PRICE_CHIPS = [
   { value: 0, label: "Kostenlos" },
@@ -116,23 +117,13 @@ export default function FilterBar({
     >
       {cuisines.length > 0 && (
         <FilterRow label="Küche">
-          <button
-            onClick={onClearCuisine}
-            className={selected.cuisine.length === 0 ? "filter-chip is-active" : "filter-chip"}
-            style={selected.cuisine.length === 0 ? chipActive : chipBase}
-          >
-            Alle
-          </button>
-          {cuisines.map((c) => (
-            <button
-              key={c}
-              onClick={() => onToggleCuisine(c)}
-              className={selected.cuisine.includes(c) ? "filter-chip is-active" : "filter-chip"}
-              style={selected.cuisine.includes(c) ? chipActive : chipBase}
-            >
-              {c}
-            </button>
-          ))}
+          <CuisineFilterDropdown
+            cuisines={cuisines}
+            selected={selected.cuisine}
+            onToggle={onToggleCuisine}
+            onClear={onClearCuisine}
+            label="Alle Küchen"
+          />
         </FilterRow>
       )}
 

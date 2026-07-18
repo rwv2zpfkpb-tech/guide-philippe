@@ -77,20 +77,18 @@ export async function getRestaurants(
   return data ?? [];
 }
 
-// Restaurants added within the last 30 days, newest first — powers the
-// "Neu hinzugefügt" strip on the landing page. Drafts are excluded
-// explicitly (not just via RLS) — see getRestaurants() above for why.
-export async function getRecentRestaurants(limit = 8): Promise<Restaurant[]> {
+// The N newest restaurants, newest first — powers the "Neu hinzugefügt"
+// strip on the landing page. Simply the most recently added entries (no
+// 30-day cutoff — a small/inactive guide would otherwise show an empty or
+// near-empty strip for months). Drafts are excluded explicitly (not just
+// via RLS) — see getRestaurants() above for why.
+export async function getRecentRestaurants(limit = 6): Promise<Restaurant[]> {
   const supabase = await createClient();
-
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 30);
 
   const { data, error } = await supabase
     .from("restaurants")
     .select("*")
     .eq("status", "published")
-    .gte("created_at", cutoff.toISOString())
     .order("created_at", { ascending: false })
     .limit(limit);
 

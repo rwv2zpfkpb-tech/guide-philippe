@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getRestaurantById, refreshGooglePlaceDataIfStale } from "@/app/actions/restaurants";
 import { getPlaceDetails } from "@/app/actions/places";
-import { isOpenNow } from "@/lib/openingHours";
+import { getOpeningStatus } from "@/lib/openingHours";
 import { DeleteCommentButton } from "@/components/DeleteCommentButton";
 import { createClient } from "@/utils/supabase/server";
 import {
@@ -157,7 +157,7 @@ export default async function RestaurantPage({
   const phone = restaurant.phone;
   const website = restaurant.website;
   const weekdayDescriptions = restaurant.google_opening_hours;
-  const openNow = isOpenNow(weekdayDescriptions);
+  const { open: openNow, until: openUntil } = getOpeningStatus(weekdayDescriptions);
 
   const [currentReview, ...pastReviews] = restaurant.reviews;
   const averageRating = computeAverageRating(restaurant.comments.map((c) => c.secondary_rating));
@@ -362,7 +362,7 @@ export default async function RestaurantPage({
                     color: openNow ? "oklch(45% 0.12 145)" : "oklch(45% 0.12 25)",
                   }}
                 >
-                  {openNow ? "Jetzt geöffnet" : "Geschlossen"}
+                  {openNow ? `Jetzt geöffnet${openUntil ? `, bis ${openUntil}` : ""}` : "Geschlossen"}
                 </span>
               )}
             </div>

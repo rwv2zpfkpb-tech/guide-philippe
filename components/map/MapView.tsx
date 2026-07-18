@@ -110,20 +110,20 @@ function RestaurantMarker({
           onCloseClick={onClose}
           headerDisabled
         >
-          <div className="px-2 py-1.5 min-w-[160px] font-sans">
+          <div className="gp-iw px-3 py-2.5 min-w-[220px] font-sans">
             <p
-              className="text-sm font-semibold leading-snug mb-0.5"
-              style={{ color: "#2a2528", fontFamily: "'Cormorant Garamond', serif" }}
+              className="text-lg font-semibold leading-snug mb-1"
+              style={{ color: "var(--c-ink)", fontFamily: "'Cormorant Garamond', serif" }}
             >
               {restaurant.name}
             </p>
-            <p className="text-[11px] mb-2" style={{ color: cfg.text }}>
+            <p className="text-sm mb-3" style={{ color: cfg.text }}>
               {cfg.emoji} {cfg.label}
             </p>
             <a
               href={`/restaurant/${restaurant.id}`}
-              className="text-[11px] font-medium underline-offset-2 hover:underline"
-              style={{ color: "#b8952a" }}
+              className="text-sm font-medium underline-offset-2 hover:underline"
+              style={{ color: "var(--c-gold)" }}
             >
               Details ansehen →
             </a>

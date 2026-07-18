@@ -6,11 +6,13 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { PRIMARY_ADMIN_EMAIL } from "@/lib/admin";
 import type { Profile } from "@/types/database";
 
-export type ProfileWithEmail = Profile & { email: string | null };
+export type ProfileWithEmail = Profile & { email: string | null; emailConfirmed: boolean };
 
 // `profiles` has no email column (lives on auth.users), and `username` is a
 // required signup field but not DB-enforced — so we always attach email via
 // the service-role client to make sure admins can tell accounts apart.
+// `emailConfirmed` (from auth.users.email_confirmed_at) rides along in the
+// same call — it gates approval, s. approveProfile() below.
 //
 // One listUsers() call instead of one getUserById() per profile — this used
 // to fire N parallel admin-API requests (N = every registered account) on
@@ -23,10 +25,13 @@ async function attachEmails(profiles: Profile[]): Promise<ProfileWithEmail[]> {
 
   const adminClient = createAdminClient();
   const { data, error } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
-  if (error) return profiles.map((p) => ({ ...p, email: null }));
+  if (error) return profiles.map((p) => ({ ...p, email: null, emailConfirmed: false }));
 
-  const emailById = new Map(data.users.map((u) => [u.id, u.email ?? null]));
-  return profiles.map((p) => ({ ...p, email: emailById.get(p.id) ?? null }));
+  const userById = new Map(data.users.map((u) => [u.id, u]));
+  return profiles.map((p) => {
+    const u = userById.get(p.id);
+    return { ...p, email: u?.email ?? null, emailConfirmed: !!u?.email_confirmed_at };
+  });
 }
 
 // ── List accounts awaiting approval (admin-only) ──────────────────────────────
@@ -80,6 +85,20 @@ async function setProfileStatus(profileId: string, status: "approved" | "rejecte
 }
 
 export async function approveProfile(profileId: string): Promise<void> {
+  await requireAdmin();
+
+  // Registrations can only be unlocked once the account's email address is
+  // actually confirmed — approving an unconfirmed address would let someone
+  // register with an email they don't control and still get access as soon
+  // as an admin clicks through. Checked server-side (not just hidden in the
+  // UI) since this is a real access-control gate, not just a nicety.
+  const adminClient = createAdminClient();
+  const { data, error } = await adminClient.auth.admin.getUserById(profileId);
+  if (error) throw new Error(error.message);
+  if (!data.user?.email_confirmed_at) {
+    throw new Error("E-Mail-Adresse ist noch nicht bestätigt — Freischaltung erst danach möglich");
+  }
+
   await setProfileStatus(profileId, "approved");
 }
 

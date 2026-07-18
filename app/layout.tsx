@@ -5,6 +5,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import NavigationProgress from "@/components/NavigationProgress";
+import { HeaderHeightObserver } from "@/components/HeaderHeightObserver";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -66,6 +67,7 @@ html,body{background:var(--c-bg);color:var(--c-ink)}
       </head>
       <body className="min-h-full flex flex-col">
         <NavigationProgress />
+        <HeaderHeightObserver />
         <Header />
         {children}
         <Footer />

@@ -31,6 +31,7 @@ import { PRIMARY_ADMIN_EMAIL } from "@/lib/admin";
 import { BackButton } from "@/components/BackButton";
 import { IconChevronDown, IconStar, IconClock } from "@/components/icons";
 import { PlacesAutocomplete, type PlaceSelection } from "@/components/admin/PlacesAutocomplete";
+import { CuisineFilterDropdown } from "@/components/CuisineFilterDropdown";
 import {
   SPOON_RATINGS,
   SPOON_RATING_COLORS,
@@ -936,9 +937,13 @@ function ImportModal({
   step,
   parsing,
   importing,
+  syncing,
   rows,
   selected,
   bulkSpoonRating,
+  onChooseImport,
+  onChooseExport,
+  onChooseSync,
   onFileSelected,
   onToggleRow,
   onToggleAllNew,
@@ -947,12 +952,16 @@ function ImportModal({
   onClose,
 }: {
   open: boolean;
-  step: "pick" | "preview";
+  step: "choice" | "pick" | "preview";
   parsing: boolean;
   importing: boolean;
+  syncing: boolean;
   rows: CsvImportRow[];
   selected: Set<number>;
   bulkSpoonRating: 0 | 1 | 2 | 3 | null;
+  onChooseImport: () => void;
+  onChooseExport: () => void;
+  onChooseSync: () => void;
   onFileSelected: (file: File) => void;
   onToggleRow: (row: number) => void;
   onToggleAllNew: (checked: boolean) => void;
@@ -971,13 +980,54 @@ function ImportModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
       <div className="w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl bg-[var(--c-surface)] shadow-xl">
         <div className="px-6 py-4 border-b border-[var(--c-n100)]">
-          <h3 className="font-serif text-lg font-semibold text-[var(--c-ink)]">CSV-Import</h3>
+          <h3 className="font-serif text-lg font-semibold text-[var(--c-ink)]">Erweiterte Funktionen</h3>
           <p className="text-xs text-[var(--c-n500)] mt-0.5">
-            Google-Takeout-Export einer „Gespeicherte Orte“-Liste (Spalten Title/Titel, URL)
+            {step === "choice"
+              ? "Datenbestand importieren, exportieren oder mit Google abgleichen"
+              : "Google-Takeout-Export einer „Gespeicherte Orte“-Liste (Spalten Title/Titel, URL)"}
           </p>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5">
+          {step === "choice" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={onChooseImport}
+                className="flex flex-col items-start gap-1 rounded-lg border border-[var(--c-n200)] px-4 py-4 text-left hover:border-[var(--c-gold)] hover:bg-[var(--c-n50)] transition-colors"
+              >
+                <span className="text-sm font-medium text-[var(--c-ink)]">CSV-Import</span>
+                <span className="text-xs text-[var(--c-n500)]">
+                  Google-Takeout-„Gespeicherte Orte“-Liste einlesen
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={onChooseExport}
+                className="flex flex-col items-start gap-1 rounded-lg border border-[var(--c-n200)] px-4 py-4 text-left hover:border-[var(--c-gold)] hover:bg-[var(--c-n50)] transition-colors"
+              >
+                <span className="text-sm font-medium text-[var(--c-ink)]">CSV-Export</span>
+                <span className="text-xs text-[var(--c-n500)]">
+                  Alle Restaurants als CSV-Datei herunterladen
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={onChooseSync}
+                disabled={syncing}
+                className="flex flex-col items-start gap-1 rounded-lg border border-[var(--c-n200)] px-4 py-4 text-left hover:border-[var(--c-gold)] hover:bg-[var(--c-n50)] transition-colors disabled:opacity-50 sm:col-span-2"
+              >
+                <span className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--c-ink)]">
+                  {syncing && <span className="gp-spinner-sm" />}
+                  {syncing ? "Synchronisiert…" : "Von Google synchronisieren"}
+                </span>
+                <span className="text-xs text-[var(--c-n500)]">
+                  Adresse/Telefon/Website/Öffnungszeiten für alle Restaurants mit Google-Place-ID neu laden
+                </span>
+              </button>
+            </div>
+          )}
+
           {step === "pick" && (
             <div>
               <label className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[var(--c-n200)] px-4 py-10 text-center cursor-pointer hover:border-[var(--c-gold)] transition-colors">
@@ -1153,8 +1203,8 @@ function PendingRegistrations({
       </div>
       <ul className="divide-y divide-[var(--c-gold)]/20">
         {profiles.map((p) => (
-          <li key={p.id} className="px-4 py-3 flex items-center gap-3">
-            <span className="font-medium text-[var(--c-ink)] text-sm">
+          <li key={p.id} className="px-4 py-3 flex flex-wrap items-center gap-3">
+            <span className="font-medium text-[var(--c-ink)] text-sm break-all">
               {p.email ?? <span className="text-[var(--c-n400)] italic">unbekannte E-Mail</span>}
             </span>
             {p.username && (
@@ -1163,11 +1213,20 @@ function PendingRegistrations({
             <span className="text-xs text-[var(--c-n400)]">
               seit {new Date(p.created_at).toLocaleDateString("de-DE")}
             </span>
-            <div className="ml-auto flex items-center gap-1">
+            {!p.emailConfirmed && (
+              <span
+                className="text-xs font-medium text-[var(--c-burg)] bg-[var(--c-burg-light)] rounded px-1.5 py-0.5"
+                title="Freischalten ist erst möglich, sobald das Konto seine E-Mail-Adresse über den Bestätigungslink bestätigt hat"
+              >
+                E-Mail nicht bestätigt
+              </span>
+            )}
+            <div className="ml-auto flex items-center gap-1 flex-wrap">
               <button
                 onClick={() => onDecision(p.id, "approve")}
-                disabled={busyId === p.id}
-                className="inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-success)] hover:bg-[var(--c-success-light)] transition-colors disabled:opacity-50"
+                disabled={busyId === p.id || !p.emailConfirmed}
+                title={p.emailConfirmed ? undefined : "Erst möglich, sobald die E-Mail-Adresse bestätigt ist"}
+                className="inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-success)] hover:bg-[var(--c-success-light)] transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
               >
                 {busyId === p.id && <span className="gp-spinner-sm" />}
                 Freischalten
@@ -1337,22 +1396,24 @@ function UserManagement({
           const isSelf = p.id === currentUserId;
           const isPrimaryAdmin = p.email?.toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase();
           return (
-            <li key={p.id} className="px-4 py-3 flex items-center gap-3">
-              <span className="font-medium text-[var(--c-ink)] text-sm">
-                {p.email ?? <span className="text-[var(--c-n400)] italic">unbekannte E-Mail</span>}
-              </span>
-              {p.username && <span className="text-xs text-[var(--c-n400)]">@{p.username}</span>}
-              <RoleBadge role={p.role} />
-              <StatusBadge status={p.status} />
-              {isSelf && (
-                <span className="text-xs text-[var(--c-n400)] italic">(du)</span>
-              )}
-              {isPrimaryAdmin && (
-                <span className="text-xs font-medium text-[var(--c-gold)] bg-[var(--c-gold-light)] rounded px-1.5 py-0.5 uppercase tracking-wider">
-                  Haupt-Admin
+            <li key={p.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 min-w-0">
+                <span className="font-medium text-[var(--c-ink)] text-sm break-all">
+                  {p.email ?? <span className="text-[var(--c-n400)] italic">unbekannte E-Mail</span>}
                 </span>
-              )}
-              <div className="ml-auto flex items-center gap-1">
+                {p.username && <span className="text-xs text-[var(--c-n400)]">@{p.username}</span>}
+                <RoleBadge role={p.role} />
+                <StatusBadge status={p.status} />
+                {isSelf && (
+                  <span className="text-xs text-[var(--c-n400)] italic">(du)</span>
+                )}
+                {isPrimaryAdmin && (
+                  <span className="text-xs font-medium text-[var(--c-gold)] bg-[var(--c-gold-light)] rounded px-1.5 py-0.5 uppercase tracking-wider">
+                    Haupt-Admin
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1 flex-wrap sm:ml-auto sm:flex-nowrap">
                 {!isSelf && !isPrimaryAdmin && (
                   <>
                     {p.role === "admin" ? (
@@ -1389,20 +1450,31 @@ function UserManagement({
 
 export function AdminDashboard({
   initialRestaurants,
+  initialFazitById,
   initialPendingProfiles,
   initialAllProfiles,
   currentUserId,
   cuisineSuggestions,
 }: {
   initialRestaurants: Restaurant[];
+  /** restaurant id -> current review's fazit text — joined in purely so the
+   *  search box below can match against it (fazit lives in
+   *  restaurant_reviews, not on the restaurant row itself). Not kept in
+   *  perfect sync with every edit turned into a full refetch; updated
+   *  locally on save instead (s. handleSave). */
+  initialFazitById: Record<string, string>;
   initialPendingProfiles: ProfileWithEmail[];
   initialAllProfiles: ProfileWithEmail[];
   currentUserId: string;
   cuisineSuggestions: string[];
 }) {
   const [restaurants, setRestaurants] = useState(initialRestaurants);
+  const [fazitById, setFazitById] = useState(initialFazitById);
   const [query, setQuery] = useState("");
-  const [draftOnly, setDraftOnly] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published">("all");
+  const [priceFilter, setPriceFilter] = useState<PriceLevel[]>([]);
+  const [ratingFilter, setRatingFilter] = useState<SpoonRating[]>([]);
+  const [cuisineFilter, setCuisineFilter] = useState<string[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [isNew, setIsNew] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1423,7 +1495,7 @@ export function AdminDashboard({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
-  const [importStep, setImportStep] = useState<"pick" | "preview">("pick");
+  const [importStep, setImportStep] = useState<"choice" | "pick" | "preview">("choice");
   const [importParsing, setImportParsing] = useState(false);
   const [importImporting, setImportImporting] = useState(false);
   const [importRows, setImportRows] = useState<CsvImportRow[]>([]);
@@ -1452,6 +1524,52 @@ export function AdminDashboard({
         setSyncing(false);
       }
     });
+  }
+
+  // Exports every restaurant currently loaded in this dashboard (all
+  // statuses, not just the filtered subset — "gesamte Datenbank") as a CSV
+  // download. Built client-side from state already in memory (no extra
+  // round-trip): the dashboard already loads every restaurant regardless of
+  // status on initial page load (app/admin/dashboard/page.tsx), so there's
+  // nothing more to fetch.
+  function handleExportCsv() {
+    const columns = [
+      "name",
+      "cuisine",
+      "price_level",
+      "spoon_rating",
+      "status",
+      "featured",
+      "address",
+      "phone",
+      "website",
+      "opening_hours",
+      "fazit",
+      "google_place_id",
+      "lat",
+      "lng",
+      "created_at",
+    ] as const;
+
+    const escapeCsv = (value: unknown) => {
+      const str = value == null ? "" : String(value);
+      return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+    };
+
+    const cellValue = (r: (typeof restaurants)[number], col: (typeof columns)[number]) =>
+      col === "fazit" ? fazitById[r.id] ?? "" : r[col];
+
+    const rows = restaurants.map((r) => columns.map((col) => escapeCsv(cellValue(r, col))).join(","));
+    // Leading BOM so Excel opens the UTF-8 file with umlauts intact.
+    const csv = "﻿" + [columns.join(","), ...rows].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `guide-philippe-restaurants-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   function handleRegistrationDecision(id: string, decision: "approve" | "reject") {
@@ -1714,6 +1832,7 @@ export function AdminDashboard({
         if (isNew) {
           const created = await createRestaurant(restaurantPayload, reviewPayload);
           setRestaurants((prev) => [created, ...prev]);
+          setFazitById((prev) => ({ ...prev, [created.id]: reviewPayload.fazit }));
           showToast("Restaurant hinzugefügt");
         } else if (editingId) {
           const updated = await updateRestaurant(editingId, restaurantPayload);
@@ -1729,6 +1848,7 @@ export function AdminDashboard({
               r.id === updated.id ? { ...updated, spoon_rating: reviewPayload.spoon_rating } : r
             )
           );
+          setFazitById((prev) => ({ ...prev, [updated.id]: reviewPayload.fazit }));
           showToast("Änderungen gespeichert");
         }
         closePanel();
@@ -1789,7 +1909,7 @@ export function AdminDashboard({
 
   function openImport() {
     setImportOpen(true);
-    setImportStep("pick");
+    setImportStep("choice");
     setImportRows([]);
     setImportSelected(new Set());
     setImportBulkSpoonRating(null);
@@ -1797,6 +1917,20 @@ export function AdminDashboard({
 
   function closeImport() {
     setImportOpen(false);
+  }
+
+  function handleChooseImport() {
+    setImportStep("pick");
+  }
+
+  function handleChooseExport() {
+    handleExportCsv();
+    closeImport();
+  }
+
+  function handleChooseSync() {
+    handleSyncGooglePlaceData();
+    closeImport();
   }
 
   function handleImportFile(file: File) {
@@ -1841,6 +1975,16 @@ export function AdminDashboard({
       try {
         const inserted = await confirmCsvImport(selection, importBulkSpoonRating ?? undefined);
         setRestaurants((prev) => [...inserted, ...prev]);
+        // confirmCsvImport creates one restaurant per `selection` entry, in
+        // the same order — zip them back up to seed the fazit search index
+        // with the CSV note that became each restaurant's placeholder fazit.
+        setFazitById((prev) => {
+          const next = { ...prev };
+          inserted.forEach((r, i) => {
+            if (selection[i]?.note) next[r.id] = selection[i].note!;
+          });
+          return next;
+        });
         showToast(`${inserted.length} Restaurants als Entwurf importiert`);
         closeImport();
       } catch (err) {
@@ -1851,13 +1995,36 @@ export function AdminDashboard({
     });
   }
 
+  // All cuisines actually present across every restaurant (any status) —
+  // deliberately not the `cuisineSuggestions` prop (= getCuisines(), which
+  // only looks at *published* restaurants for the public site's filter
+  // chips). Most of this admin's 245 entries are drafts, so that list left
+  // almost every cuisine value out of the admin filter panel.
+  const allCuisines = Array.from(
+    new Set(restaurants.map((r) => r.cuisine).filter((c): c is string => !!c))
+  ).sort();
+
   const filtered = restaurants
-    .filter((r) => !draftOnly || r.status === "draft")
-    .filter(
-      (r) =>
-        r.name.toLowerCase().includes(query.toLowerCase()) ||
-        (r.cuisine ?? "").toLowerCase().includes(query.toLowerCase())
-    );
+    .filter((r) => statusFilter === "all" || r.status === statusFilter)
+    .filter((r) => priceFilter.length === 0 || (r.price_level != null && priceFilter.includes(r.price_level)))
+    .filter((r) => ratingFilter.length === 0 || ratingFilter.includes(r.spoon_rating))
+    .filter((r) => cuisineFilter.length === 0 || (r.cuisine != null && cuisineFilter.includes(r.cuisine)))
+    .filter((r) => {
+      const q = query.toLowerCase();
+      if (!q) return true;
+      return (
+        r.name.toLowerCase().includes(q) ||
+        (r.cuisine ?? "").toLowerCase().includes(q) ||
+        (r.address ?? "").toLowerCase().includes(q) ||
+        (fazitById[r.id] ?? "").toLowerCase().includes(q)
+      );
+    });
+
+  const activeFilterCount = priceFilter.length + ratingFilter.length + cuisineFilter.length;
+
+  function toggleFilterValue<T>(list: T[], setList: (v: T[]) => void, value: T) {
+    setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
+  }
 
   return (
     <APIProvider
@@ -1918,47 +2085,18 @@ export function AdminDashboard({
                 Restaurants
               </h1>
               <p className="text-sm text-[var(--c-n500)] mt-0.5">
-                {restaurants.length} {restaurants.length === 1 ? "Eintrag" : "Einträge"}
+                {filtered.length === restaurants.length
+                  ? `${restaurants.length} ${restaurants.length === 1 ? "Eintrag" : "Einträge"}`
+                  : `${filtered.length} von ${restaurants.length} Einträgen`}
               </p>
             </div>
-            <div className="sm:ml-auto flex gap-2">
-              {/* Search */}
-              <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--c-n400)]" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9z" clipRule="evenodd" />
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Suchen…"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] pl-8 pr-3 py-2 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 w-48"
-                />
-              </div>
-              <button
-                onClick={() => setDraftOnly((v) => !v)}
-                className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                  draftOnly
-                    ? "border-[var(--c-gold)] bg-[var(--c-gold-light)] text-[var(--c-ink)]"
-                    : "border-[var(--c-n200)] bg-[var(--c-surface)] text-[var(--c-n600)] hover:bg-[var(--c-n50)]"
-                }`}
-              >
-                Nur Entwürfe
-              </button>
+            <div className="sm:ml-auto flex flex-wrap gap-2 w-full sm:w-auto">
               <button
                 onClick={openImport}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-4 py-2 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)] transition-colors"
               >
-                CSV-Import
-              </button>
-              <button
-                onClick={handleSyncGooglePlaceData}
-                disabled={syncing}
-                title="Adresse/Telefon/Website/Öffnungszeiten für alle Restaurants mit Google-Place-ID neu von Google laden"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-4 py-2 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)] transition-colors disabled:opacity-50"
-              >
                 {syncing && <span className="gp-spinner-sm" />}
-                {syncing ? "Synchronisiert…" : "Von Google synchronisieren"}
+                Erweiterte Funktionen
               </button>
               <button
                 onClick={openNew}
@@ -1970,6 +2108,115 @@ export function AdminDashboard({
                 Neu hinzufügen
               </button>
             </div>
+          </div>
+
+          {/* ── Filter-Panel (Status/Küche/Preis/Bewertung) — immer sichtbar,
+              kein Auf-/Zuklapp-Button mehr (auf Mobile per flex-wrap
+              umbrechend statt abgeschnitten). ── */}
+          <div className="mb-4 rounded-xl border border-[var(--c-n100)] bg-[var(--c-surface)] p-4 flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wider text-[var(--c-n400)] w-20 shrink-0 whitespace-nowrap">
+                Suche
+              </span>
+              <div className="relative w-full sm:w-auto">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--c-n400)]" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9z" clipRule="evenodd" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Name, Küche, Adresse, Fazit…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] pl-8 pr-3 py-2 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 w-full sm:w-64"
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wider text-[var(--c-n400)] w-20 shrink-0 whitespace-nowrap">
+                Status
+              </span>
+              {(
+                [
+                  { value: "all", label: "Alle" },
+                  { value: "draft", label: "Nur Entwürfe" },
+                  { value: "published", label: "Nur veröffentlicht" },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setStatusFilter(opt.value)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                    statusFilter === opt.value
+                      ? "border-[var(--c-burg)] bg-[var(--c-burg)] text-white"
+                      : "border-[var(--c-n200)] bg-[var(--c-surface)] text-[var(--c-n600)] hover:bg-[var(--c-n50)]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wider text-[var(--c-n400)] w-20 shrink-0 whitespace-nowrap">
+                Küche
+              </span>
+              <CuisineFilterDropdown
+                cuisines={allCuisines}
+                selected={cuisineFilter}
+                onToggle={(c) => toggleFilterValue(cuisineFilter, setCuisineFilter, c)}
+                onClear={() => setCuisineFilter([])}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wider text-[var(--c-n400)] w-20 shrink-0 whitespace-nowrap">
+                Preis
+              </span>
+              {PRICE_OPTIONS.map((p) => (
+                <button
+                  key={p.value}
+                  onClick={() => toggleFilterValue(priceFilter, setPriceFilter, p.value)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                    priceFilter.includes(p.value)
+                      ? "border-[var(--c-burg)] bg-[var(--c-burg)] text-white"
+                      : "border-[var(--c-n200)] bg-[var(--c-surface)] text-[var(--c-n600)] hover:bg-[var(--c-n50)]"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wider text-[var(--c-n400)] w-20 shrink-0 whitespace-nowrap">
+                Bewertung
+              </span>
+              {SPOON_OPTIONS.map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => toggleFilterValue(ratingFilter, setRatingFilter, s.value)}
+                  title={s.label}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                    ratingFilter.includes(s.value)
+                      ? "border-[var(--c-burg)] bg-[var(--c-burg)] text-white"
+                      : "border-[var(--c-n200)] bg-[var(--c-surface)] text-[var(--c-n600)] hover:bg-[var(--c-n50)]"
+                  }`}
+                >
+                  {s.emoji}
+                </button>
+              ))}
+            </div>
+            {(activeFilterCount > 0 || statusFilter !== "all" || query) && (
+              <button
+                onClick={() => {
+                  setQuery("");
+                  setStatusFilter("all");
+                  setPriceFilter([]);
+                  setRatingFilter([]);
+                  setCuisineFilter([]);
+                }}
+                className="self-start text-xs font-medium text-[var(--c-burg)] hover:underline"
+              >
+                Filter zurücksetzen
+              </button>
+            )}
           </div>
 
           {/* ── Bulk-Auswahl-Leiste ── */}
@@ -2260,15 +2507,19 @@ export function AdminDashboard({
           deleting={isPending}
         />
 
-        {/* ── CSV import modal ── */}
+        {/* ── Extended functions modal (CSV import/export, Google sync) ── */}
         <ImportModal
           open={importOpen}
           step={importStep}
           parsing={importParsing}
           importing={importImporting}
+          syncing={syncing}
           rows={importRows}
           selected={importSelected}
           bulkSpoonRating={importBulkSpoonRating}
+          onChooseImport={handleChooseImport}
+          onChooseExport={handleChooseExport}
+          onChooseSync={handleChooseSync}
           onFileSelected={handleImportFile}
           onToggleRow={toggleImportRow}
           onToggleAllNew={toggleAllImportNew}

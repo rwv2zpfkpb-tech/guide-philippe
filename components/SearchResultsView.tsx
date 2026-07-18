@@ -8,9 +8,10 @@ import { LocationSearch } from "@/components/LocationSearch";
 import { PriceLevelDots } from "@/components/PriceLevelDots";
 import { NavigateButton } from "@/components/NavigateButton";
 import { IconMap, IconList, IconChevronDown, IconClock, IconPin } from "@/components/icons";
+import { CuisineFilterDropdown } from "@/components/CuisineFilterDropdown";
 import { SPOON_RATINGS, SPOON_RATING_COLORS, SPOON_RATING_ORDER } from "@/lib/ratings";
 import { haversineDistanceKm, formatDistanceKm } from "@/lib/geo";
-import { isOpenNow } from "@/lib/openingHours";
+import { getOpeningStatus } from "@/lib/openingHours";
 import type { Restaurant } from "@/types/database";
 import type { MapRestaurant } from "@/components/map/MapView";
 
@@ -41,10 +42,9 @@ type Props = {
   ownLocation:   boolean;
 };
 
-type SortMode = "default" | "distance" | "price" | "rating";
+type SortMode = "distance" | "price" | "rating";
 
 const SORT_OPTIONS: { value: SortMode; label: string }[] = [
-  { value: "default",  label: "Standard" },
   { value: "distance", label: "Entfernung" },
   { value: "price",    label: "Preis" },
   { value: "rating",   label: "Bewertung" },
@@ -84,7 +84,7 @@ function ResultCard({
   // befüllt beim Bearbeiten im Admin-Panel/CSV-Import/"Von Google
   // synchronisieren").
   const address = restaurant.address;
-  const openNow = isOpenNow(restaurant.google_opening_hours);
+  const { open: openNow, until: openUntil } = getOpeningStatus(restaurant.google_opening_hours);
 
   return (
     <div style={{ borderBottom: "1px solid var(--c-n100)" }}>
@@ -173,7 +173,7 @@ function ResultCard({
             <IconClock size={14} className="text-[var(--c-n400)]" />
             {openNow !== null ? (
               <span style={{ color: openNow ? "var(--c-success)" : "var(--c-burg)", fontWeight: 500 }}>
-                {openNow ? "Jetzt geöffnet" : "Geschlossen"}
+                {openNow ? `Jetzt geöffnet${openUntil ? `, bis ${openUntil}` : ""}` : "Geschlossen"}
               </span>
             ) : (
               <span>Keine Öffnungszeiten verfügbar</span>
@@ -275,12 +275,13 @@ function SearchResultsViewInner({
   // Sorting is a pure client-side re-order of the already-fetched list (no
   // refetch needed), so unlike the filter chips below it applies
   // immediately rather than being staged behind an "Übernehmen" button.
-  // Defaults to "Entfernung" when the search itself originated from
-  // "Standort verwenden" — that's the whole point of using it.
-  const [sortBy, setSortBy] = useState<SortMode>(ownLocation ? "distance" : "default");
+  // Always defaults to "Entfernung" — every location search (typed,
+  // selected, or "Standort verwenden") has a search center to measure
+  // distance from, so there's no "no location" case needing a plain
+  // server-order fallback anymore.
+  const [sortBy, setSortBy] = useState<SortMode>("distance");
 
   const sortedRestaurants = useMemo(() => {
-    if (sortBy === "default") return restaurants;
     const distanceOf = (r: Restaurant) =>
       r.lat != null && r.lng != null
         ? haversineDistanceKm(center, { lat: r.lat, lng: r.lng })
@@ -369,7 +370,7 @@ function SearchResultsViewInner({
         }
       `}</style>
 
-      <div className="sr-outer" style={{ height: "calc(100vh - 64px)", overflow: "hidden", position: "relative" }}>
+      <div className="sr-outer" style={{ height: "calc(100vh - var(--header-height, 64px))", overflow: "hidden", position: "relative" }}>
         <div className={`sr-viewport${mobileView === "map" ? " show-map" : ""}`}>
 
           {/* ── LIST PANEL ───────────────────────────────────────────────── */}
@@ -451,13 +452,12 @@ function SearchResultsViewInner({
                   }}>
                     Küche
                   </span>
-                  {cuisines.map((c) => (
-                    <Chip
-                      key={c} label={c}
-                      active={pending.cuisine.includes(c)}
-                      onClick={() => toggleCuisine(c)}
-                    />
-                  ))}
+                  <CuisineFilterDropdown
+                    cuisines={cuisines}
+                    selected={pending.cuisine}
+                    onToggle={toggleCuisine}
+                    onClear={() => setPending((f) => ({ ...f, cuisine: [] }))}
+                  />
                 </div>
               )}
 
@@ -526,8 +526,10 @@ function SearchResultsViewInner({
               )}
             </div>
 
-            {/* Results list */}
-            <div style={{ overflowY: "auto", flex: 1 }}>
+            {/* Results list — extra bottom padding on mobile so the fixed
+                list/map toggle button never covers the last row (it can
+                still be scrolled fully into view above the button) */}
+            <div className="sr-results-list" style={{ overflowY: "auto", flex: 1 }}>
               {restaurants.length === 0 ? (
                 <div style={{
                   display: "flex", flexDirection: "column", alignItems: "center",

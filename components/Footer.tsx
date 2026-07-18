@@ -51,21 +51,6 @@ function FooterInner() {
           <span style={{ color: "white" }}>Philippe</span>.
         </div>
 
-        <nav style={{ display: "flex", gap: 28 }}>
-          {["Über uns", "Städte", "Küchen", "Kontakt"].map((link) => (
-            <span
-              key={link}
-              style={{
-                fontSize: "0.75rem",
-                color: "oklch(72% 0.024 17)",
-                letterSpacing: "0.04em",
-              }}
-            >
-              {link}
-            </span>
-          ))}
-        </nav>
-
         <span
           style={{
             fontSize: "0.6875rem",

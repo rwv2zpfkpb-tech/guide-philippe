@@ -364,6 +364,14 @@ gmp-placeautocomplete::part(input) {
   font-family: inherit;
 }
 
+/* Reserve space below the last result row so the fixed .sr-mobile-toggle
+   button (bottom: 20px, ~35px tall) never permanently covers it — the row
+   can still be scrolled up past the button instead of being stuck behind it. */
+.sr-results-list {
+  padding-bottom: calc(20px + 35px + 20px + env(safe-area-inset-bottom, 0px));
+  scroll-padding-bottom: calc(20px + 35px + 20px + env(safe-area-inset-bottom, 0px));
+}
+
 @media (min-width: 900px) {
   .sr-viewport {
     width: 100%;
@@ -379,4 +387,33 @@ gmp-placeautocomplete::part(input) {
   .sr-mobile-toggle {
     display: none !important;
   }
+  .sr-results-list {
+    padding-bottom: 0;
+    scroll-padding-bottom: 0;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   GOOGLE MAPS INFO WINDOW ("Restaurant-Kärtchen" popup, MapView.tsx)
+   Google renders the info window's own chrome (rounded bubble +
+   pointer tail) with a hardcoded white background — override it with
+   the app's surface token so it follows light/dark like every other
+   component instead of staying a bright white card in dark mode.
+   var(--c-surface) already resolves to the correct value for the
+   current theme, so a single rule (no data-theme/media branching)
+   is enough.
+   ════════════════════════════════════════════════════════════════ */
+.gm-style-iw-c,
+.gm-style-iw-d {
+  background-color: var(--c-surface) !important;
+}
+.gm-style-iw-tc::after {
+  background: var(--c-surface) !important;
+}
+/* Google sets `overflow: scroll` inline on .gm-style-iw-d (always-visible
+   scrollbar, not `auto`) — our card content never needs to scroll, so this
+   just painted a permanent, unstyled (bright/white) scrollbar track across
+   the dark card. Force it off. */
+.gm-style-iw-d {
+  overflow: hidden !important;
 }

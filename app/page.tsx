@@ -238,7 +238,7 @@ export default async function Page({
               Handverlesen von der Redaktion
             </span>
           </div>
-          <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 12 }}>
+          <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingTop: 10, paddingBottom: 12 }}>
             {featuredRestaurants.map((r) => (
               <div key={r.id} style={{ minWidth: 230, maxWidth: 230, flexShrink: 0 }}>
                 <RestaurantCard restaurant={r} />
@@ -264,10 +264,10 @@ export default async function Page({
               Neu hinzugefügt
             </h2>
             <span style={{ fontSize: 11, color: "var(--c-n400)", letterSpacing: "0.06em" }}>
-              Letzte 30 Tage
+              Die neuesten Einträge
             </span>
           </div>
-          <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 12 }}>
+          <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingTop: 10, paddingBottom: 12 }}>
             {recentRestaurants.map((r) => (
               <div key={r.id} style={{ minWidth: 230, maxWidth: 230, flexShrink: 0 }}>
                 <RestaurantCard restaurant={r} />
@@ -277,133 +277,138 @@ export default async function Page({
         </section>
       )}
 
-      {/* ── RESTAURANT GRID ─────────────────────────────── */}
-      <main
-        style={{
-          maxWidth: 1240,
-          margin: "0 auto",
-          padding: "56px 40px 80px",
-          flex: 1,
-        }}
-      >
-        {/* Section head */}
-        <div
+      {/* ── RESTAURANT GRID ───────────────────────────────
+          Only rendered for an actual search/filter — the unfiltered full
+          restaurant list (hundreds of entries) used to render here by
+          default, which was overwhelming on a landing page that already
+          has "Auswahl"/"Neu hinzugefügt" for browsing plus the hero search
+          for finding something specific. */}
+      {hasFilters && (
+        <main
           style={{
-            display: "flex",
-            alignItems: "baseline",
-            gap: 12,
-            marginBottom: 28,
+            maxWidth: 1240,
+            margin: "0 auto",
+            padding: "56px 40px 80px",
+            flex: 1,
           }}
         >
-          <h2
-            style={{
-              fontFamily: "var(--font-cormorant)",
-              fontSize: "2rem",
-              fontWeight: 600,
-              letterSpacing: "-0.015em",
-              lineHeight: 1,
-              color: "var(--c-ink)",
-            }}
-          >
-            {params.q
-              ? `Ergebnisse für „${params.q}"`
-              : hasFilters ? "Suchergebnisse" : "Restaurants"}
-          </h2>
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 500,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              color: "var(--c-burg)",
-            }}
-          >
-            {restaurants.length} {restaurants.length === 1 ? "Eintrag" : "Einträge"}
-          </span>
-        </div>
-
-        {/* Ornament */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 18,
-            marginBottom: 36,
-          }}
-        >
-          <div style={{ flex: 1, height: 1, background: "var(--c-n100)" }} />
+          {/* Section head */}
           <div
             style={{
-              width: 4,
-              height: 4,
-              borderRadius: "50%",
-              background: "var(--c-gold)",
-              flexShrink: 0,
-            }}
-          />
-          <span
-            style={{
-              fontFamily: "var(--font-cormorant)",
-              fontSize: "0.875rem",
-              fontStyle: "italic",
-              color: "var(--c-n400)",
-              whiteSpace: "nowrap",
-              letterSpacing: "0.04em",
+              display: "flex",
+              alignItems: "baseline",
+              gap: 12,
+              marginBottom: 28,
             }}
           >
-            {params.q ? "Namenssuche" : hasFilters ? "Gefilterte Auswahl" : "Unsere Auswahl"}
-          </span>
-          <div
-            style={{
-              width: 4,
-              height: 4,
-              borderRadius: "50%",
-              background: "var(--c-gold)",
-              flexShrink: 0,
-            }}
-          />
-          <div style={{ flex: 1, height: 1, background: "var(--c-n100)" }} />
-        </div>
-
-        {restaurants.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "80px 0",
-              color: "var(--c-n400)",
-            }}
-          >
-            <div style={{ fontSize: "2rem", marginBottom: 16 }}>🫗</div>
-            <p
+            <h2
               style={{
                 fontFamily: "var(--font-cormorant)",
-                fontSize: "1.5rem",
-                fontWeight: 500,
-                color: "var(--c-n500)",
-                marginBottom: 8,
+                fontSize: "2rem",
+                fontWeight: 600,
+                letterSpacing: "-0.015em",
+                lineHeight: 1,
+                color: "var(--c-ink)",
               }}
             >
-              Keine Restaurants gefunden.
-            </p>
-            <p style={{ fontSize: "0.875rem", color: "var(--c-n400)" }}>
-              Versuche einen anderen Filter oder füge Restaurants im Admin-Bereich hinzu.
-            </p>
+              {params.q ? `Ergebnisse für „${params.q}"` : "Suchergebnisse"}
+            </h2>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "var(--c-burg)",
+              }}
+            >
+              {restaurants.length} {restaurants.length === 1 ? "Eintrag" : "Einträge"}
+            </span>
           </div>
-        ) : (
+
+          {/* Ornament */}
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 20,
+              display: "flex",
+              alignItems: "center",
+              gap: 18,
+              marginBottom: 36,
             }}
-            className="restaurant-grid"
           >
-            {restaurants.map((r) => (
-              <RestaurantCard key={r.id} restaurant={r} />
-            ))}
+            <div style={{ flex: 1, height: 1, background: "var(--c-n100)" }} />
+            <div
+              style={{
+                width: 4,
+                height: 4,
+                borderRadius: "50%",
+                background: "var(--c-gold)",
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                fontFamily: "var(--font-cormorant)",
+                fontSize: "0.875rem",
+                fontStyle: "italic",
+                color: "var(--c-n400)",
+                whiteSpace: "nowrap",
+                letterSpacing: "0.04em",
+              }}
+            >
+              {params.q ? "Namenssuche" : "Gefilterte Auswahl"}
+            </span>
+            <div
+              style={{
+                width: 4,
+                height: 4,
+                borderRadius: "50%",
+                background: "var(--c-gold)",
+                flexShrink: 0,
+              }}
+            />
+            <div style={{ flex: 1, height: 1, background: "var(--c-n100)" }} />
           </div>
-        )}
-      </main>
+
+          {restaurants.length === 0 ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "80px 0",
+                color: "var(--c-n400)",
+              }}
+            >
+              <div style={{ fontSize: "2rem", marginBottom: 16 }}>🫗</div>
+              <p
+                style={{
+                  fontFamily: "var(--font-cormorant)",
+                  fontSize: "1.5rem",
+                  fontWeight: 500,
+                  color: "var(--c-n500)",
+                  marginBottom: 8,
+                }}
+              >
+                Keine Restaurants gefunden.
+              </p>
+              <p style={{ fontSize: "0.875rem", color: "var(--c-n400)" }}>
+                Versuche einen anderen Filter oder füge Restaurants im Admin-Bereich hinzu.
+              </p>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: 20,
+              }}
+              className="restaurant-grid"
+            >
+              {restaurants.map((r) => (
+                <RestaurantCard key={r.id} restaurant={r} />
+              ))}
+            </div>
+          )}
+        </main>
+      )}
 
       {/* ── PWA INSTALL INSTRUCTIONS ────────────────────── */}
       <InstallPwaInstructions />

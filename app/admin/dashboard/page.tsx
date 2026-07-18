@@ -23,11 +23,26 @@ export default async function AdminDashboardPage() {
 
   if (profile?.role !== "admin") redirect("/");
 
-  // Fetch initial restaurant list
+  // Fetch initial restaurant list — the current review's `fazit` is joined
+  // in too (not part of the `restaurants` row itself, s. restaurant_reviews)
+  // purely so the admin search box can match against it, s. fazitById below.
   const { data: restaurants } = await supabase
     .from("restaurants")
-    .select("*")
+    .select("*, reviews:restaurant_reviews(fazit, visited_at, created_at)")
     .order("created_at", { ascending: false });
+
+  const fazitById: Record<string, string> = {};
+  for (const r of restaurants ?? []) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const reviews = (r as any).reviews as { fazit: string; visited_at: string; created_at: string }[] | null;
+    if (!reviews?.length) continue;
+    const current = [...reviews].sort(
+      (a, b) => b.visited_at.localeCompare(a.visited_at) || b.created_at.localeCompare(a.created_at)
+    )[0];
+    if (current.fazit) fazitById[r.id] = current.fazit;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (r as any).reviews;
+  }
 
   const pendingProfiles = await getPendingProfiles();
   const allProfiles = await getAllProfiles();
@@ -36,6 +51,7 @@ export default async function AdminDashboardPage() {
   return (
     <AdminDashboard
       initialRestaurants={restaurants ?? []}
+      initialFazitById={fazitById}
       initialPendingProfiles={pendingProfiles}
       initialAllProfiles={allProfiles}
       currentUserId={user.id}
