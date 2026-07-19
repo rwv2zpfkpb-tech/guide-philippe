@@ -52,6 +52,28 @@ export default function RestaurantCard({ restaurant }: { restaurant: Restaurant 
           </span>
         </div>
 
+        {/* Nur sichtbar, wenn ein Admin den "Entwürfe in der Suche zeigen"-
+            Toggle aktiviert hat (s. app/actions/restaurants.ts) — sonst
+            würden normale Nutzer diese Karten ohnehin nie zu sehen bekommen. */}
+        {restaurant.status === "draft" && (
+          <div
+            style={{
+              display: "inline-block",
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "var(--c-gold)",
+              background: "var(--c-gold-light)",
+              borderRadius: 4,
+              padding: "2px 6px",
+              marginBottom: 8,
+            }}
+          >
+            Entwurf
+          </div>
+        )}
+
         {restaurant.cuisine && (
           <div
             style={{

@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/utils/supabase/auth-helpers";
+import { cookies } from "next/headers";
+import { requireAdmin, isCurrentUserAdmin } from "@/utils/supabase/auth-helpers";
 import { createClient } from "@/utils/supabase/server";
 import { createReview, type ReviewPayload } from "@/app/actions/reviews";
 import { getPlaceDetails } from "@/app/actions/places";
@@ -50,20 +51,42 @@ export type RestaurantPayload = {
 
 // ── Read actions (no auth required) ──────────────────────────────────────────
 
+// "Auch Entwürfe in der Suche zeigen"-Toggle (AdminDashboard, s.
+// SHOW_DRAFTS_COOKIE unten): standardmäßig aus, muss ein Admin explizit per
+// Checkbox aktivieren (Cookie, gleiches Client-seitiges Muster wie
+// ThemeToggle.tsx/gp-theme). Der Cookie-Wert allein reicht aber nie aus —
+// die Rolle wird hier zusätzlich serverseitig gegen die DB geprüft, damit
+// ein manuell gesetzter Cookie (z.B. per DevTools) bei einem Nicht-Admin
+// wirkungslos bleibt.
+// Cookie name kept here as a plain constant, not exported: a "use server"
+// file may only export async functions (Next.js Server Actions
+// restriction) — a `const` export breaks the build. The name only needs to
+// match ThemeToggle.tsx-style client code (AdminDashboard.tsx), which sets
+// it directly as a string literal.
+const SHOW_DRAFTS_COOKIE = "gp-show-drafts";
+
+async function shouldIncludeDrafts(): Promise<boolean> {
+  const cookieStore = await cookies();
+  if (cookieStore.get(SHOW_DRAFTS_COOKIE)?.value !== "1") return false;
+  return isCurrentUserAdmin();
+}
+
 export async function getRestaurants(
   filters?: RestaurantFilters
 ): Promise<Restaurant[]> {
   const supabase = await createClient();
+  const includeDrafts = await shouldIncludeDrafts();
 
   // Explicit filter rather than relying on RLS alone: RLS only hides drafts
   // from non-admins, so an admin browsing the normal site (not the admin
   // dashboard, which queries restaurants directly) would otherwise see
-  // draft entries mixed into public search/grid results.
+  // draft entries mixed into public search/grid results — unless the admin
+  // has explicitly opted into exactly that via the toggle above.
   let query = supabase
     .from("restaurants")
     .select("*")
-    .eq("status", "published")
     .order("created_at", { ascending: false });
+  if (!includeDrafts) query = query.eq("status", "published");
 
   if (filters?.cuisine?.length) query = query.in("cuisine", filters.cuisine);
   if (filters?.price_level?.length) query = query.in("price_level", filters.price_level);
@@ -84,14 +107,16 @@ export async function getRestaurants(
 // via RLS) — see getRestaurants() above for why.
 export async function getRecentRestaurants(limit = 6): Promise<Restaurant[]> {
   const supabase = await createClient();
+  const includeDrafts = await shouldIncludeDrafts();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("restaurants")
     .select("*")
-    .eq("status", "published")
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (!includeDrafts) query = query.eq("status", "published");
 
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
   return data ?? [];
 }
@@ -102,27 +127,31 @@ export async function getRecentRestaurants(limit = 6): Promise<Restaurant[]> {
 // (nicht nur per RLS) — s. getRestaurants() oben.
 export async function getFeaturedRestaurants(): Promise<Restaurant[]> {
   const supabase = await createClient();
+  const includeDrafts = await shouldIncludeDrafts();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("restaurants")
     .select("*")
     .eq("featured", true)
-    .eq("status", "published")
     .order("name", { ascending: true });
+  if (!includeDrafts) query = query.eq("status", "published");
 
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
   return data ?? [];
 }
 
 export async function getCuisines(): Promise<string[]> {
   const supabase = await createClient();
+  const includeDrafts = await shouldIncludeDrafts();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("restaurants")
     .select("cuisine")
-    .eq("status", "published")
     .not("cuisine", "is", null);
+  if (!includeDrafts) query = query.eq("status", "published");
 
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
   return Array.from(new Set(data.map((r) => r.cuisine as string))).sort();
 }

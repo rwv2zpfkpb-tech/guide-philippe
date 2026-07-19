@@ -8,6 +8,7 @@ import RestaurantCard from "@/components/RestaurantCard";
 import { HeroSearch } from "@/components/HeroSearch";
 import { SearchResultsView } from "@/components/SearchResultsView";
 import { InstallPwaInstructions } from "@/components/InstallPwaInstructions";
+import { HorizontalScrollRow } from "@/components/HorizontalScrollRow";
 import type { RestaurantFilters } from "@/app/actions/restaurants";
 import type { PriceLevel, SpoonRating } from "@/types/database";
 import { haversineDistanceKm, MAX_SEARCH_RADIUS_KM } from "@/lib/geo";
@@ -65,9 +66,22 @@ export default async function Page({
   // below, once the search center is known (s. MAX_SEARCH_RADIUS_KM,
   // Roadmap-Schritt 15/16/17).
 
-  const [restaurants, cuisines] = await Promise.all([
+  // Facet base: the same location's restaurants but WITHOUT the
+  // cuisine/price/spoon_rating filters applied (only the name search, if
+  // any) — needed so the filter chips/dropdown in SearchResultsView can
+  // show "how many restaurants match this option" counts that don't
+  // collapse to zero once a sibling category is already filtered down.
+  // Only fetched for the location-search branch below; a second DB round
+  // trip is fine here (small curated dataset, same reasoning already
+  // documented for the unbounded per-location restaurant fetch, s.
+  // Roadmap-Schritt 16/17).
+  const facetFilters: RestaurantFilters = {};
+  if (params.q) facetFilters.name_search = params.q;
+
+  const [restaurants, cuisines, facetRestaurants] = await Promise.all([
     getRestaurants(filters),
     getCuisines(),
+    isLocationSearch ? getRestaurants(facetFilters) : Promise.resolve([]),
   ]);
 
   // ── Location search mode: split list + map ────────────────────────────────
@@ -80,11 +94,14 @@ export default async function Page({
     // were obviously still in the same city (Roadmap-Schritt 16/17).
     // Restaurants without coordinates can't be distance-checked, so they're
     // excluded from location search results (same as the old bounds filter).
-    const nearbyRestaurants = restaurants.filter(
-      (r) =>
-        r.lat != null && r.lng != null &&
-        haversineDistanceKm(center, { lat: r.lat, lng: r.lng }) <= MAX_SEARCH_RADIUS_KM
-    );
+    const withinRadius = (list: typeof restaurants) =>
+      list.filter(
+        (r) =>
+          r.lat != null && r.lng != null &&
+          haversineDistanceKm(center, { lat: r.lat, lng: r.lng }) <= MAX_SEARCH_RADIUS_KM
+      );
+    const nearbyRestaurants = withinRadius(restaurants);
+    const allNearbyRestaurants = withinRadius(facetRestaurants);
     const locationParams = {
       location: params.location ?? "",
       lat:    params.lat!,    lng:    params.lng!,
@@ -94,6 +111,7 @@ export default async function Page({
     return (
       <SearchResultsView
         restaurants={nearbyRestaurants}
+        allRestaurants={allNearbyRestaurants}
         center={center}
         locationParams={locationParams}
         activeFilters={{
@@ -101,7 +119,6 @@ export default async function Page({
           spoon_rating: spoonRatingFilters,
           cuisine:      cuisineFilters,
         }}
-        cuisines={cuisines}
         ownLocation={params.own_location === "1"}
       />
     );
@@ -238,13 +255,13 @@ export default async function Page({
               Handverlesen von der Redaktion
             </span>
           </div>
-          <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingTop: 10, paddingBottom: 12 }}>
+          <HorizontalScrollRow>
             {featuredRestaurants.map((r) => (
               <div key={r.id} style={{ minWidth: 230, maxWidth: 230, flexShrink: 0 }}>
                 <RestaurantCard restaurant={r} />
               </div>
             ))}
-          </div>
+          </HorizontalScrollRow>
         </section>
       )}
 
@@ -267,13 +284,13 @@ export default async function Page({
               Die neuesten Einträge
             </span>
           </div>
-          <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingTop: 10, paddingBottom: 12 }}>
+          <HorizontalScrollRow>
             {recentRestaurants.map((r) => (
               <div key={r.id} style={{ minWidth: 230, maxWidth: 230, flexShrink: 0 }}>
                 <RestaurantCard restaurant={r} />
               </div>
             ))}
-          </div>
+          </HorizontalScrollRow>
         </section>
       )}
 

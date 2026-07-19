@@ -17,12 +17,20 @@ type Prediction = {
   placeId: string;
   mainText: string;
   secondaryText: string;
+  // Raw google.maps.places.PlacePrediction — kept around (not just the
+  // extracted text fields) so resolvePlace() can call .toPlace() on it,
+  // which automatically carries the AutocompleteSessionToken from the
+  // original request into the following fetchFields() call (s. sessionTokenRef
+  // below). Reconstructing a bare `new Place({ id })` instead would lose that
+  // link and bill the session as two separate, full-price requests.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  placePrediction: any;
 };
 
 // Large variant: picking a suggestion only fills the field — it's remembered
 // here and only resolved/navigated-to once the user explicitly presses "Suchen".
 type PendingSelection =
-  | { type: "place"; placeId: string; text: string }
+  | { type: "place"; prediction: Prediction }
   | { type: "restaurant"; name: string };
 
 type Props = {
@@ -105,6 +113,14 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef     = useRef<HTMLInputElement>(null);
   const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // One token spans every keystroke of a single search plus the terminating
+  // Place Details fetch (via PlacePrediction.toPlace(), s. Prediction type
+  // above) — Google bills that whole bundle as a single Autocomplete
+  // session instead of pricing every debounced suggestions request and the
+  // final Details call separately. Reset to null once a selection resolves
+  // so the next search starts a fresh session.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sessionTokenRef = useRef<any>(null);
 
   const placesLib = useMapsLibrary("places");
   const router    = useRouter();
@@ -127,18 +143,27 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
 
     debounceRef.current = setTimeout(async () => {
       try {
+        if (!sessionTokenRef.current) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sessionTokenRef.current = new (google.maps.places as any).AutocompleteSessionToken();
+        }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { suggestions } = await (google.maps.places as any).AutocompleteSuggestion
-          .fetchAutocompleteSuggestions({ input: value, includedPrimaryTypes: ["geocode"] });
+          .fetchAutocompleteSuggestions({
+            input: value,
+            includedPrimaryTypes: ["geocode"],
+            sessionToken: sessionTokenRef.current,
+          });
         setRawPredictions(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (suggestions as any[])
             .filter((s) => s.placePrediction)
             .slice(0, 4)
             .map((s) => ({
-              placeId:       s.placePrediction.placeId,
-              mainText:      s.placePrediction.mainText?.text ?? s.placePrediction.text?.text ?? "",
-              secondaryText: s.placePrediction.secondaryText?.text ?? "",
+              placeId:         s.placePrediction.placeId,
+              mainText:        s.placePrediction.mainText?.text ?? s.placePrediction.text?.text ?? "",
+              secondaryText:   s.placePrediction.secondaryText?.text ?? "",
+              placePrediction: s.placePrediction,
             }))
         );
       } catch {
@@ -153,12 +178,20 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
   const showDropdown = open && totalItems > 0 && value.length >= 2;
 
   const resolvePlace = useCallback(
-    async (placeId: string, fallbackName: string) => {
+    async (prediction: Prediction) => {
       setResolving(true);
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const place = new (google.maps.places as any).Place({ id: placeId });
+        // .toPlace() carries the AutocompleteSessionToken from the original
+        // suggestions request into this fetchFields() call automatically —
+        // that's what bundles the whole search into one billed Autocomplete
+        // session instead of a separate per-keystroke charge plus a
+        // separate Place Details charge (s. sessionTokenRef above).
+        const place = prediction.placePrediction
+          ? prediction.placePrediction.toPlace()
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          : new (google.maps.places as any).Place({ id: prediction.placeId });
         await place.fetchFields({ fields: ["location", "formattedAddress", "viewport"] });
+        sessionTokenRef.current = null; // session consumed — next search gets a fresh token
         if (!place.location) {
           setResolving(false);
           return;
@@ -167,15 +200,16 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
           router,
           place.location.lat(),
           place.location.lng(),
-          place.formattedAddress ?? fallbackName,
+          place.formattedAddress ?? prediction.mainText,
           place.viewport,
           filters
         );
         setResolving(false);
       } catch {
+        sessionTokenRef.current = null;
         // fallback: geocode by text
         const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ address: fallbackName }, (results, status) => {
+        geocoder.geocode({ address: prediction.mainText }, (results, status) => {
           setResolving(false);
           if (status !== "OK" || !results?.[0]) return;
           const loc = results[0].geometry.location;
@@ -191,7 +225,7 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
       if (!text.trim()) return;
       // If we have location predictions, use the first one
       if (predictions.length > 0) {
-        resolvePlace(predictions[0].placeId, predictions[0].mainText);
+        resolvePlace(predictions[0]);
         return;
       }
       // Fallback: geocode directly
@@ -263,10 +297,10 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
       } else {
         const pred = predictions[index - restaurantMatches.length];
         if (isCompact) {
-          resolvePlace(pred.placeId, pred.mainText);
+          resolvePlace(pred);
         } else {
           setValue(pred.mainText);
-          setPendingSelection({ type: "place", placeId: pred.placeId, text: pred.mainText });
+          setPendingSelection({ type: "place", prediction: pred });
         }
       }
     },
@@ -281,7 +315,7 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
       return;
     }
     if (pendingSelection?.type === "place") {
-      resolvePlace(pendingSelection.placeId, pendingSelection.text);
+      resolvePlace(pendingSelection.prediction);
       return;
     }
     submitText(value);

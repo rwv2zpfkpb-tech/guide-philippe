@@ -10,7 +10,7 @@ import {
   InfoWindow,
   useAdvancedMarkerRef,
 } from "@vis.gl/react-google-maps";
-import type { SpoonRating } from "@/types/database";
+import type { SpoonRating, RestaurantStatus } from "@/types/database";
 import { SPOON_RATINGS, SPOON_RATING_COLORS } from "@/lib/ratings";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -21,6 +21,10 @@ export type MapRestaurant = {
   lat: number;
   lng: number;
   spoon_rating: SpoonRating;
+  /** Optional — only set when the "Entwürfe in der Suche zeigen"-Toggle
+   *  (app/actions/restaurants.ts) let a draft reach the map, so its
+   *  InfoWindow can badge it accordingly. */
+  status?: RestaurantStatus;
 };
 
 type Props = {
@@ -116,6 +120,14 @@ function RestaurantMarker({
               style={{ color: "var(--c-ink)", fontFamily: "'Cormorant Garamond', serif" }}
             >
               {restaurant.name}
+              {restaurant.status === "draft" && (
+                <span
+                  className="ml-2 align-middle rounded px-1.5 py-0.5 text-xs font-medium uppercase tracking-wider"
+                  style={{ color: "var(--c-gold)", background: "var(--c-gold-light)" }}
+                >
+                  Entwurf
+                </span>
+              )}
             </p>
             <p className="text-sm mb-3" style={{ color: cfg.text }}>
               {cfg.emoji} {cfg.label}

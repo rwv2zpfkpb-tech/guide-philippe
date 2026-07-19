@@ -137,7 +137,7 @@ export default async function RestaurantPage({
   // damit nicht bei jedem Seitenaufruf ein zusätzlicher Places-Request
   // anfällt.
   const placeDetails = restaurant.google_place_id
-    ? await getPlaceDetails(restaurant.google_place_id).catch(() => null)
+    ? await getPlaceDetails(restaurant.google_place_id, { photosOnly: true }).catch(() => null)
     : null;
 
   // 6-Monate-Verfallsdatum (lib/googleSync.ts): sind die gespeicherten
@@ -309,6 +309,25 @@ export default async function RestaurantPage({
                     <PriceLevelDots level={restaurant.price_level} />
                   </div>
                 )}
+              </div>
+            )}
+
+            {restaurant.status === "draft" && (
+              <div
+                style={{
+                  display: "inline-block",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "var(--c-gold)",
+                  background: "var(--c-gold-light)",
+                  borderRadius: 4,
+                  padding: "3px 8px",
+                  marginBottom: 10,
+                }}
+              >
+                Entwurf — nur für Admins sichtbar
               </div>
             )}
 

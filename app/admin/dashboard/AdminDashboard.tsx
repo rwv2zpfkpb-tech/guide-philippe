@@ -1472,6 +1472,26 @@ export function AdminDashboard({
 }) {
   const [restaurants, setRestaurants] = useState(initialRestaurants);
   const [fazitById, setFazitById] = useState(initialFazitById);
+  // "Auch Entwürfe in der öffentlichen Suche zeigen" — rein clientseitiger
+  // Cookie-Toggle (gleiches Muster wie ThemeToggle.tsx/gp-theme), steuert
+  // getRestaurants()/getRecentRestaurants()/getFeaturedRestaurants()/
+  // getCuisines() (app/actions/restaurants.ts, SHOW_DRAFTS_COOKIE). Default
+  // "aus" für SSR, damit kein Hydration-Mismatch entsteht — der echte Wert
+  // ist erst nach dem Mount aus document.cookie bekannt.
+  const [showDraftsInSearch, setShowDraftsInSearch] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShowDraftsInSearch(document.cookie.includes("gp-show-drafts=1"));
+  }, []);
+  function toggleShowDraftsInSearch(checked: boolean) {
+    setShowDraftsInSearch(checked);
+    if (checked) {
+      const maxAge = 365 * 24 * 60 * 60; // 1 Jahr
+      document.cookie = `gp-show-drafts=1; path=/; max-age=${maxAge}; SameSite=Lax`;
+    } else {
+      document.cookie = "gp-show-drafts=; path=/; max-age=0";
+    }
+  }
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published">("all");
   const [priceFilter, setPriceFilter] = useState<PriceLevel[]>([]);
@@ -2070,6 +2090,35 @@ export function AdminDashboard({
         <main className="mx-auto max-w-6xl px-6 py-8">
           <div className="mb-6">
             <BackButton fallbackHref="/" label="Zurück zur Seite" />
+          </div>
+
+          {/* ── Entwürfe in der öffentlichen Suche ── Admin-only, explizit
+              per Checkbox aktiviert (Default aus), s. SHOW_DRAFTS_COOKIE in
+              app/actions/restaurants.ts. Betrifft die normale Website
+              (Startseite/Suche/Karte), nicht diese Tabelle hier — die zeigt
+              Entwürfe ohnehin schon immer. */}
+          <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-[var(--c-n100)] bg-[var(--c-surface)] px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-[var(--c-ink)]">
+                Entwürfe auch in der öffentlichen Suche zeigen
+              </p>
+              <p className="text-xs text-[var(--c-n500)] mt-0.5">
+                Nur für dich als Admin: Entwürfe erscheinen dann zusätzlich zu
+                veröffentlichten Einträgen auf der normalen Website (Startseite,
+                Suche, Karte), mit „Entwurf“-Badge markiert. Standardmäßig aus.
+              </p>
+            </div>
+            <label className="inline-flex items-center gap-2 cursor-pointer flex-shrink-0">
+              <input
+                type="checkbox"
+                checked={showDraftsInSearch}
+                onChange={(e) => toggleShowDraftsInSearch(e.target.checked)}
+                className="rounded border-[var(--c-n300)]"
+              />
+              <span className="text-xs font-medium text-[var(--c-n600)]">
+                {showDraftsInSearch ? "Aktiv" : "Aus"}
+              </span>
+            </label>
           </div>
 
           <PendingRegistrations

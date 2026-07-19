@@ -36,9 +36,25 @@ export type ResolvedPlace = {
 
 // ── Action ────────────────────────────────────────────────────────────────────
 
-export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
+export async function getPlaceDetails(
+  placeId: string,
+  { photosOnly = false }: { photosOnly?: boolean } = {}
+): Promise<PlaceDetails> {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_PLACES_API_KEY env var is not set");
+
+  // `photos` alone is Basic Data (cheapest Places Details SKU);
+  // formattedAddress/regularOpeningHours/phone/website are Contact Data,
+  // which bumps the *entire* request to the pricier Pro SKU even though
+  // only one field needs it. The restaurant detail page (by far the
+  // highest-volume caller — one call per public page view) only ever reads
+  // photoUris (address/phone/website/hours come from the DB since Roadmap-
+  // Schritt 18), so it passes `photosOnly` to stay on the cheap tier. The
+  // admin edit panel and the sync actions still need the full field mask to
+  // populate/refresh those DB columns.
+  const fieldMask = photosOnly
+    ? "photos"
+    : "formattedAddress,regularOpeningHours,photos,internationalPhoneNumber,websiteUri";
 
   // Step 1 — fetch place fields (languageCode/regionCode: deutsche Öffnungszeiten-Strings statt englischer)
   const detailRes = await fetch(
@@ -46,8 +62,7 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceDetails> {
     {
       headers: {
         "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask":
-          "formattedAddress,regularOpeningHours,photos,internationalPhoneNumber,websiteUri",
+        "X-Goog-FieldMask": fieldMask,
       },
       // no-store: hours change daily, photos expire; always fetch fresh
       cache: "no-store",

@@ -32,10 +32,16 @@ type LocationParams = {
 
 type Props = {
   restaurants:   Restaurant[];
+  /** Same location's restaurants but WITHOUT the cuisine/price/spoon_rating
+   *  filters applied (only the radius cutoff) — the facet base used to
+   *  compute the cuisine dropdown's option list and the "(N)" counts next
+   *  to every price/rating/cuisine filter option below. Kept separate from
+   *  `restaurants` (the actually-displayed, fully-filtered list) so a
+   *  filter never zeroes out its own sibling options. */
+  allRestaurants: Restaurant[];
   center:        { lat: number; lng: number };
   locationParams: LocationParams;
   activeFilters: ActiveFilters;
-  cuisines:      string[];
   /** True when `center` is the device's actual GPS position ("Standort
    *  verwenden"), not just an arbitrary searched place — shows a "you are
    *  here" pin on the map and defaults the sort control to "Entfernung". */
@@ -125,6 +131,24 @@ function ResultCard({
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
           }}>
             {restaurant.name}
+            {restaurant.status === "draft" && (
+              <span
+                style={{
+                  marginLeft: 6,
+                  fontSize: 9,
+                  fontWeight: 600,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "var(--c-gold)",
+                  background: "var(--c-gold-light)",
+                  borderRadius: 4,
+                  padding: "1px 5px",
+                  verticalAlign: "middle",
+                }}
+              >
+                Entwurf
+              </span>
+            )}
           </div>
           {restaurant.cuisine && (
             <div style={{
@@ -268,7 +292,7 @@ export function SearchResultsView(props: Props) {
 }
 
 function SearchResultsViewInner({
-  restaurants, center, locationParams, activeFilters, cuisines, ownLocation,
+  restaurants, allRestaurants, center, locationParams, activeFilters, ownLocation,
 }: Props) {
   const router = useRouter();
 
@@ -301,6 +325,58 @@ function SearchResultsViewInner({
   // "Übernehmen" is pressed — avoids a full re-navigation per click.
   const [pending, setPending] = useState<ActiveFilters>(activeFilters);
 
+  // Cuisine dropdown options: only cuisines actually present among this
+  // location's restaurants (allRestaurants, radius-filtered but not yet
+  // narrowed by price/rating/cuisine), not the app-wide cuisine list —
+  // picking a cuisine no other restaurant nearby has would be pointless.
+  const cuisineOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of allRestaurants) if (r.cuisine) set.add(r.cuisine);
+    return Array.from(set).sort();
+  }, [allRestaurants]);
+
+  // "(N)" counts next to each price/rating/cuisine option — computed
+  // against allRestaurants (this location, not yet self-filtered) while
+  // respecting the *other* two categories' currently staged (pending)
+  // selections, so e.g. narrowing by price live-updates the cuisine/rating
+  // counts instead of just zeroing them out once that category itself is
+  // picked.
+  const priceCounts = useMemo(() => {
+    const counts: Partial<Record<number, number>> = {};
+    for (const opt of PRICE_CHIPS) {
+      counts[opt.value] = allRestaurants.filter((r) =>
+        r.price_level === opt.value &&
+        (pending.cuisine.length === 0 || (r.cuisine != null && pending.cuisine.includes(r.cuisine))) &&
+        (pending.spoon_rating.length === 0 || pending.spoon_rating.includes(r.spoon_rating))
+      ).length;
+    }
+    return counts;
+  }, [allRestaurants, pending.cuisine, pending.spoon_rating]);
+
+  const spoonCounts = useMemo(() => {
+    const counts: Partial<Record<number, number>> = {};
+    for (const opt of SPOON_CHIPS) {
+      counts[opt.value] = allRestaurants.filter((r) =>
+        r.spoon_rating === opt.value &&
+        (pending.cuisine.length === 0 || (r.cuisine != null && pending.cuisine.includes(r.cuisine))) &&
+        (pending.price_level.length === 0 || (r.price_level != null && pending.price_level.includes(r.price_level)))
+      ).length;
+    }
+    return counts;
+  }, [allRestaurants, pending.cuisine, pending.price_level]);
+
+  const cuisineCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const c of cuisineOptions) {
+      counts[c] = allRestaurants.filter((r) =>
+        r.cuisine === c &&
+        (pending.price_level.length === 0 || (r.price_level != null && pending.price_level.includes(r.price_level))) &&
+        (pending.spoon_rating.length === 0 || pending.spoon_rating.includes(r.spoon_rating))
+      ).length;
+    }
+    return counts;
+  }, [allRestaurants, cuisineOptions, pending.price_level, pending.spoon_rating]);
+
   // Mobile-only list/map toggle. Both panels stay mounted side-by-side in a
   // double-width viewport; toggling just translates it left/right so it
   // reads as the same "map next to list" layout the viewport pans across,
@@ -317,6 +393,7 @@ function SearchResultsViewInner({
       id: r.id, name: r.name,
       lat: r.lat!, lng: r.lng!,
       spoon_rating: r.spoon_rating,
+      status: r.status,
     }));
 
   // Build a URL that keeps all location params + applies the given filters
@@ -444,7 +521,7 @@ function SearchResultsViewInner({
               flexShrink: 0, display: "flex", flexDirection: "column", gap: 10,
             }}>
               {/* Cuisine row */}
-              {cuisines.length > 0 && (
+              {cuisineOptions.length > 0 && (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <span style={{
                     fontSize: 10, fontWeight: 500, letterSpacing: "0.14em",
@@ -453,10 +530,11 @@ function SearchResultsViewInner({
                     Küche
                   </span>
                   <CuisineFilterDropdown
-                    cuisines={cuisines}
+                    cuisines={cuisineOptions}
                     selected={pending.cuisine}
                     onToggle={toggleCuisine}
                     onClear={() => setPending((f) => ({ ...f, cuisine: [] }))}
+                    counts={cuisineCounts}
                   />
                 </div>
               )}
@@ -471,7 +549,7 @@ function SearchResultsViewInner({
                 </span>
                 {PRICE_CHIPS.map((p) => (
                   <Chip
-                    key={p.value} label={p.label}
+                    key={p.value} label={`${p.label} (${priceCounts[p.value] ?? 0})`}
                     active={pending.price_level.includes(p.value)}
                     onClick={() => togglePrice(p.value)}
                   />
@@ -488,7 +566,7 @@ function SearchResultsViewInner({
                 </span>
                 {SPOON_CHIPS.map((s) => (
                   <Chip
-                    key={s.value} label={s.label}
+                    key={s.value} label={`${s.label} (${spoonCounts[s.value] ?? 0})`}
                     active={pending.spoon_rating.includes(s.value)}
                     onClick={() => toggleSpoon(s.value)}
                   />

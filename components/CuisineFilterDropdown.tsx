@@ -15,12 +15,18 @@ export function CuisineFilterDropdown({
   onToggle,
   onClear,
   label = "Küche",
+  counts,
 }: {
   cuisines: string[];
   selected: string[];
   onToggle: (value: string) => void;
   onClear: () => void;
   label?: string;
+  /** Optional "N matching restaurants" count shown next to each option
+   *  (e.g. search-results/admin facet counts). Omitted call sites (plain
+   *  cuisine pickers without a live result list to count against) render
+   *  unchanged. */
+  counts?: Record<string, number>;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -142,7 +148,12 @@ export function CuisineFilterDropdown({
                     onChange={() => onToggle(c)}
                     style={{ accentColor: "var(--c-burg)" }}
                   />
-                  {c}
+                  <span style={{ flex: 1 }}>{c}</span>
+                  {counts && (
+                    <span style={{ fontSize: 11, color: "var(--c-n400)" }}>
+                      {counts[c] ?? 0}
+                    </span>
+                  )}
                 </label>
               );
             })}

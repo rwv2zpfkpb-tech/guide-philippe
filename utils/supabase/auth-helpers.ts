@@ -35,6 +35,24 @@ export async function requireAdmin(): Promise<AuthResult> {
   return { user, supabase };
 }
 
+// Non-throwing admin check — used where behavior optionally changes for
+// admins (e.g. the "auch Entwürfe in der Suche zeigen"-Toggle, s.
+// app/actions/restaurants.ts) without gating the whole action behind
+// requireAdmin(). Returns false for logged-out users instead of throwing.
+export async function isCurrentUserAdmin(): Promise<boolean> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  return profile?.role === "admin";
+}
+
 // Throws if the caller is not authenticated AND approved by an admin.
 // RLS already enforces this on writes (see comments: approved insert) —
 // this just gives callers a clean error message instead of a raw RLS 403.
