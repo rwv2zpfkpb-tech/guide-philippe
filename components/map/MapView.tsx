@@ -9,6 +9,7 @@ import {
   AdvancedMarker,
   InfoWindow,
   useAdvancedMarkerRef,
+  useMap,
 } from "@vis.gl/react-google-maps";
 import type { SpoonRating, RestaurantStatus } from "@/types/database";
 import { SPOON_RATINGS, SPOON_RATING_COLORS } from "@/lib/ratings";
@@ -38,7 +39,31 @@ type Props = {
    *  when the current search actually originated from "Standort verwenden"
    *  (own_location=1), not for an arbitrary searched place. */
   myLocation?: { lat: number; lng: number } | null;
+  /** Controlled selection (e.g. the expanded row in SearchResultsView's
+   *  result list) — when set, the matching marker is highlighted and its
+   *  InfoWindow opens, same as clicking the marker directly. Omit for
+   *  purely map-driven (uncontrolled) selection. */
+  selectedId?: string | null;
+  /** Fires whenever the selection changes, whether triggered by a marker
+   *  click/close or (in controlled mode) mirrors `selectedId` back —
+   *  lets callers keep an external list selection in sync with the map. */
+  onSelectedChange?: (id: string | null) => void;
 };
+
+// Pans the map to the currently selected marker so a highlight triggered
+// from outside the map (e.g. expanding a row in the result list) is
+// actually visible, not just highlighted off-screen. A no-op child of
+// <Map> rather than logic in the parent, since useMap() only works inside
+// the APIProvider/Map tree.
+function PanToSelected({ restaurants, selectedId }: { restaurants: MapRestaurant[]; selectedId: string | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map || !selectedId) return;
+    const r = restaurants.find((x) => x.id === selectedId);
+    if (r) map.panTo({ lat: r.lat, lng: r.lng });
+  }, [map, selectedId, restaurants]);
+  return null;
+}
 
 // "You are here" dot — deliberately the same blue in both themes (the
 // universal GPS-dot convention from native map apps) rather than a
@@ -194,16 +219,28 @@ export function MapView({
   center,
   zoom = 13,
   myLocation,
+  selectedId: selectedIdProp,
+  onSelectedChange,
 }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Uncontrolled fallback selection — only used when the caller doesn't
+  // pass `selectedId` (standalone map usage, e.g. the detail page has no
+  // list to sync against).
+  const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null);
+  const isControlled = selectedIdProp !== undefined;
+  const selectedId = isControlled ? selectedIdProp : internalSelectedId;
   const theme = useEffectiveTheme();
   const isDark = theme === "dark";
 
-  const handleSelect = useCallback((r: MapRestaurant) => {
-    setSelectedId((prev) => (prev === r.id ? null : r.id));
-  }, []);
+  const setSelectedId = useCallback((id: string | null) => {
+    if (!isControlled) setInternalSelectedId(id);
+    onSelectedChange?.(id);
+  }, [isControlled, onSelectedChange]);
 
-  const handleClose = useCallback(() => setSelectedId(null), []);
+  const handleSelect = useCallback((r: MapRestaurant) => {
+    setSelectedId(selectedId === r.id ? null : r.id);
+  }, [selectedId, setSelectedId]);
+
+  const handleClose = useCallback(() => setSelectedId(null), [setSelectedId]);
 
   // Derive center from data if not provided
   const mapCenter = center ?? (restaurants[0]
@@ -251,6 +288,7 @@ export function MapView({
           />
         ))}
         {myLocation && <MyLocationMarker position={myLocation} />}
+        <PanToSelected restaurants={restaurants} selectedId={selectedId} />
       </Map>
     </APIProvider>
   );

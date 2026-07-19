@@ -652,6 +652,8 @@ function SearchResultsViewInner({
               zoom={11}
               className="w-full h-full"
               myLocation={ownLocation ? center : null}
+              selectedId={expandedId}
+              onSelectedChange={setExpandedId}
             />
           </div>
         </div>
