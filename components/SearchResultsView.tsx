@@ -387,6 +387,18 @@ function SearchResultsViewInner({
   // whichever was previously open.
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Filter bar (cuisine/price/rating rows) is collapsed by default — it ate
+  // into the vertical space available for the results list itself, which
+  // matters most since that's what the user is actually scanning. Always
+  // starts collapsed, including right after "Übernehmen": clicking it
+  // navigates to a URL with the new activeFilters, which changes this
+  // component's key (s. filterKey above) and forces a fresh remount — so
+  // "starts collapsed" here IS the "collapses after applying" behavior,
+  // there's no separate post-apply state to reset.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilterCount =
+    activeFilters.cuisine.length + activeFilters.price_level.length + activeFilters.spoon_rating.length;
+
   const mapRestaurants: MapRestaurant[] = sortedRestaurants
     .filter((r) => r.lat != null && r.lng != null)
     .map((r) => ({
@@ -515,11 +527,48 @@ function SearchResultsViewInner({
               ))}
             </div>
 
-            {/* Filter bar */}
-            <div style={{
-              padding: "12px 24px", borderBottom: "1px solid var(--c-n100)",
-              flexShrink: 0, display: "flex", flexDirection: "column", gap: 10,
-            }}>
+            {/* Filter bar — collapsible, see filtersOpen above. Header + content
+                share a single border-bottom (rather than each having its own)
+                so there's no second divider line squeezed directly above the
+                first filter row. */}
+            <div style={{ borderBottom: "1px solid var(--c-n100)", flexShrink: 0 }}>
+              <button
+                onClick={() => setFiltersOpen((v) => !v)}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+                  gap: 10, padding: "10px 24px", background: "none", border: "none",
+                  cursor: "pointer", fontFamily: "inherit",
+                }}
+              >
+                <span style={{
+                  fontSize: 10, fontWeight: 500, letterSpacing: "0.14em",
+                  textTransform: "uppercase", color: "var(--c-n400)",
+                  display: "flex", alignItems: "center", gap: 8,
+                }}>
+                  Filter
+                  {activeFilterCount > 0 && (
+                    <span style={{
+                      fontSize: "0.6875rem", fontWeight: 600, letterSpacing: "normal",
+                      textTransform: "none", color: "var(--c-burg)", background: "var(--c-burg-light)",
+                      borderRadius: 999, padding: "1px 7px",
+                    }}>
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </span>
+                <span style={{
+                  display: "inline-flex", transform: filtersOpen ? "rotate(180deg)" : "none",
+                  transition: "transform 0.15s ease", color: "var(--c-n400)",
+                }}>
+                  <IconChevronDown size={14} />
+                </span>
+              </button>
+
+              {filtersOpen && (
+              <div style={{
+                padding: "6px 24px 16px",
+                display: "flex", flexDirection: "column", gap: 10,
+              }}>
               {/* Cuisine row */}
               {cuisineOptions.length > 0 && (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -601,6 +650,8 @@ function SearchResultsViewInner({
                     </button>
                   )}
                 </div>
+              )}
+              </div>
               )}
             </div>
 
