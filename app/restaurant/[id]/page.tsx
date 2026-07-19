@@ -156,7 +156,7 @@ export default async function RestaurantPage({
   const phone = restaurant.phone;
   const website = restaurant.website;
   const weekdayDescriptions = restaurant.google_opening_hours;
-  const { open: openNow, until: openUntil } = getOpeningStatus(weekdayDescriptions);
+  const { open: openNow, until: openUntil, opensAt: openOpensAt } = getOpeningStatus(weekdayDescriptions);
 
   const [currentReview, ...pastReviews] = restaurant.reviews;
   const averageRating = computeAverageRating(restaurant.comments.map((c) => c.secondary_rating));
@@ -380,7 +380,9 @@ export default async function RestaurantPage({
                     color: openNow ? "oklch(45% 0.12 145)" : "oklch(45% 0.12 25)",
                   }}
                 >
-                  {openNow ? `Jetzt geöffnet${openUntil ? `, bis ${openUntil}` : ""}` : "Geschlossen"}
+                  {openNow
+                    ? `Jetzt geöffnet${openUntil ? `, bis ${openUntil}` : ""}`
+                    : `Geschlossen${openOpensAt ? `, öffnet wieder ${openOpensAt}` : ""}`}
                 </span>
               )}
             </div>

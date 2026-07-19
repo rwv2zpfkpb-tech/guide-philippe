@@ -90,7 +90,7 @@ function ResultCard({
   // befüllt beim Bearbeiten im Admin-Panel/CSV-Import/"Von Google
   // synchronisieren").
   const address = restaurant.address;
-  const { open: openNow, until: openUntil } = getOpeningStatus(restaurant.google_opening_hours);
+  const { open: openNow, until: openUntil, opensAt: openOpensAt } = getOpeningStatus(restaurant.google_opening_hours);
 
   return (
     <div style={{ borderBottom: "1px solid var(--c-n100)" }}>
@@ -197,7 +197,9 @@ function ResultCard({
             <IconClock size={14} className="text-[var(--c-n400)]" />
             {openNow !== null ? (
               <span style={{ color: openNow ? "var(--c-success)" : "var(--c-burg)", fontWeight: 500 }}>
-                {openNow ? `Jetzt geöffnet${openUntil ? `, bis ${openUntil}` : ""}` : "Geschlossen"}
+                {openNow
+                  ? `Jetzt geöffnet${openUntil ? `, bis ${openUntil}` : ""}`
+                  : `Geschlossen${openOpensAt ? `, öffnet wieder ${openOpensAt}` : ""}`}
               </span>
             ) : (
               <span>Keine Öffnungszeiten verfügbar</span>
