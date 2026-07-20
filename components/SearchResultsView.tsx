@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MapView } from "@/components/map/MapView";
@@ -297,6 +297,10 @@ function SearchResultsViewInner({
   restaurants, allRestaurants, center, locationParams, activeFilters, ownLocation,
 }: Props) {
   const router = useRouter();
+  // Wraps every router.push below (close, apply/reset filters) so the
+  // triggering button can show a spinner for the whole route transition,
+  // not just the instant push() is called — same reasoning as LocationSearch.
+  const [isNavigating, startNavTransition] = useTransition();
 
   // Sorting is a pure client-side re-order of the already-fetched list (no
   // refetch needed), so unlike the filter chips below it applies
@@ -440,11 +444,11 @@ function SearchResultsViewInner({
     }));
   };
 
-  const applyFilters = () => router.push(buildUrl(pending));
+  const applyFilters = () => startNavTransition(() => router.push(buildUrl(pending)));
   const resetFilters = () => {
     const empty = { cuisine: [], price_level: [], spoon_rating: [] };
     setPending(empty);
-    router.push(buildUrl(empty));
+    startNavTransition(() => router.push(buildUrl(empty)));
   };
 
   const hasPendingFilters =
@@ -477,14 +481,17 @@ function SearchResultsViewInner({
                 <LocationSearch defaultValue={locationParams.location} size="compact" />
               </div>
               <button
-                onClick={() => router.push("/")}
+                onClick={() => startNavTransition(() => router.push("/"))}
+                disabled={isNavigating}
                 style={{
                   fontSize: "0.8125rem", color: "var(--c-n400)", background: "none",
-                  border: "none", cursor: "pointer", padding: "4px 2px",
+                  border: "none", cursor: isNavigating ? "default" : "pointer", padding: "4px 2px",
                   fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0,
+                  display: "inline-flex", alignItems: "center",
+                  opacity: isNavigating ? 0.6 : 1,
                 }}
               >
-                ✕
+                {isNavigating ? <span className="gp-spinner-sm" aria-hidden /> : "✕"}
               </button>
             </div>
 
@@ -630,24 +637,33 @@ function SearchResultsViewInner({
                   {hasPendingFilters ? (
                     <button
                       onClick={resetFilters}
+                      disabled={isNavigating}
                       style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
                         fontSize: "0.75rem", fontWeight: 500,
                         color: "var(--c-burg)", background: "none", border: "none",
-                        cursor: "pointer", fontFamily: "inherit", letterSpacing: "0.03em", padding: 0,
+                        cursor: isNavigating ? "default" : "pointer", fontFamily: "inherit",
+                        letterSpacing: "0.03em", padding: 0, opacity: isNavigating ? 0.6 : 1,
                       }}
                     >
+                      {isNavigating && <span className="gp-spinner-sm" aria-hidden />}
                       Filter zurücksetzen
                     </button>
                   ) : <span />}
                   {filtersDirty && (
                     <button
                       onClick={applyFilters}
+                      disabled={isNavigating}
                       style={{
+                        display: "inline-flex", alignItems: "center", gap: 8,
                         fontSize: "0.8125rem", fontWeight: 600, letterSpacing: "0.02em",
                         color: "white", background: "var(--c-burg)", border: "none",
-                        borderRadius: 8, padding: "8px 18px", cursor: "pointer", fontFamily: "inherit",
+                        borderRadius: 8, padding: "8px 18px",
+                        cursor: isNavigating ? "default" : "pointer", fontFamily: "inherit",
+                        opacity: isNavigating ? 0.75 : 1,
                       }}
                     >
+                      {isNavigating && <span className="gp-spinner-sm" aria-hidden />}
                       Übernehmen
                     </button>
                   )}
@@ -672,13 +688,17 @@ function SearchResultsViewInner({
                   </p>
                   <button
                     onClick={resetFilters}
+                    disabled={isNavigating}
                     style={{
+                      display: "inline-flex", alignItems: "center", gap: 8,
                       fontSize: "0.8125rem", fontWeight: 500, padding: "8px 20px",
                       borderRadius: 8, border: "1px solid var(--c-n200)",
-                      background: "var(--c-surface)", color: "var(--c-ink)", cursor: "pointer",
-                      fontFamily: "inherit",
+                      background: "var(--c-surface)", color: "var(--c-ink)",
+                      cursor: isNavigating ? "default" : "pointer",
+                      fontFamily: "inherit", opacity: isNavigating ? 0.6 : 1,
                     }}
                   >
+                    {isNavigating && <span className="gp-spinner-sm" aria-hidden />}
                     Filter löschen
                   </button>
                 </div>

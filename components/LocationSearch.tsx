@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, useTransition } from "react";
 import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import { useRouter } from "next/navigation";
 import { IconList, IconLocate } from "@/components/icons";
@@ -27,11 +27,12 @@ type Prediction = {
   placePrediction: any;
 };
 
-// Large variant: picking a suggestion only fills the field — it's remembered
-// here and only resolved/navigated-to once the user explicitly presses "Suchen".
-type PendingSelection =
-  | { type: "place"; prediction: Prediction }
-  | { type: "restaurant"; name: string };
+// Large variant: picking a *location* suggestion only fills the field — it's
+// remembered here and only resolved/navigated-to once the user explicitly
+// presses "Suchen". Picking a concrete restaurant ("Im Guide") instead
+// navigates straight to its detail page (s. selectItem below) — there's no
+// search to run for an already-identified restaurant.
+type PendingSelection = { type: "place"; prediction: Prediction };
 
 type Props = {
   defaultValue?: string;
@@ -102,6 +103,11 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
   // "Suchen" button (and compact-mode selections) look unresponsive for the
   // ~0.5-1s round trip.
   const [resolving, setResolving] = useState(false);
+  // Wraps every router.push below — isNavigating stays true for the whole
+  // route transition (not just until push() is *called*), so the spinner
+  // doesn't drop out right as the new page/search results are still loading.
+  const [isNavigating, startNavTransition] = useTransition();
+  const busy = resolving || isNavigating;
 
   // "Standort verwenden" — geolocates the device via the browser API and
   // searches from there directly. A reverse-geocode call still runs
@@ -196,15 +202,17 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
           setResolving(false);
           return;
         }
-        navigateToLocation(
-          router,
-          place.location.lat(),
-          place.location.lng(),
-          place.formattedAddress ?? prediction.mainText,
-          place.viewport,
-          filters
-        );
         setResolving(false);
+        startNavTransition(() => {
+          navigateToLocation(
+            router,
+            place.location.lat(),
+            place.location.lng(),
+            place.formattedAddress ?? prediction.mainText,
+            place.viewport,
+            filters
+          );
+        });
       } catch {
         sessionTokenRef.current = null;
         // fallback: geocode by text
@@ -213,7 +221,9 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
           setResolving(false);
           if (status !== "OK" || !results?.[0]) return;
           const loc = results[0].geometry.location;
-          navigateToLocation(router, loc.lat(), loc.lng(), results[0].formatted_address, results[0].geometry.viewport, filters);
+          startNavTransition(() => {
+            navigateToLocation(router, loc.lat(), loc.lng(), results[0].formatted_address, results[0].geometry.viewport, filters);
+          });
         });
       }
     },
@@ -235,13 +245,15 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
         setResolving(false);
         if (status !== "OK" || !results?.[0]) return;
         const loc = results[0].geometry.location;
-        navigateToLocation(
-          router,
-          loc.lat(), loc.lng(),
-          results[0].formatted_address,
-          results[0].geometry.viewport,
-          filters
-        );
+        startNavTransition(() => {
+          navigateToLocation(
+            router,
+            loc.lat(), loc.lng(),
+            results[0].formatted_address,
+            results[0].geometry.viewport,
+            filters
+          );
+        });
       });
     },
     [predictions, resolvePlace, router, filters]
@@ -264,7 +276,9 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
         geocoder.geocode({ location: { lat, lng } }, (results, status) => {
           setLocating(false);
           const name = status === "OK" && results?.[0] ? results[0].formatted_address : "Mein Standort";
-          navigateToLocation(router, lat, lng, name, null, filters, true);
+          startNavTransition(() => {
+            navigateToLocation(router, lat, lng, name, null, filters, true);
+          });
         });
       },
       (err) => {
@@ -279,21 +293,19 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
     );
   }, [router, filters]);
 
-  // Large variant: selecting a suggestion only fills the field + remembers the
-  // pick — navigation happens exclusively via handleSearch ("Suchen" click).
-  // Compact variant (no visible button, used for in-map refinement) keeps the
-  // previous immediate-navigate behavior.
+  // A concrete restaurant ("Im Guide") is already identified — selecting one
+  // navigates straight to its detail page in both variants, no staging/
+  // "Suchen" step needed (that step only makes sense for locations, which
+  // still need geocoding before they can be searched). Location suggestions
+  // keep the existing size-dependent behavior: compact navigates immediately,
+  // large only fills the field and waits for "Suchen" click.
   const selectItem = useCallback(
     (index: number) => {
       setOpen(false);
       if (index < restaurantMatches.length) {
-        const name = restaurantMatches[index].name;
-        if (isCompact) {
-          router.push(`/?q=${encodeURIComponent(name)}`);
-        } else {
-          setValue(name);
-          setPendingSelection({ type: "restaurant", name });
-        }
+        startNavTransition(() => {
+          router.push(`/restaurant/${restaurantMatches[index].id}`);
+        });
       } else {
         const pred = predictions[index - restaurantMatches.length];
         if (isCompact) {
@@ -308,18 +320,12 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
   );
 
   const handleSearch = useCallback(() => {
-    if (pendingSelection?.type === "restaurant") {
-      const p = new URLSearchParams({ q: pendingSelection.name });
-      appendFilters(p, filters);
-      router.push(`/?${p.toString()}`);
-      return;
-    }
     if (pendingSelection?.type === "place") {
       resolvePlace(pendingSelection.prediction);
       return;
     }
     submitText(value);
-  }, [pendingSelection, resolvePlace, submitText, value, filters, router]);
+  }, [pendingSelection, resolvePlace, submitText, value]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
@@ -385,9 +391,11 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
         }}
       >
         {/* Search icon — swapped for a spinner while a selection is being
-            resolved to coordinates (the gap before router.push, not covered
-            by the route-level loading.tsx). */}
-        {resolving ? (
+            resolved to coordinates and while the resulting navigation is
+            still in flight (busy = resolving || isNavigating, s. above) —
+            keeps the icon spinning across the whole gap, not just the part
+            before router.push. */}
+        {busy ? (
           <div className="gp-spinner-sm" style={{ color: "var(--c-n400)" }} aria-hidden />
         ) : (
           <svg
@@ -408,7 +416,7 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
           onChange={(e) => { setValue(e.target.value); setOpen(true); setActiveIndex(-1); setPendingSelection(null); }}
           onFocus={() => { if (value.length >= 2) setOpen(true); }}
           onKeyDown={handleKeyDown}
-          disabled={resolving || locating}
+          disabled={busy || locating}
           placeholder={
             isCompact
               ? "Stadt oder Region…"
@@ -425,7 +433,7 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
             fontFamily: "inherit",
             fontSize: isCompact ? "0.875rem" : "1rem",
             color: "var(--c-ink)",
-            opacity: (resolving || locating) ? 0.6 : 1,
+            opacity: (busy || locating) ? 0.6 : 1,
           }}
         />
 
@@ -435,8 +443,8 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
         <button
           type="button"
           onClick={useMyLocation}
-          disabled={locating || resolving}
-          aria-busy={locating}
+          disabled={locating || busy}
+          aria-busy={locating || isNavigating}
           aria-label="Meinen Standort verwenden"
           title="Meinen Standort verwenden"
           style={{
@@ -445,12 +453,12 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
             width: isCompact ? 30 : 34, height: isCompact ? 30 : 34,
             borderRadius: "50%", border: "1px solid var(--c-n200)",
             background: "var(--c-surface)", color: "var(--c-n500)",
-            cursor: locating ? "default" : "pointer",
-            opacity: locating ? 0.6 : 1,
+            cursor: (locating || busy) ? "default" : "pointer",
+            opacity: (locating || busy) ? 0.6 : 1,
             fontFamily: "inherit",
           }}
         >
-          {locating ? (
+          {(locating || isNavigating) ? (
             <span className="gp-spinner-sm" aria-hidden />
           ) : (
             <IconLocate size={isCompact ? 14 : 16} />
@@ -462,23 +470,23 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
           <button
             type="button"
             onClick={() => { handleSearch(); setOpen(false); }}
-            disabled={resolving || locating}
-            aria-busy={resolving}
+            disabled={busy || locating}
+            aria-busy={busy}
             style={{
               flexShrink: 0,
               display: "inline-flex", alignItems: "center", gap: 8,
               fontSize: "0.875rem", fontWeight: 500, letterSpacing: "0.03em",
               padding: "10px 24px", border: "none", borderRadius: 9999,
               background: "var(--c-burg)", color: "white",
-              cursor: resolving ? "default" : "pointer", fontFamily: "inherit",
-              opacity: resolving ? 0.75 : 1,
+              cursor: busy ? "default" : "pointer", fontFamily: "inherit",
+              opacity: busy ? 0.75 : 1,
               transition: "background .2s, opacity .2s",
             }}
-            onMouseOver={(e) => { if (!resolving) (e.currentTarget as HTMLButtonElement).style.background = "oklch(26% 0.080 17)"; }}
+            onMouseOver={(e) => { if (!busy) (e.currentTarget as HTMLButtonElement).style.background = "oklch(26% 0.080 17)"; }}
             onMouseOut={(e)  => { (e.currentTarget as HTMLButtonElement).style.background = "var(--c-burg)"; }}
           >
-            {resolving && <span className="gp-spinner-sm" aria-hidden />}
-            {resolving ? "Sucht…" : "Suchen"}
+            {busy && <span className="gp-spinner-sm" aria-hidden />}
+            {busy ? "Sucht…" : "Suchen"}
           </button>
         )}
       </div>
