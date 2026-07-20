@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
+import type { EmailOtpType } from "@supabase/supabase-js";
 
 export type SignInState = { error: string } | null;
 export type SignUpState = { error: string } | { success: true } | null;
@@ -74,6 +75,41 @@ export async function signUp(
   return { success: true };
 }
 
+// ── E-Mail-Bestätigungslink einlösen (Signup/Invite/E-Mail-Änderung) ────────
+// Der Bestätigungslink zeigt seit dem Prefetching-Fix (s. app/api/auth/email/
+// route.ts) nicht mehr direkt auf GoTrues Auto-Verify-Endpoint, sondern auf
+// unsere eigene /auth/confirm-Seite mit `token_hash`/`type` als Query-Params.
+// Diese Action löst den Token erst ein, wenn der Nutzer aktiv auf "Konto
+// bestätigen" klickt (Server Action = POST) — E-Mail-Sicherheits-Scanner
+// (Outlook Safe Links, Firmen-Gateways etc.), die beim Zustellen der Mail
+// automatisch jeden Link per GET aufrufen, verbrauchen den Einmal-Token damit
+// nicht mehr, bevor der Nutzer selbst klickt. Grund für den Fix: genau das
+// führte dazu, dass der Link schon beim allerersten echten Klick des Nutzers
+// als "abgelaufen" gemeldet wurde.
+
+export type ConfirmEmailState = { error: string } | null;
+
+export async function confirmEmailToken(
+  _prevState: ConfirmEmailState,
+  formData: FormData
+): Promise<ConfirmEmailState> {
+  const tokenHash = formData.get("token_hash") as string;
+  const type = formData.get("type") as EmailOtpType;
+
+  if (!tokenHash || !type) {
+    return { error: "Der Link ist ungültig. Bitte fordere einen neuen Bestätigungslink an." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+  if (error) {
+    return { error: "Der Link ist ungültig oder abgelaufen. Bitte fordere einen neuen Bestätigungslink an, indem du dich erneut registrierst." };
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/");
+}
+
 // ── Sign out ──────────────────────────────────────────────────────────────────
 
 export async function signOut() {
@@ -119,6 +155,11 @@ export async function updatePassword(
 ): Promise<UpdatePasswordState> {
   const password = formData.get("password") as string;
   const confirmPassword = formData.get("confirmPassword") as string;
+  // Both "forgot password" and the logged-in "change password" case funnel
+  // through the same recovery e-mail link and land on app/auth/reset-
+  // password/page.tsx, which always passes the link's token_hash through as
+  // a hidden field — so this is normally always set here.
+  const tokenHash = formData.get("token_hash") as string | null;
 
   if (!password || password.length < 8) {
     return { error: "Das Passwort muss mindestens 8 Zeichen lang sein." };
@@ -128,8 +169,27 @@ export async function updatePassword(
   }
 
   const supabase = await createClient();
-  // Requires an active session — the recovery link's PKCE code exchange
-  // (app/auth/reset-password/page.tsx) establishes it before this form renders.
+
+  if (tokenHash) {
+    // Verified here, on the user's explicit "Passwort speichern"-click,
+    // rather than automatically when the recovery link's page loads — see
+    // confirmEmailToken above for why (mail-link prescanning consuming the
+    // one-time token before the user ever clicks).
+    const { error: verifyError } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" });
+    if (verifyError) {
+      // Token already consumed (e.g. a duplicate submit, or the browser
+      // already holds the session from an earlier successful verify on this
+      // page) — fall through to updateUser() below only if a session already
+      // exists; otherwise this really is an invalid/expired link.
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) {
+        return { error: "Der Link ist ungültig oder abgelaufen. Bitte fordere einen neuen Link zum Zurücksetzen deines Passworts an." };
+      }
+    }
+  }
+
+  // Requires an active session — either just established above via the
+  // recovery token, or already present for the logged-in "change password" case.
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return { error: error.message };
 

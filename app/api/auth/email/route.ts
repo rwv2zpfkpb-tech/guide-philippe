@@ -51,15 +51,24 @@ export async function POST(request: Request) {
   }
 
   const { user, email_data } = data;
-  const { token, token_hash, token_hash_new, redirect_to, email_action_type, site_url } =
-    email_data;
+  const { token, token_hash, token_hash_new, redirect_to, email_action_type } = email_data;
 
-  // Mirrors Supabase's own default e-mail templates: the hosted GoTrue verify
-  // endpoint checks the token and redirects to `redirect_to` on success.
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? site_url;
-  const confirmationURL = `${supabaseUrl}/auth/v1/verify?token=${
+  // Points straight at our own confirm/reset-password page with the raw
+  // `token_hash` (+ `type`) instead of GoTrue's hosted `/auth/v1/verify`
+  // endpoint. GoTrue's endpoint verifies (and thereby *consumes*) the token
+  // on a plain GET — which e-mail security scanners (Outlook Safe Links,
+  // corporate mail gateways, etc.) happily trigger themselves while
+  // prefetching/scanning the mail, invalidating the link before the actual
+  // user ever clicks it. Our own pages instead only call
+  // `supabase.auth.verifyOtp({ token_hash, type })` from a Server Action
+  // fired by an explicit user click/submit (app/actions/auth.ts:
+  // confirmEmailToken / updatePassword) — scanners fetch the page itself but
+  // never click the button or submit the form, so the token survives until
+  // the real user acts on it.
+  const separator = redirect_to.includes("?") ? "&" : "?";
+  const confirmationURL = `${redirect_to}${separator}token_hash=${encodeURIComponent(
     email_action_type === "email_change" ? token_hash_new || token_hash : token_hash
-  }&type=${email_action_type}&redirect_to=${encodeURIComponent(redirect_to)}`;
+  )}&type=${encodeURIComponent(email_action_type)}`;
 
   const { subject, html } = renderAuthEmail(email_action_type, {
     confirmationURL,

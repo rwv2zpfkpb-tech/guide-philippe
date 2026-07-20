@@ -1,39 +1,26 @@
 import Link from "next/link";
-import { createClient } from "@/utils/supabase/server";
 import { IconWarningTriangle } from "@/components/icons";
 import ResetPasswordForm from "./ResetPasswordForm";
 
 export const metadata = { title: "Passwort zurücksetzen — Guide Philippe" };
 
 // Landing page for both the "forgot password" and the "change password"
-// e-mail link (app/actions/auth.ts: requestPasswordReset). GoTrue verifies
-// the recovery token itself (hosted /auth/v1/verify endpoint) and redirects
-// here with a PKCE `code`, which we exchange for a session — same pattern as
-// app/auth/confirm/page.tsx — before letting the user set a new password.
+// e-mail link (app/actions/auth.ts: requestPasswordReset). The link points
+// here with a raw `token_hash` (see app/api/auth/email/route.ts) instead of
+// GoTrue's hosted auto-verify endpoint — the token is only redeemed once the
+// user submits the "set new password" form below (updatePassword in
+// app/actions/auth.ts), not on this page's mere GET load. Same reasoning as
+// app/auth/confirm/page.tsx: a GET-triggered auto-verify lets e-mail security
+// scanners consume the one-time token before the user ever interacts with
+// the link, which then reports "expired" on the user's actual first click.
 export default async function ResetPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ code?: string }>;
+  searchParams: Promise<{ token_hash?: string }>;
 }) {
-  const { code } = await searchParams;
+  const { token_hash: tokenHash } = await searchParams;
 
-  let success = false;
-  if (code) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    success = !error;
-    if (!success) {
-      // The PKCE code is single-use and may already have been consumed by a
-      // duplicate request (mail-link prescanning, a double tap, or a
-      // back-navigation reload landing on the same URL). If this browser
-      // already holds the session from that earlier successful exchange,
-      // let the user through instead of showing a false "invalid link" error.
-      const { data } = await supabase.auth.getUser();
-      success = !!data.user;
-    }
-  }
-
-  if (!success) {
+  if (!tokenHash) {
     return (
       <main
         style={{
@@ -112,7 +99,7 @@ export default async function ResetPasswordPage({
           var(--c-bg) 100%)`,
       }}
     >
-      <ResetPasswordForm />
+      <ResetPasswordForm tokenHash={tokenHash} />
     </main>
   );
 }

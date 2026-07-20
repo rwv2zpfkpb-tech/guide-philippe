@@ -156,7 +156,10 @@ export default async function RestaurantPage({
   const phone = restaurant.phone;
   const website = restaurant.website;
   const weekdayDescriptions = restaurant.google_opening_hours;
-  const { open: openNow, until: openUntil, opensAt: openOpensAt } = getOpeningStatus(weekdayDescriptions);
+  const { open: openNow, until: openUntil, opensAt: openOpensAt } = getOpeningStatus(weekdayDescriptions, {
+    lat: restaurant.lat,
+    lng: restaurant.lng,
+  });
 
   const [currentReview, ...pastReviews] = restaurant.reviews;
   const averageRating = computeAverageRating(restaurant.comments.map((c) => c.secondary_rating));

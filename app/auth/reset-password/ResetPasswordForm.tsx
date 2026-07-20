@@ -18,7 +18,7 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
 };
 
-export default function ResetPasswordForm() {
+export default function ResetPasswordForm({ tokenHash }: { tokenHash: string }) {
   const [state, action, pending] = useActionState<UpdatePasswordState, FormData>(
     updatePassword,
     null
@@ -118,6 +118,7 @@ export default function ResetPasswordForm() {
       )}
 
       <form action={action} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <input type="hidden" name="token_hash" value={tokenHash} />
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label
             htmlFor="password"

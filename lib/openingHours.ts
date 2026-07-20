@@ -1,3 +1,5 @@
+import tzlookup from "tz-lookup";
+
 // Computes "geöffnet/geschlossen" locally from the persisted Google weekday
 // strings (restaurants.google_opening_hours) instead of a live Places API
 // call — those strings change rarely, so re-fetching them on every page view
@@ -12,6 +14,17 @@
 // "Montag: Geschlossen", "Montag: 24 Stunden geöffnet"), ordered Monday
 // first — matches the weekday-highlight logic already used in
 // app/restaurant/[id]/page.tsx.
+//
+// The hours describe the *restaurant's* local time, not the server's or the
+// visitor's — a server running in UTC (e.g. Vercel) reading `Date.getHours()`
+// directly would be 1–2h off from Germany alone, and hardcoding "Europe/
+// Berlin" would silently misjudge any restaurant outside that zone. Instead
+// the timezone is resolved from the restaurant's own `lat`/`lng` via
+// `tz-lookup` (pure offline geo→IANA-timezone lookup, no network/API call —
+// keeps this cheap and matches the app's "spare Google requests" stance from
+// Roadmap-Schritt 26). Falls back to Europe/Berlin when no coordinates are
+// set (e.g. a manually captured restaurant without a map pin) since that is
+// this guide's default locale.
 
 export type OpeningStatus = {
   open: boolean | null;
@@ -26,8 +39,37 @@ export type OpeningStatus = {
 
 const WEEKDAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
 
+const WEEKDAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]; // Montag first, matches WEEKDAYS
+const FALLBACK_TIMEZONE = "Europe/Berlin";
+
 function pad(n: number): string {
   return String(n).padStart(2, "0");
+}
+
+/** Best-effort IANA timezone for a restaurant, derived from its coordinates. */
+function resolveTimeZone(lat: number | null | undefined, lng: number | null | undefined): string {
+  if (lat == null || lng == null) return FALLBACK_TIMEZONE;
+  try {
+    return tzlookup(lat, lng);
+  } catch {
+    return FALLBACK_TIMEZONE; // e.g. coordinates over open ocean
+  }
+}
+
+function getLocalDateParts(now: Date, timeZone: string): { dayIndex: number; minutes: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+
+  const weekday = parts.find((p) => p.type === "weekday")?.value ?? "";
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0") % 24;
+  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+
+  return { dayIndex: WEEKDAY_ORDER.indexOf(weekday), minutes: hour * 60 + minute };
 }
 
 type DayHours =
@@ -83,15 +125,16 @@ function findNextOpening(weekdayDescriptions: string[], todayIndex: number, nowM
 
 export function getOpeningStatus(
   weekdayDescriptions: string[] | null | undefined,
+  coords?: { lat: number | null | undefined; lng: number | null | undefined } | null,
   now: Date = new Date()
 ): OpeningStatus {
   if (!weekdayDescriptions || weekdayDescriptions.length === 0) return { open: null, until: null, opensAt: null };
 
-  const dayIndex = (now.getDay() + 6) % 7; // 0 = Montag … 6 = Sonntag
-  if (!weekdayDescriptions[dayIndex]) return { open: null, until: null, opensAt: null };
+  const timeZone = resolveTimeZone(coords?.lat, coords?.lng);
+  const { dayIndex, minutes: nowMinutes } = getLocalDateParts(now, timeZone);
+  if (dayIndex === -1 || !weekdayDescriptions[dayIndex]) return { open: null, until: null, opensAt: null };
 
   const today = parseDayHours(weekdayDescriptions[dayIndex]);
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   if (today.kind === "24h") return { open: true, until: null, opensAt: null };
   if (today.kind === "ranges") {

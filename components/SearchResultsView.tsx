@@ -90,7 +90,10 @@ function ResultCard({
   // befüllt beim Bearbeiten im Admin-Panel/CSV-Import/"Von Google
   // synchronisieren").
   const address = restaurant.address;
-  const { open: openNow, until: openUntil, opensAt: openOpensAt } = getOpeningStatus(restaurant.google_opening_hours);
+  const { open: openNow, until: openUntil, opensAt: openOpensAt } = getOpeningStatus(restaurant.google_opening_hours, {
+    lat: restaurant.lat,
+    lng: restaurant.lng,
+  });
 
   return (
     <div style={{ borderBottom: "1px solid var(--c-n100)" }}>
