@@ -36,9 +36,18 @@ export async function signUp(
 ): Promise<SignUpState> {
   const supabase = await createClient();
 
-  const email    = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const username = (formData.get("username") as string)?.trim() || null;
+  const email           = (formData.get("email") as string)?.trim();
+  const emailConfirm    = (formData.get("emailConfirm") as string)?.trim();
+  const password        = formData.get("password") as string;
+  const passwordConfirm = formData.get("passwordConfirm") as string;
+  const username        = (formData.get("username") as string)?.trim() || null;
+
+  if (email !== emailConfirm) {
+    return { error: "Die E-Mail-Adressen stimmen nicht überein." };
+  }
+  if (password !== passwordConfirm) {
+    return { error: "Die Passwörter stimmen nicht überein." };
+  }
 
   const origin = (await headers()).get("origin");
 
@@ -108,6 +117,35 @@ export async function confirmEmailToken(
 
   revalidatePath("/", "layout");
   redirect("/");
+}
+
+// ── Bestätigungslink erneut anfordern ────────────────────────────────────────
+// Für den Fall, dass der ursprüngliche Signup-Link abgelaufen ist (Supabase-
+// Default: 24h) oder die E-Mail nie ankam. Nutzt Supabases resend()-Endpunkt,
+// der intern einen neuen token_hash für denselben pending Signup ausstellt.
+
+export type ResendConfirmationState = { error: string } | { success: true } | null;
+
+export async function resendConfirmationEmail(
+  _prevState: ResendConfirmationState,
+  formData: FormData
+): Promise<ResendConfirmationState> {
+  const email = (formData.get("email") as string)?.trim();
+  if (!email) return { error: "Bitte gib deine E-Mail-Adresse ein." };
+
+  const supabase = await createClient();
+  const origin = (await headers()).get("origin");
+
+  await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: { emailRedirectTo: `${origin}/auth/confirm` },
+  });
+
+  // Immer Erfolg melden, unabhängig davon, ob die Adresse existiert oder
+  // bereits bestätigt ist — gleiches Anti-Enumeration-Muster wie
+  // requestPasswordReset oben.
+  return { success: true };
 }
 
 // ── Sign out ──────────────────────────────────────────────────────────────────

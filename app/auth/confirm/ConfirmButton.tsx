@@ -36,6 +36,10 @@ export function ConfirmButton({ tokenHash, type }: { tokenHash: string; type: st
         disabled={pending}
         style={{
           width: "100%",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
           fontFamily: "inherit",
           fontSize: "0.9375rem",
           fontWeight: 500,
@@ -48,6 +52,7 @@ export function ConfirmButton({ tokenHash, type }: { tokenHash: string; type: st
           opacity: pending ? 0.6 : 1,
         }}
       >
+        {pending && <span className="gp-spinner-sm" aria-hidden />}
         {pending ? "Bestätigt…" : "Konto bestätigen"}
       </button>
     </form>

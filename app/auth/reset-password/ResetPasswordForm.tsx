@@ -161,6 +161,10 @@ export default function ResetPasswordForm({ tokenHash }: { tokenHash: string }) 
           disabled={pending}
           style={{
             width: "100%",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
             fontFamily: "inherit",
             fontSize: "0.9375rem",
             fontWeight: 500,
@@ -174,6 +178,7 @@ export default function ResetPasswordForm({ tokenHash }: { tokenHash: string }) 
             marginTop: 6,
           }}
         >
+          {pending && <span className="gp-spinner-sm" aria-hidden />}
           {pending ? "Speichert…" : "Passwort speichern"}
         </button>
       </form>

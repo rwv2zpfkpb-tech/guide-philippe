@@ -96,8 +96,24 @@ export default async function ConfirmEmailPage({
                 marginBottom: 28,
               }}
             >
-              Der Link ist ungültig oder abgelaufen. Bitte fordere einen neuen Bestätigungslink an, indem du dich erneut registrierst.
+              Der Link ist ungültig oder abgelaufen. Fordere unten einen neuen Bestätigungslink an.
             </p>
+            <Link
+              href="/login?tab=resend"
+              style={{
+                display: "inline-block",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                padding: "10px 24px",
+                borderRadius: 8,
+                border: "none",
+                background: "var(--c-ink)",
+                color: "var(--c-bg)",
+                marginRight: 10,
+              }}
+            >
+              Neuen Link anfordern
+            </Link>
             <Link
               href="/login"
               style={{

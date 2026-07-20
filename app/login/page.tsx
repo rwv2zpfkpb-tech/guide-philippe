@@ -17,7 +17,8 @@ export default async function LoginPage({
   if (user) redirect("/");
 
   const params = await searchParams;
-  const defaultTab = params.tab === "signup" ? "signup" : "login";
+  const defaultTab =
+    params.tab === "signup" ? "signup" : params.tab === "resend" ? "resend" : "login";
 
   return (
     <main

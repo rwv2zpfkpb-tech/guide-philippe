@@ -101,6 +101,44 @@ type FormData = {
 
 type ContactField = "phone" | "website" | "opening_hours";
 
+// ── Autosave-Entwurf (localStorage) ──────────────────────────────────────────
+// Schützt vor Datenverlust bei einem versehentlichen Reload/Schließen des Tabs
+// während des Ausfüllens des Edit-Panels (insbesondere lange Fazit-/Kategorie-
+// Texte) — kein Server-Roundtrip, rein clientseitig, da dieses Dashboard von
+// jeweils einem Admin gleichzeitig benutzt wird (kein Multi-Device-Sync nötig).
+type DraftPayload = {
+  form: FormData;
+  manualEntry: boolean;
+  visibleContactFields: ContactField[];
+  savedAt: string; // ISO
+};
+
+// Ein Entwurf für ein neues Restaurant und einer für die Bearbeitung eines
+// bestehenden dürfen sich nie überschreiben — Key trägt deshalb die
+// Restaurant-ID (bzw. "new" für den Anlegen-Fall).
+function draftStorageKey(editingId: string | null): string {
+  return editingId ? `gp-admin-draft-edit-${editingId}` : "gp-admin-draft-new";
+}
+
+function loadDraft(key: string): DraftPayload | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as DraftPayload;
+  } catch {
+    return null;
+  }
+}
+
+function formatDraftTimestamp(iso: string): string {
+  return new Date(iso).toLocaleString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 // ── Pflichtfelder ─────────────────────────────────────────────────────────────
 // "name" ist immer Pflicht (auch für Entwürfe — ein namenloser Datensatz ist
 // unsinnig). Die übrigen vier sind nur für den Status "published" Pflicht;
@@ -325,6 +363,9 @@ function EditPanel({
   onSave,
   onClose,
   saving,
+  draftBanner,
+  onRestoreDraft,
+  onDiscardDraft,
 }: {
   open: boolean;
   isNew: boolean;
@@ -345,6 +386,9 @@ function EditPanel({
   onSave: () => void;
   onClose: () => void;
   saving: boolean;
+  draftBanner: DraftPayload | null;
+  onRestoreDraft: () => void;
+  onDiscardDraft: () => void;
 }) {
   const missing = getMissingRequiredFields(form);
   // "name" ist immer Pflicht; die übrigen vier blockieren das Speichern nur,
@@ -385,6 +429,34 @@ function EditPanel({
 
         {/* Body — scrollable */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+          {/* ── Autosave-Entwurf gefunden ── */}
+          {draftBanner && (
+            <div
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm"
+              style={{ background: "var(--c-gold-light)", color: "var(--c-ink)" }}
+            >
+              <span>
+                Nicht gespeicherter Entwurf vom {formatDraftTimestamp(draftBanner.savedAt)} gefunden.
+              </span>
+              <span className="flex gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={onDiscardDraft}
+                  className="font-medium text-[var(--c-n500)] hover:opacity-80"
+                >
+                  Verwerfen
+                </button>
+                <button
+                  type="button"
+                  onClick={onRestoreDraft}
+                  className="font-medium text-[var(--c-gold)] hover:opacity-80"
+                >
+                  Wiederherstellen
+                </button>
+              </span>
+            </div>
+          )}
 
           {/* ── Google Places search (or manual fallback) ── */}
           <div>
@@ -1505,6 +1577,11 @@ export function AdminDashboard({
   const [form, setForm] = useState<FormData>(emptyForm());
   const [manualEntry, setManualEntry] = useState(false);
   const [visibleContactFields, setVisibleContactFields] = useState<Set<ContactField>>(new Set());
+  // Autosave-Entwurf (s. draftStorageKey oben): "dirty" grenzt tatsächliche
+  // Nutzereingaben vom initialen Befüllen des Formulars beim Öffnen ab, damit
+  // nicht sofort ein (unveränderter) Entwurf weggeschrieben wird.
+  const [dirty, setDirty] = useState(false);
+  const [draftBanner, setDraftBanner] = useState<DraftPayload | null>(null);
   const [placePhotos, setPlacePhotos] = useState<string[]>([]);
   const [placePhotosLoading, setPlacePhotosLoading] = useState(false);
   // True once a getPlaceDetails() fetch confirms Google has live opening
@@ -1667,10 +1744,12 @@ export function AdminDashboard({
 
   const patchForm = useCallback((patch: Partial<FormData>) => {
     setForm((prev) => ({ ...prev, ...patch }));
+    setDirty(true);
   }, []);
 
   const patchReview = useCallback((patch: Partial<ReviewFormData>) => {
     setForm((prev) => ({ ...prev, review: { ...prev.review, ...patch } }));
+    setDirty(true);
   }, []);
 
   const patchCategory = useCallback(
@@ -1685,6 +1764,7 @@ export function AdminDashboard({
           },
         },
       }));
+      setDirty(true);
     },
     []
   );
@@ -1758,6 +1838,31 @@ export function AdminDashboard({
     };
   }, [form.google_place_id]);
 
+  // Autosave-Entwurf: 1.5s nach der letzten Änderung (debounced, kein Schreiben
+  // pro Tastenanschlag) in localStorage sichern — schützt vor Verlust bei
+  // versehentlichem Reload/Tab-Schließen. Nur während das Panel offen ist und
+  // der Nutzer tatsächlich etwas geändert hat (s. "dirty" oben), sonst würde
+  // schon das bloße Öffnen zum Bearbeiten einen "Entwurf" erzeugen.
+  useEffect(() => {
+    if (!panelOpen || !dirty) return;
+    const key = draftStorageKey(editingId);
+    const timeout = setTimeout(() => {
+      const payload: DraftPayload = {
+        form,
+        manualEntry,
+        visibleContactFields: Array.from(visibleContactFields),
+        savedAt: new Date().toISOString(),
+      };
+      try {
+        localStorage.setItem(key, JSON.stringify(payload));
+      } catch {
+        // Storage voll/deaktiviert (z.B. privater Modus) — Autosave ist ein
+        // Komfort-Feature, der eigentliche Speichern-Button bleibt unberührt.
+      }
+    }, 1500);
+    return () => clearTimeout(timeout);
+  }, [form, manualEntry, visibleContactFields, panelOpen, dirty, editingId]);
+
   function openNew() {
     setIsNew(true);
     setEditingId(null);
@@ -1766,6 +1871,8 @@ export function AdminDashboard({
     setForm(emptyForm());
     setManualEntry(false);
     setVisibleContactFields(new Set());
+    setDirty(false);
+    setDraftBanner(loadDraft(draftStorageKey(null)));
     setPanelOpen(true);
   }
 
@@ -1791,6 +1898,8 @@ export function AdminDashboard({
           )
         )
       );
+      setDirty(false);
+      setDraftBanner(loadDraft(draftStorageKey(r.id)));
       setPanelOpen(true);
     } catch (err) {
       showToast((err as Error).message);
@@ -1815,7 +1924,36 @@ export function AdminDashboard({
   }
 
   function closePanel() {
+    // Jedes Schließen (Speichern-Erfolg, Abbrechen, Backdrop-Klick, X) ist eine
+    // bewusste Entscheidung, das Formular zu verlassen — der Autosave-Entwurf
+    // wird dann nicht mehr gebraucht. Nur ein Reload/Tab-Schließen lässt ihn
+    // (per Design) in localStorage stehen.
+    try {
+      localStorage.removeItem(draftStorageKey(editingId));
+    } catch {
+      // ignore
+    }
+    setDirty(false);
+    setDraftBanner(null);
     setPanelOpen(false);
+  }
+
+  function restoreDraft() {
+    if (!draftBanner) return;
+    setForm(draftBanner.form);
+    setManualEntry(draftBanner.manualEntry);
+    setVisibleContactFields(new Set(draftBanner.visibleContactFields));
+    setDraftBanner(null);
+    setDirty(true);
+  }
+
+  function discardDraft() {
+    try {
+      localStorage.removeItem(draftStorageKey(editingId));
+    } catch {
+      // ignore
+    }
+    setDraftBanner(null);
   }
 
   function showToast(msg: string) {
@@ -2615,6 +2753,9 @@ export function AdminDashboard({
           onSave={handleSave}
           onClose={closePanel}
           saving={isPending}
+          draftBanner={draftBanner}
+          onRestoreDraft={restoreDraft}
+          onDiscardDraft={discardDraft}
         />
 
         {/* ── Delete modal ── */}
