@@ -546,6 +546,9 @@ function EditPanel({
                           ? `${form.lat.toFixed(6)}, ${form.lng.toFixed(6)}`
                           : "Keine Adresse verfügbar"}
                       </div>
+                      <div className="mt-1 font-mono text-[var(--c-n400)] truncate" title={form.google_place_id}>
+                        Platz-ID: {form.google_place_id}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2539,16 +2542,6 @@ export function AdminDashboard({
                   </div>
                 </div>
 
-                {r.google_place_id ? (
-                  <p className="mt-2 truncate font-mono text-xs text-[var(--c-n400)]">
-                    {r.google_place_id}
-                  </p>
-                ) : (
-                  <span className="mt-2 inline-block text-xs text-[var(--c-gold)] bg-[var(--c-gold-light)] border border-[var(--c-gold)]/30 rounded px-1.5 py-0.5">
-                    Keine Platz-ID
-                  </span>
-                )}
-
                 <div className="mt-3 flex items-center gap-2 border-t border-[var(--c-n50)] pt-3">
                   <button
                     onClick={() => openEdit(r)}
@@ -2587,14 +2580,13 @@ export function AdminDashboard({
                   <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider hidden md:table-cell">Küche</th>
                   <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">Preis</th>
                   <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">Bewertung</th>
-                  <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider hidden lg:table-cell">Platz-ID</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--c-n50)]">
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-sm text-[var(--c-n400)]">
+                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-[var(--c-n400)]">
                       {query ? "Keine Restaurants entsprechen deiner Suche." : "Noch keine Restaurants. Füge eins hinzu!"}
                     </td>
                   </tr>
@@ -2634,17 +2626,6 @@ export function AdminDashboard({
                     </td>
                     <td className="px-4 py-3">
                       <SpoonBadge rating={r.spoon_rating} />
-                    </td>
-                    <td className="px-4 py-3 hidden lg:table-cell">
-                      {r.google_place_id ? (
-                        <span className="font-mono text-xs text-[var(--c-n400)] truncate max-w-[160px] block">
-                          {r.google_place_id}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-[var(--c-gold)] bg-[var(--c-gold-light)] border border-[var(--c-gold)]/30 rounded px-1.5 py-0.5">
-                          Keine Platz-ID
-                        </span>
-                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
