@@ -238,7 +238,7 @@ export default async function Page({
 
       {/* ── AUSWAHL (redaktionell kuratiert, admin-gepflegt) ── */}
       {featuredRestaurants.length > 0 && (
-        <section style={{ maxWidth: 1240, margin: "0 auto", padding: "8px 40px 0" }}>
+        <section style={{ width: "100%", maxWidth: 1240, margin: "0 auto", padding: "8px 40px 0" }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
             <h2
               style={{
@@ -267,7 +267,7 @@ export default async function Page({
 
       {/* ── RECENTLY ADDED (last 30 days) ─────────────────── */}
       {recentRestaurants.length > 0 && (
-        <section style={{ maxWidth: 1240, margin: "0 auto", padding: "8px 40px 0" }}>
+        <section style={{ width: "100%", maxWidth: 1240, margin: "0 auto", padding: "8px 40px 0" }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
             <h2
               style={{
