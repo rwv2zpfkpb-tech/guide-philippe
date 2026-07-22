@@ -89,16 +89,31 @@ function ReviewContent({ review }: { review: ReviewWithCategories }) {
                   marginBottom: 12,
                 }}
               >
-                <span
-                  style={{
-                    fontSize: "0.8125rem",
-                    fontWeight: 600,
-                    letterSpacing: "0.02em",
-                    color: "var(--c-ink)",
-                  }}
-                >
-                  {c.heading?.trim() || REVIEW_CATEGORY_LABELS[c.category]}
-                </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {c.heading?.trim() && (
+                    <span
+                      style={{
+                        fontSize: "0.6875rem",
+                        fontWeight: 600,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: "var(--c-n500)",
+                      }}
+                    >
+                      {REVIEW_CATEGORY_LABELS[c.category]}
+                    </span>
+                  )}
+                  <span
+                    style={{
+                      fontSize: "0.8125rem",
+                      fontWeight: 600,
+                      letterSpacing: "0.02em",
+                      color: "var(--c-ink)",
+                    }}
+                  >
+                    {c.heading?.trim() || REVIEW_CATEGORY_LABELS[c.category]}
+                  </span>
+                </div>
                 <RatingDots value={c.rating} min={1} max={5} size={7} />
               </div>
               <p style={{ fontSize: "0.875rem", lineHeight: 1.65, color: "var(--c-n600)" }}>
