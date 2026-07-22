@@ -875,95 +875,67 @@ export default async function RestaurantPage({
 
             {restaurant.comments.map((comment) => {
               const isOwner = user?.id === comment.user_id;
-              const initials = (comment.profiles?.username ?? "?")
-                .slice(0, 2)
-                .toUpperCase();
 
               return (
                 <div
                   key={comment.id}
                   style={{
-                    display: "flex",
-                    gap: 16,
                     padding: "26px 0",
                     borderBottom: "1px solid var(--c-n100)",
                   }}
                 >
-                  {/* Avatar */}
                   <div
                     style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: "50%",
-                      background: "var(--c-ink)",
-                      color: "var(--c-bg)",
-                      fontSize: "0.8125rem",
-                      fontWeight: 600,
-                      letterSpacing: "0.06em",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
+                      justifyContent: "space-between",
+                      marginBottom: 6,
+                      gap: 12,
                     }}
                   >
-                    {initials}
-                  </div>
-
-                  {/* Body */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: 6,
-                        gap: 12,
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: "0.9375rem",
-                          fontWeight: 500,
-                          color: "var(--c-ink)",
-                        }}
-                      >
-                        {comment.profiles?.username ?? "Anonym"}
-                      </span>
-                      {isOwner && (
-                        <DeleteCommentButton commentId={comment.id} restaurantId={restaurant.id} />
-                      )}
-                    </div>
-
-                    {comment.secondary_rating != null && (
-                      <div style={{ display: "flex", gap: 2, marginBottom: 12 }}>
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <span
-                            key={i}
-                            style={{
-                              fontSize: "1rem",
-                              color:
-                                i <= comment.secondary_rating!
-                                  ? "var(--c-gold)"
-                                  : "var(--c-n200)",
-                              lineHeight: 1,
-                            }}
-                          >
-                            ★
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    <p
+                    <span
                       style={{
                         fontSize: "0.9375rem",
-                        lineHeight: 1.70,
+                        fontWeight: 500,
                         color: "var(--c-ink)",
                       }}
                     >
-                      {comment.content}
-                    </p>
+                      {comment.profiles?.username ?? "Anonym"}
+                    </span>
+                    {isOwner && (
+                      <DeleteCommentButton commentId={comment.id} restaurantId={restaurant.id} />
+                    )}
                   </div>
+
+                  {comment.secondary_rating != null && (
+                    <div style={{ display: "flex", gap: 2, marginBottom: 12 }}>
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontSize: "1rem",
+                            color:
+                              i <= comment.secondary_rating!
+                                ? "var(--c-gold)"
+                                : "var(--c-n200)",
+                            lineHeight: 1,
+                          }}
+                        >
+                          ★
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <p
+                    style={{
+                      fontSize: "0.9375rem",
+                      lineHeight: 1.70,
+                      color: "var(--c-ink)",
+                    }}
+                  >
+                    {comment.content}
+                  </p>
                 </div>
               );
             })}
