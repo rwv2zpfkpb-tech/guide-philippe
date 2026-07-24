@@ -10,7 +10,13 @@ import { useEffect } from "react";
 export function ServiceWorkerRegister() {
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      // updateViaCache: "none" makes every app launch check sw.js itself
+      // instead of accepting a stale HTTP-cache entry. The service worker
+      // still controls its own safe runtime caches for app assets.
+      navigator.serviceWorker
+        .register("/sw.js", { scope: "/", updateViaCache: "none" })
+        .then((registration) => registration.update())
+        .catch(() => {});
     }
   }, []);
 

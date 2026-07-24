@@ -6,10 +6,12 @@ import type { MetadataRoute } from "next";
 // custom properties aren't available.
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: "/",
     name: "Guide Philippe",
     short_name: "Guide Philippe",
     description: "Ein ehrlicher, kuratierter Restaurant-Guide.",
     start_url: "/",
+    scope: "/",
     display: "standalone",
     background_color: "#f7f4ee",
     theme_color: "#5c2a28",

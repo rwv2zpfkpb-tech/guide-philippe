@@ -1772,19 +1772,6 @@ export function AdminDashboard({
     []
   );
 
-  const handlePlaceSelect = useCallback((place: PlaceSelection) => {
-    patchForm({
-      name: place.name,
-      google_place_id: place.placeId,
-      lat: place.lat,
-      lng: place.lng,
-      address: place.address,
-      // Best-effort suggestion from Google — the field below stays a free-text
-      // input, so the admin can correct/override it right away.
-      ...(place.cuisine ? { cuisine: place.cuisine } : {}),
-    });
-  }, [patchForm]);
-
   // Vorschau-Fotos aus Google Maps laden, sobald eine Place-ID im Formular steht
   // (frisch ausgewählt oder von einem bereits bestehenden Restaurant geladen).
   // Ohne Place-ID wird beim Rendern (s. placePhotos-Prop unten) einfach nichts
@@ -1909,6 +1896,42 @@ export function AdminDashboard({
     } finally {
       setLoadingEditId(null);
     }
+  }
+
+  async function handlePlaceSelect(place: PlaceSelection) {
+    // Das Dashboard hat bereits den vollständigen Restaurantbestand geladen.
+    // Deshalb prüfen wir die Place-ID direkt bei der Google-Auswahl, bevor der
+    // Admin Fazit/Kategorien ausfüllt. createRestaurant() prüft zusätzlich
+    // serverseitig, falls ein anderer Admin den Ort erst nach dem Laden dieses
+    // Dashboards angelegt hat.
+    if (isNew) {
+      const existing = restaurants.find(
+        (restaurant) => restaurant.google_place_id === place.placeId
+      );
+      if (existing) {
+        try {
+          localStorage.removeItem(draftStorageKey(null));
+        } catch {
+          // ignore
+        }
+        await openEdit(existing);
+        showToast(
+          `„${existing.name}“ ist bereits vorhanden – vorhandener Eintrag geöffnet`
+        );
+        return;
+      }
+    }
+
+    patchForm({
+      name: place.name,
+      google_place_id: place.placeId,
+      lat: place.lat,
+      lng: place.lng,
+      address: place.address,
+      // Best-effort suggestion from Google — the field below stays a free-text
+      // input, so the admin can correct/override it right away.
+      ...(place.cuisine ? { cuisine: place.cuisine } : {}),
+    });
   }
 
   function toggleContactField(field: ContactField) {
