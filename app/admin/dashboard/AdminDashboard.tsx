@@ -1995,7 +1995,20 @@ export function AdminDashboard({
     startTransition(async () => {
       try {
         if (isNew) {
-          const created = await createRestaurant(restaurantPayload, reviewPayload);
+          const result = await createRestaurant(restaurantPayload, reviewPayload);
+          if (result.status === "duplicate") {
+            try {
+              localStorage.removeItem(draftStorageKey(null));
+            } catch {
+              // ignore
+            }
+            await openEdit(result.restaurant);
+            showToast(
+              `„${result.restaurant.name}“ ist bereits vorhanden – vorhandener Eintrag geöffnet`
+            );
+            return;
+          }
+          const created = result.restaurant;
           setRestaurants((prev) => [created, ...prev]);
           setFazitById((prev) => ({ ...prev, [created.id]: reviewPayload.fazit }));
           showToast("Restaurant hinzugefügt");

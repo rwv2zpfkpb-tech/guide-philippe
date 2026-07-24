@@ -49,6 +49,10 @@ export type RestaurantPayload = {
   featured?: boolean;
 };
 
+export type CreateRestaurantResult =
+  | { status: "created"; restaurant: Restaurant }
+  | { status: "duplicate"; restaurant: Restaurant };
+
 // ── Read actions (no auth required) ──────────────────────────────────────────
 
 // "Auch Entwürfe in der Suche zeigen"-Toggle (AdminDashboard, s.
@@ -199,9 +203,24 @@ export async function getRestaurantById(
 export async function createRestaurant(
   payload: RestaurantPayload,
   review: ReviewPayload
-): Promise<Restaurant> {
+): Promise<CreateRestaurantResult> {
   await requireAdmin();
   const supabase = await createClient();
+
+  // A Google Place may only belong to one restaurant. Treat this expected
+  // conflict as a return value so production Server Actions can show a useful
+  // message and open the existing entry instead of surfacing Next.js' generic
+  // error digest. The DB unique constraint remains the final protection
+  // against two concurrent creates.
+  if (payload.google_place_id) {
+    const { data: existing, error: lookupError } = await supabase
+      .from("restaurants")
+      .select("*")
+      .eq("google_place_id", payload.google_place_id)
+      .maybeSingle();
+    if (lookupError) throw new Error(lookupError.message);
+    if (existing) return { status: "duplicate", restaurant: existing };
+  }
 
   const { data, error } = await supabase
     .from("restaurants")
@@ -209,12 +228,28 @@ export async function createRestaurant(
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Close the small race window between the lookup above and the insert:
+    // if another request inserted the same Place ID in the meantime, resolve
+    // that row and return the same expected duplicate result.
+    if (error.code === "23505" && payload.google_place_id) {
+      const { data: existing } = await supabase
+        .from("restaurants")
+        .select("*")
+        .eq("google_place_id", payload.google_place_id)
+        .maybeSingle();
+      if (existing) return { status: "duplicate", restaurant: existing };
+    }
+    throw new Error(error.message);
+  }
 
   await createReview(data.id, review);
 
   revalidatePath("/", "layout");
-  return { ...data, spoon_rating: review.spoon_rating };
+  return {
+    status: "created",
+    restaurant: { ...data, spoon_rating: review.spoon_rating },
+  };
 }
 
 export async function updateRestaurant(
