@@ -954,6 +954,53 @@ function EditPanel({
 
 // ── Delete modal ──────────────────────────────────────────────────────────────
 
+function DuplicateModal({
+  restaurant,
+  onClose,
+}: {
+  restaurant: Restaurant | null;
+  onClose: () => void;
+}) {
+  if (!restaurant) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="duplicate-title"
+      aria-describedby="duplicate-description"
+    >
+      <div className="w-full max-w-md rounded-2xl border-2 border-[var(--c-burg)] bg-[var(--c-surface)] p-6 shadow-2xl">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--c-burg-light)] text-[var(--c-burg)]">
+          <svg className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+            <path fillRule="evenodd" d="M8.485 2.495a1.75 1.75 0 0 1 3.03 0l6.28 10.875A1.75 1.75 0 0 1 16.28 16H3.72a1.75 1.75 0 0 1-1.515-2.63l6.28-10.875zM10 6.25a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0V7a.75.75 0 0 1 .75-.75zm0 7.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" clipRule="evenodd" />
+          </svg>
+        </div>
+        <h3
+          id="duplicate-title"
+          className="font-serif text-2xl font-semibold text-[var(--c-ink)]"
+        >
+          Duplikat erkannt
+        </h3>
+        <p id="duplicate-description" className="mt-2 text-sm leading-6 text-[var(--c-n600)]">
+          <span className="font-semibold text-[var(--c-ink)]">„{restaurant.name}“</span>{" "}
+          ist bereits vorhanden. Es wurde kein neuer Eintrag erstellt. Stattdessen ist jetzt
+          der bestehende Eintrag zum Bearbeiten geöffnet.
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          autoFocus
+          className="mt-6 w-full rounded-lg bg-[var(--c-burg)] px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+        >
+          Zum bestehenden Eintrag
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function DeleteModal({
   restaurants,
   onClose,
@@ -1596,6 +1643,7 @@ export function AdminDashboard({
   const [pastReviews, setPastReviews] = useState<ReviewWithCategories[]>([]);
   const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
   const [deleteTargets, setDeleteTargets] = useState<Restaurant[]>([]);
+  const [duplicateNotice, setDuplicateNotice] = useState<Restaurant | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -1915,9 +1963,7 @@ export function AdminDashboard({
           // ignore
         }
         await openEdit(existing);
-        showToast(
-          `„${existing.name}“ ist bereits vorhanden – vorhandener Eintrag geöffnet`
-        );
+        setDuplicateNotice(existing);
         return;
       }
     }
@@ -2026,9 +2072,7 @@ export function AdminDashboard({
               // ignore
             }
             await openEdit(result.restaurant);
-            showToast(
-              `„${result.restaurant.name}“ ist bereits vorhanden – vorhandener Eintrag geöffnet`
-            );
+            setDuplicateNotice(result.restaurant);
             return;
           }
           const created = result.restaurant;
@@ -2773,6 +2817,11 @@ export function AdminDashboard({
           draftBanner={draftBanner}
           onRestoreDraft={restoreDraft}
           onDiscardDraft={discardDraft}
+        />
+
+        <DuplicateModal
+          restaurant={duplicateNotice}
+          onClose={() => setDuplicateNotice(null)}
         />
 
         {/* ── Delete modal ── */}
