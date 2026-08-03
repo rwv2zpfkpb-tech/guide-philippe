@@ -9,7 +9,7 @@ function ProgressBar() {
 
   const [phase, setPhase] = useState<'idle' | 'loading' | 'done'>('idle')
   const [width, setWidth] = useState(0)
-  const prevUrl = useRef(pathname + searchParams.toString())
+  const prevUrl = useRef(`${pathname}?${searchParams.toString()}`)
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
 
   function clearAll() {
@@ -22,6 +22,8 @@ function ProgressBar() {
     setPhase('loading')
     setWidth(0)
     timers.current.push(setTimeout(() => setWidth(70), 16))
+    // A failed/cancelled navigation must not leave a permanent 70%-wide bar.
+    timers.current.push(setTimeout(finish, 12000))
   }
 
   function finish() {
@@ -36,8 +38,10 @@ function ProgressBar() {
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
       const link = (e.target as HTMLElement).closest('a[href]') as HTMLAnchorElement | null
       if (!link) return
+      if (link.target === '_blank' || link.hasAttribute('download')) return
       try {
         const url = new URL(link.href, location.href)
         if (url.origin !== location.origin) return
@@ -51,7 +55,7 @@ function ProgressBar() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const currentUrl = pathname + searchParams.toString()
+  const currentUrl = `${pathname}?${searchParams.toString()}`
   useEffect(() => {
     if (currentUrl !== prevUrl.current) {
       prevUrl.current = currentUrl

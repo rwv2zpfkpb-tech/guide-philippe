@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition, useCallback } from "react";
 import Link from "next/link";
-import { APIProvider } from "@vis.gl/react-google-maps";
+import { GoogleMapsProvider } from "@/components/GoogleMapsProvider";
 import {
   createRestaurant,
   updateRestaurant,
@@ -245,8 +245,8 @@ function SpoonBadge({ rating }: { rating: SpoonRating }) {
   const colors = SPOON_RATING_COLORS[rating];
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-xs font-medium uppercase tracking-wider"
-      style={{ color: colors.text, background: colors.bg }}
+      className="inline-flex items-center gap-1.5 rounded border px-1.5 py-0.5 text-xs font-medium uppercase tracking-wider"
+      style={{ color: colors.text, background: colors.bg, borderColor: colors.border }}
       title={opt.label}
     >
       <span className="text-sm">{opt.emoji}</span>
@@ -779,36 +779,41 @@ function EditPanel({
                 missing.has("spoon_rating") ? "ring-1 ring-[var(--c-burg)]/60 p-1" : ""
               }`}
             >
-              {SPOON_OPTIONS.map(({ value, emoji, label }) => (
-                <label
-                  key={value}
-                  className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
-                    form.review.spoon_rating === value
-                      ? "border-[var(--c-burg)] bg-[var(--c-burg)]/5"
-                      : "border-[var(--c-n200)] bg-[var(--c-surface)] hover:border-[var(--c-n300)]"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="spoon_rating"
-                    value={value}
-                    checked={form.review.spoon_rating === value}
-                    onChange={() => onReviewChange({ spoon_rating: value })}
-                    className="sr-only"
-                  />
-                  <span className="text-lg">{emoji}</span>
-                  <div>
-                    <p className={`text-sm font-medium ${form.review.spoon_rating === value ? "text-[var(--c-burg)]" : "text-[var(--c-ink)]"}`}>
-                      {label}
-                    </p>
-                  </div>
-                  {form.review.spoon_rating === value && (
-                    <svg className="ml-auto w-4 h-4 text-[var(--c-burg)]" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                </label>
-              ))}
+              {SPOON_OPTIONS.map(({ value, emoji, label }) => {
+                const colors = SPOON_RATING_COLORS[value];
+                const selected = form.review.spoon_rating === value;
+                return (
+                  <label
+                    key={value}
+                    className="flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors"
+                    style={{
+                      borderColor: colors.border,
+                      background: colors.bg,
+                      boxShadow: selected ? `inset 0 0 0 1px ${colors.border}` : "none",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="spoon_rating"
+                      value={value}
+                      checked={form.review.spoon_rating === value}
+                      onChange={() => onReviewChange({ spoon_rating: value })}
+                      className="sr-only"
+                    />
+                    <span className="text-lg">{emoji}</span>
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: colors.text }}>
+                        {label}
+                      </p>
+                    </div>
+                    {selected && (
+                      <svg className="ml-auto w-4 h-4" style={{ color: colors.text }} viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </label>
+                );
+              })}
             </div>
 
             <label
@@ -908,7 +913,7 @@ function EditPanel({
                         <span className="font-medium text-[var(--c-n700)]">
                           {new Date(rev.visited_at).toLocaleDateString("de-DE")}
                         </span>
-                        <span>{SPOON_RATINGS[rev.spoon_rating].emoji}</span>
+                        <SpoonBadge rating={rev.spoon_rating} />
                       </div>
                       <p className="line-clamp-2">{rev.fazit || "—"}</p>
                     </li>
@@ -1189,7 +1194,10 @@ function ImportModal({
                     Edit-Panel bewerten.
                   </p>
                   <div className="flex gap-1.5 flex-wrap">
-                    {SPOON_OPTIONS.map((opt) => (
+                    {SPOON_OPTIONS.map((opt) => {
+                      const colors = SPOON_RATING_COLORS[opt.value];
+                      const selected = bulkSpoonRating === opt.value;
+                      return (
                       <button
                         key={opt.value}
                         type="button"
@@ -1197,16 +1205,20 @@ function ImportModal({
                           onBulkSpoonRatingChange(bulkSpoonRating === opt.value ? null : opt.value)
                         }
                         title={opt.label}
-                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                          bulkSpoonRating === opt.value
-                            ? "border-[var(--c-burg)] bg-[var(--c-burg)] text-white"
-                            : "border-[var(--c-n200)] bg-[var(--c-surface)] text-[var(--c-n600)] hover:bg-[var(--c-n50)]"
-                        }`}
+                        className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+                        style={{
+                          borderColor: colors.border,
+                          background: colors.bg,
+                          color: colors.text,
+                          boxShadow: selected ? `inset 0 0 0 1px ${colors.border}` : "none",
+                        }}
+                        aria-pressed={selected}
                       >
                         <span>{opt.emoji}</span>
                         {opt.label}
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -2295,12 +2307,7 @@ export function AdminDashboard({
   }
 
   return (
-    <APIProvider
-      apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!}
-      libraries={["places"]}
-      language="de"
-      region="DE"
-    >
+    <GoogleMapsProvider>
       <div className="min-h-screen bg-[var(--c-bg)]">
         {/* No local header here — the global <Header> (app/layout.tsx) already
             renders on every route, including this one; a second admin-only
@@ -2485,20 +2492,27 @@ export function AdminDashboard({
               <span className="text-xs font-medium uppercase tracking-wider text-[var(--c-n400)] w-20 shrink-0 whitespace-nowrap">
                 Bewertung
               </span>
-              {SPOON_OPTIONS.map((s) => (
+              {SPOON_OPTIONS.map((s) => {
+                const colors = SPOON_RATING_COLORS[s.value];
+                const selected = ratingFilter.includes(s.value);
+                return (
                 <button
                   key={s.value}
                   onClick={() => toggleFilterValue(ratingFilter, setRatingFilter, s.value)}
                   title={s.label}
-                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                    ratingFilter.includes(s.value)
-                      ? "border-[var(--c-burg)] bg-[var(--c-burg)] text-white"
-                      : "border-[var(--c-n200)] bg-[var(--c-surface)] text-[var(--c-n600)] hover:bg-[var(--c-n50)]"
-                  }`}
+                  className="rounded-full border px-3 py-1 text-xs font-medium transition-colors"
+                  style={{
+                    borderColor: colors.border,
+                    background: colors.bg,
+                    color: colors.text,
+                    boxShadow: selected ? `inset 0 0 0 1px ${colors.border}` : "none",
+                  }}
+                  aria-pressed={selected}
                 >
                   {s.emoji}
                 </button>
-              ))}
+                );
+              })}
             </div>
             {(activeFilterCount > 0 || statusFilter !== "all" || query) && (
               <button
@@ -2875,6 +2889,6 @@ export function AdminDashboard({
           </div>
         )}
       </div>
-    </APIProvider>
+    </GoogleMapsProvider>
   );
 }

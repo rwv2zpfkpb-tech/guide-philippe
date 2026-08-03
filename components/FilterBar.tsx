@@ -1,6 +1,6 @@
 "use client";
 
-import { SPOON_RATINGS, SPOON_RATING_ORDER } from "@/lib/ratings";
+import { SPOON_RATINGS, SPOON_RATING_COLORS, SPOON_RATING_ORDER } from "@/lib/ratings";
 import { CuisineFilterDropdown } from "@/components/CuisineFilterDropdown";
 
 const PRICE_CHIPS = [
@@ -15,6 +15,7 @@ const SPOON_CHIPS = SPOON_RATING_ORDER.map((value) => ({
   value,
   label: SPOON_RATINGS[value].emoji,
   title: SPOON_RATINGS[value].label,
+  colors: SPOON_RATING_COLORS[value],
 }));
 
 export type FilterSelection = {
@@ -103,6 +104,7 @@ export default function FilterBar({
 
   return (
     <div
+      className="gp-filter-panel"
       style={{
         display: "flex",
         flexDirection: "column",
@@ -155,17 +157,28 @@ export default function FilterBar({
         >
           Alle
         </button>
-        {SPOON_CHIPS.map((s) => (
-          <button
-            key={s.value}
-            onClick={() => onToggleSpoon(s.value)}
-            className={selected.spoon_rating.includes(s.value) ? "filter-chip is-active" : "filter-chip"}
-            style={selected.spoon_rating.includes(s.value) ? chipActive : chipBase}
-            title={s.title}
-          >
-            {s.label}
-          </button>
-        ))}
+        {SPOON_CHIPS.map((s) => {
+          const active = selected.spoon_rating.includes(s.value);
+          return (
+            <button
+              key={s.value}
+              onClick={() => onToggleSpoon(s.value)}
+              className={`${active ? "filter-chip is-active" : "filter-chip"} rating-filter-chip`}
+              style={{
+                ...chipBase,
+                background: s.colors.bg,
+                borderColor: s.colors.border,
+                color: s.colors.text,
+                "--rating-border": s.colors.border,
+                boxShadow: active ? `inset 0 0 0 1px ${s.colors.border}` : "none",
+              } as React.CSSProperties}
+              title={s.title}
+              aria-pressed={active}
+            >
+              {s.label}
+            </button>
+          );
+        })}
       </FilterRow>
 
       {activeCount > 0 && (

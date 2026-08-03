@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect } from "react";
 import mapStyle from "@/public/map-style.json";
 import mapStyleDark from "@/public/map-style-dark.json";
 import {
-  APIProvider,
   Map,
   AdvancedMarker,
   InfoWindow,
@@ -154,7 +153,10 @@ function RestaurantMarker({
                 </span>
               )}
             </p>
-            <p className="text-sm mb-3" style={{ color: cfg.text }}>
+            <p
+              className="inline-flex items-center rounded-full border px-2 py-1 text-sm mb-3"
+              style={{ color: cfg.text, background: cfg.bg, borderColor: cfg.border }}
+            >
               {cfg.emoji} {cfg.label}
             </p>
             <a
@@ -187,12 +189,11 @@ function getEffectiveTheme(): "light" | "dark" {
 }
 
 function useEffectiveTheme(): "light" | "dark" {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<"light" | "dark">(() =>
+    typeof document === "undefined" ? "light" : getEffectiveTheme()
+  );
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTheme(getEffectiveTheme());
-
     const observer = new MutationObserver(() => setTheme(getEffectiveTheme()));
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
@@ -252,8 +253,7 @@ export function MapView({
     : process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
 
   return (
-    <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!} language="de" region="DE">
-      <Map
+    <Map
         // defaultCenter/defaultZoom below are uncontrolled — vis.gl only
         // applies them on mount, so panning/zooming during a session isn't
         // fought by React. That means a *new* search (e.g. via the compact
@@ -289,7 +289,6 @@ export function MapView({
         ))}
         {myLocation && <MyLocationMarker position={myLocation} />}
         <PanToSelected restaurants={restaurants} selectedId={selectedId} />
-      </Map>
-    </APIProvider>
+    </Map>
   );
 }

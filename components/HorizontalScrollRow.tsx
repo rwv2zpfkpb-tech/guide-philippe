@@ -58,6 +58,7 @@ export function HorizontalScrollRow({ children }: { children: React.ReactNode })
   return (
     <div style={{ position: "relative" }}>
       <div
+        className="gp-horizontal-row"
         ref={ref}
         onScroll={updateArrows}
         style={{ display: "flex", gap: 16, overflowX: "auto", paddingTop: 10, paddingBottom: 12 }}

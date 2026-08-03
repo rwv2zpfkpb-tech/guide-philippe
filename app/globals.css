@@ -16,10 +16,14 @@
   --c-burg-light:   oklch(93%  0.016 17);
   --c-success:      oklch(38%  0.090 145);
   --c-success-light: oklch(93% 0.035 145);
-  --c-lilac:        oklch(58%  0.090 300);
-  --c-lilac-light:  oklch(91%  0.035 300);
-  --c-mauve:        oklch(55%  0.045 10);
-  --c-mauve-light:  oklch(90%  0.020 10);
+  --c-rating-top:          oklch(42% 0.120 145);
+  --c-rating-top-light:    oklch(93% 0.035 145);
+  --c-rating-worth:        oklch(45% 0.140 70);
+  --c-rating-worth-light:  oklch(92% 0.070 80);
+  --c-rating-remember:       oklch(46% 0.110 250);
+  --c-rating-remember-light: oklch(93% 0.035 250);
+  --c-rating-not:          oklch(43% 0.170 20);
+  --c-rating-not-light:    oklch(92% 0.055 15);
   --c-n50:   oklch(95.5% 0.006 78);
   --c-n100:  oklch(92%   0.007 78);
   --c-n200:  oklch(86%   0.008 78);
@@ -61,10 +65,14 @@
     --c-burg-light:  oklch(20% 0.030 17);
     --c-success:       oklch(72% 0.090 145);
     --c-success-light: oklch(22% 0.045 145);
-    --c-lilac:         oklch(72% 0.080 300);
-    --c-lilac-light:   oklch(24% 0.040 300);
-    --c-mauve:         oklch(68% 0.045 10);
-    --c-mauve-light:   oklch(24% 0.025 10);
+    --c-rating-top:          oklch(74% 0.120 145);
+    --c-rating-top-light:    oklch(23% 0.045 145);
+    --c-rating-worth:        oklch(78% 0.140 75);
+    --c-rating-worth-light:  oklch(25% 0.065 75);
+    --c-rating-remember:       oklch(75% 0.105 250);
+    --c-rating-remember-light: oklch(24% 0.040 250);
+    --c-rating-not:          oklch(72% 0.160 20);
+    --c-rating-not-light:    oklch(23% 0.060 15);
     --c-n50:         oklch(16% 0.018 30);
     --c-n100:        oklch(22% 0.018 30);
     --c-n200:        oklch(30% 0.014 35);
@@ -95,10 +103,14 @@
   --c-burg-light:  oklch(20% 0.030 17);
   --c-success:       oklch(72% 0.090 145);
   --c-success-light: oklch(22% 0.045 145);
-  --c-lilac:         oklch(72% 0.080 300);
-  --c-lilac-light:   oklch(24% 0.040 300);
-  --c-mauve:         oklch(68% 0.045 10);
-  --c-mauve-light:   oklch(24% 0.025 10);
+  --c-rating-top:          oklch(74% 0.120 145);
+  --c-rating-top-light:    oklch(23% 0.045 145);
+  --c-rating-worth:        oklch(78% 0.140 75);
+  --c-rating-worth-light:  oklch(25% 0.065 75);
+  --c-rating-remember:       oklch(75% 0.105 250);
+  --c-rating-remember-light: oklch(24% 0.040 250);
+  --c-rating-not:          oklch(72% 0.160 20);
+  --c-rating-not-light:    oklch(23% 0.060 15);
   --c-n50:         oklch(16% 0.018 30);
   --c-n100:        oklch(22% 0.018 30);
   --c-n200:        oklch(30% 0.014 35);
@@ -128,10 +140,14 @@
   --c-burg-light:  oklch(93%  0.016 17);
   --c-success:       oklch(38%  0.090 145);
   --c-success-light: oklch(93% 0.035 145);
-  --c-lilac:         oklch(58%  0.090 300);
-  --c-lilac-light:   oklch(91%  0.035 300);
-  --c-mauve:         oklch(55%  0.045 10);
-  --c-mauve-light:   oklch(90%  0.020 10);
+  --c-rating-top:          oklch(42% 0.120 145);
+  --c-rating-top-light:    oklch(93% 0.035 145);
+  --c-rating-worth:        oklch(45% 0.140 70);
+  --c-rating-worth-light:  oklch(92% 0.070 80);
+  --c-rating-remember:       oklch(46% 0.110 250);
+  --c-rating-remember-light: oklch(93% 0.035 250);
+  --c-rating-not:          oklch(43% 0.170 20);
+  --c-rating-not-light:    oklch(92% 0.055 15);
   --c-n50:   oklch(95.5% 0.006 78);
   --c-n100:  oklch(92%   0.007 78);
   --c-n200:  oklch(86%   0.008 78);
@@ -177,6 +193,81 @@ img, video { max-width: 100%; }
 
 a { text-decoration: none; color: inherit; }
 button { font-family: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button, [role="button"], a { touch-action: manipulation; }
+:where(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--c-gold);
+  outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .gp-header {
+    background: oklch(from var(--c-bg) l c h / 0.96) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+  }
+}
+
+/* Editorial hero: depth comes from static gradients and typography, so the
+   treatment remains cheap to paint on mobile GPUs. */
+.gp-hero {
+  isolation: isolate;
+  padding: clamp(48px, 8vw, 72px) clamp(16px, 4vw, 40px) clamp(48px, 7vw, 68px);
+}
+.gp-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 18%, oklch(72% 0.05 74 / 0.14), transparent 28%),
+    radial-gradient(circle at 82% 8%, oklch(48% 0.08 17 / 0.09), transparent 24%);
+}
+.gp-hero::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  width: min(160px, 32vw);
+  height: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, var(--c-gold-mid), transparent);
+  opacity: 0.7;
+}
+.gp-watermark {
+  text-shadow: 0 1px 0 oklch(100% 0 0 / 0.12);
+}
+.gp-hero-guide { font-size: clamp(2.65rem, 6vw, 5.2rem); }
+.gp-hero-philippe { font-size: clamp(4.75rem, 12vw, 10.5rem); }
+.gp-editorial-section {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 8px clamp(16px, 4vw, 40px) 0;
+  animation: fadeUp 0.58s var(--ease) both;
+}
+.gp-filter-panel {
+  position: relative;
+  overflow: visible;
+}
+.gp-filter-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  border-radius: 16px 0 0 16px;
+  background: linear-gradient(180deg, var(--c-burg), var(--c-gold));
+  opacity: 0.8;
+}
+.gp-horizontal-row {
+  scroll-snap-type: x proximity;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-n200) transparent;
+}
+.gp-horizontal-row > * { scroll-snap-align: start; }
 
 /* ════════════════════════════════════════════════════════════════
    PLACES AUTOCOMPLETE ELEMENT (new Google Maps API)
@@ -213,10 +304,14 @@ gmp-placeautocomplete::part(input) {
   box-shadow: var(--s-lg);
   transform: translateY(-4px);
 }
+.card-hover:active { transform: translateY(-1px) scale(0.985); }
 
 .filter-chip:hover {
   border-color: var(--c-burg) !important;
   transform: translateY(-1px);
+}
+.filter-chip.rating-filter-chip:hover {
+  border-color: var(--rating-border) !important;
 }
 .filter-chip:active {
   transform: scale(0.92);
@@ -332,6 +427,13 @@ gmp-placeautocomplete::part(input) {
   height: 100%;
   transition: transform 0.42s var(--ease);
 }
+.sr-outer {
+  position: relative;
+  height: calc(100vh - var(--header-height, 64px));
+  height: calc(100dvh - var(--header-height, 64px));
+  overflow: hidden;
+  overscroll-behavior: none;
+}
 .sr-viewport.show-map {
   transform: translateX(-50%);
 }
@@ -355,6 +457,7 @@ gmp-placeautocomplete::part(input) {
   font-weight: 600;
   letter-spacing: 0.02em;
   padding: 10px 22px;
+  min-height: 44px;
   border-radius: 9999px;
   border: none;
   background: var(--c-ink);
@@ -370,6 +473,54 @@ gmp-placeautocomplete::part(input) {
 .sr-results-list {
   padding-bottom: calc(20px + 35px + 20px + env(safe-area-inset-bottom, 0px));
   scroll-padding-bottom: calc(20px + 35px + 20px + env(safe-area-inset-bottom, 0px));
+}
+.sr-results-list {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+.result-card {
+  animation: resultEnter 0.42s var(--ease) both;
+}
+.result-card:has(.result-card-details.is-open) .result-card-row {
+  background: var(--c-n50);
+  border-left-color: var(--c-gold) !important;
+}
+.result-card-details {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.26s var(--ease), opacity 0.2s ease;
+}
+.result-card-details > div {
+  min-height: 0;
+  overflow: hidden;
+}
+.result-card-details.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.filter-panel-content {
+  animation: filterReveal 0.25s var(--ease) both;
+  transform-origin: top;
+}
+.map-loading-shell {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(135deg, transparent 49.5%, var(--c-n100) 50%, transparent 50.5%),
+    var(--c-n50);
+  background-size: 28px 28px;
+}
+@keyframes resultEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes filterReveal {
+  from { opacity: 0; transform: translateY(-6px) scaleY(0.98); }
+  to { opacity: 1; transform: translateY(0) scaleY(1); }
 }
 
 @media (min-width: 900px) {
@@ -390,6 +541,45 @@ gmp-placeautocomplete::part(input) {
   .sr-results-list {
     padding-bottom: 0;
     scroll-padding-bottom: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .gp-hero {
+    padding-top: 38px;
+    padding-bottom: 42px;
+  }
+  .gp-hero-title { margin-bottom: 16px !important; }
+  .gp-hero-guide { font-size: clamp(2.35rem, 13vw, 3.3rem); }
+  .gp-hero-philippe { font-size: clamp(4rem, 21vw, 5.5rem); }
+  .gp-watermark { font-size: 62vw !important; }
+  .result-card-row {
+    grid-template-columns: 20px minmax(0, 1fr) auto 16px !important;
+    gap: 8px !important;
+    padding-inline: 14px !important;
+  }
+  .result-card-details > div { padding-inline: 42px 14px !important; }
+  .sr-mobile-toggle {
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (pointer: coarse) {
+  .filter-chip { min-height: 40px; }
+  .gp-horizontal-row { scrollbar-width: none; }
+  .gp-horizontal-row::-webkit-scrollbar { display: none; }
+}
+
+/* Motion remains expressive by default, while respecting users who request a
+   calmer interface and avoiding unnecessary compositing work on their device. */
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
   }
 }
 

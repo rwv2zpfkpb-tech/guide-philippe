@@ -104,6 +104,22 @@ export async function getRestaurants(
   return data ?? [];
 }
 
+/** Lightweight data for the landing-page's in-guide autocomplete. */
+export async function getRestaurantHints(): Promise<Array<Pick<Restaurant, "id" | "name" | "cuisine">>> {
+  const supabase = await createClient();
+  const includeDrafts = await shouldIncludeDrafts();
+
+  let query = supabase
+    .from("restaurants")
+    .select("id, name, cuisine")
+    .order("name", { ascending: true });
+  if (!includeDrafts) query = query.eq("status", "published");
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
 // The N newest restaurants, newest first — powers the "Neu hinzugefügt"
 // strip on the landing page. Simply the most recently added entries (no
 // 30-day cutoff — a small/inactive guide would otherwise show an empty or

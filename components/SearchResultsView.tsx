@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import { useEffect, useState, useMemo, useTransition } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MapView } from "@/components/map/MapView";
 import { LocationSearch } from "@/components/LocationSearch";
+import { GoogleMapsProvider } from "@/components/GoogleMapsProvider";
 import { PriceLevelDots } from "@/components/PriceLevelDots";
 import { NavigateButton } from "@/components/NavigateButton";
 import { IconMap, IconList, IconChevronDown, IconClock, IconPin } from "@/components/icons";
@@ -14,6 +15,18 @@ import { haversineDistanceKm, formatDistanceKm } from "@/lib/geo";
 import { getOpeningStatus } from "@/lib/openingHours";
 import type { Restaurant } from "@/types/database";
 import type { MapRestaurant } from "@/components/map/MapView";
+
+const LazyMapView = dynamic(
+  () => import("@/components/map/MapView").then((mod) => mod.MapView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="map-loading-shell" role="status" aria-label="Karte wird geladen">
+        <span className="gp-spinner" aria-hidden />
+      </div>
+    ),
+  }
+);
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -96,7 +109,13 @@ function ResultCard({
   });
 
   return (
-    <div style={{ borderBottom: "1px solid var(--c-n100)" }}>
+    <div
+      className="result-card"
+      style={{
+        borderBottom: "1px solid var(--c-n100)",
+        animationDelay: `${Math.min(index, 5) * 35}ms`,
+      }}
+    >
       <button
         type="button"
         onClick={onToggle}
@@ -169,7 +188,21 @@ function ResultCard({
             <span style={{ fontSize: "1rem", lineHeight: 1 }}>{rt.emoji}</span>
             <PriceLevelDots level={restaurant.price_level} />
           </div>
-          <div style={{ fontSize: "0.6875rem", fontWeight: 600, color: colors.text, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+          <div style={{
+            display: "inline-flex",
+            alignItems: "center",
+            padding: "2px 7px",
+            borderRadius: 9999,
+            border: `1px solid ${colors.border}`,
+            background: colors.bg,
+            color: colors.text,
+            fontSize: "0.6875rem",
+            fontWeight: 600,
+            lineHeight: 1.35,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            whiteSpace: "nowrap",
+          }}>
             {rt.labelShort}
           </div>
           {distanceKm != null && (
@@ -185,7 +218,11 @@ function ResultCard({
         </span>
       </button>
 
-      {expanded && (
+      <div
+        className={`result-card-details${expanded ? " is-open" : ""}`}
+        aria-hidden={!expanded}
+        inert={!expanded ? true : undefined}
+      >
         <div style={{ padding: "0 24px 18px 60px" }}>
           {/* Address */}
           {address && (
@@ -233,29 +270,48 @@ function ResultCard({
             )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
 // ── Filter chip ───────────────────────────────────────────────────────────────
-// Uses var(--c-surface) rather than a literal "white" for the inactive state —
-// hardcoded white stayed bright in dark mode and read as too light/low-contrast.
+// Rating chips always retain their semantic tier background. Selection is
+// expressed with the stronger inset ring, so the colors remain meaningful
+// before a filter has been chosen as well.
 
-function Chip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function Chip({
+  label,
+  active,
+  onClick,
+  colors,
+  title,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  colors?: { text: string; bg: string; border: string };
+  title?: string;
+}) {
+  const activeBorder = colors?.border ?? "var(--c-burg)";
   return (
     <button
       onClick={onClick}
-      className={active ? "filter-chip is-active" : "filter-chip"}
+      title={title}
+      aria-label={title}
+      className={`${active ? "filter-chip is-active" : "filter-chip"}${colors ? " rating-filter-chip" : ""}`}
       style={{
         fontSize: "0.75rem", fontWeight: 500, letterSpacing: "0.02em",
         padding: "6px 12px", borderRadius: 9999,
-        border: `1px solid ${active ? "var(--c-burg)" : "var(--c-n200)"}`,
-        background: active ? "var(--c-burg)" : "var(--c-surface)",
-        color: active ? "white" : "var(--c-n600)",
+        border: `1px solid ${colors ? activeBorder : active ? activeBorder : "var(--c-n200)"}`,
+        background: colors?.bg ?? (active ? "var(--c-burg)" : "var(--c-surface)"),
+        color: colors?.text ?? (active ? "white" : "var(--c-n600)"),
+        boxShadow: active && colors ? `inset 0 0 0 1px ${activeBorder}` : "none",
         cursor: "pointer", fontFamily: "inherit",
         transition: "all .18s var(--ease)", whiteSpace: "nowrap",
+        ...(colors ? { "--rating-border": activeBorder } : {}),
       }}
+      aria-pressed={active}
     >
       {label}
     </button>
@@ -276,6 +332,7 @@ const SPOON_CHIPS = SPOON_RATING_ORDER.map((value) => ({
   value,
   label: SPOON_RATINGS[value].emoji,
   title: SPOON_RATINGS[value].label,
+  colors: SPOON_RATING_COLORS[value],
 }));
 
 function sameFilters(a: ActiveFilters, b: ActiveFilters): boolean {
@@ -293,7 +350,11 @@ export function SearchResultsView(props: Props) {
   // verwenden" should re-derive the sortBy default below, same reasoning
   // as the filter reset this key already existed for.
   const filterKey = JSON.stringify({ ...props.activeFilters, ownLocation: props.ownLocation });
-  return <SearchResultsViewInner key={filterKey} {...props} />;
+  return (
+    <GoogleMapsProvider>
+      <SearchResultsViewInner key={filterKey} {...props} />
+    </GoogleMapsProvider>
+  );
 }
 
 function SearchResultsViewInner({
@@ -391,6 +452,21 @@ function SearchResultsViewInner({
   // reads as the same "map next to list" layout the viewport pans across,
   // rather than a hard swap. Desktop CSS neutralizes the transform entirely.
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
+  const [mapActivated, setMapActivated] = useState(false);
+
+  // The list is the useful first paint on phones. Avoid constructing and
+  // painting the Google map off-screen until the user asks for it; desktop
+  // still activates the map immediately after hydration. Once activated the
+  // map remains mounted so subsequent list/map slides keep their state.
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 900px)");
+    const sync = () => {
+      if (media.matches) setMapActivated(true);
+    };
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   // Only one result row is expanded at a time — opening a new one collapses
   // whichever was previously open.
@@ -408,14 +484,17 @@ function SearchResultsViewInner({
   const activeFilterCount =
     activeFilters.cuisine.length + activeFilters.price_level.length + activeFilters.spoon_rating.length;
 
-  const mapRestaurants: MapRestaurant[] = sortedRestaurants
-    .filter((r) => r.lat != null && r.lng != null)
-    .map((r) => ({
-      id: r.id, name: r.name,
-      lat: r.lat!, lng: r.lng!,
-      spoon_rating: r.spoon_rating,
-      status: r.status,
-    }));
+  const mapRestaurants: MapRestaurant[] = useMemo(
+    () => sortedRestaurants
+      .filter((r) => r.lat != null && r.lng != null)
+      .map((r) => ({
+        id: r.id, name: r.name,
+        lat: r.lat!, lng: r.lng!,
+        spoon_rating: r.spoon_rating,
+        status: r.status,
+      })),
+    [sortedRestaurants]
+  );
 
   // Build a URL that keeps all location params + applies the given filters
   const buildUrl = (filters: ActiveFilters) => {
@@ -468,7 +547,7 @@ function SearchResultsViewInner({
         }
       `}</style>
 
-      <div className="sr-outer" style={{ height: "calc(100vh - var(--header-height, 64px))", overflow: "hidden", position: "relative" }}>
+      <div className="sr-outer">
         <div className={`sr-viewport${mobileView === "map" ? " show-map" : ""}`}>
 
           {/* ── LIST PANEL ───────────────────────────────────────────────── */}
@@ -577,7 +656,7 @@ function SearchResultsViewInner({
               </button>
 
               {filtersOpen && (
-              <div style={{
+              <div className="filter-panel-content" style={{
                 padding: "6px 24px 16px",
                 display: "flex", flexDirection: "column", gap: 10,
               }}>
@@ -630,6 +709,8 @@ function SearchResultsViewInner({
                     key={s.value} label={`${s.label} (${spoonCounts[s.value] ?? 0})`}
                     active={pending.spoon_rating.includes(s.value)}
                     onClick={() => toggleSpoon(s.value)}
+                    colors={s.colors}
+                    title={s.title}
                   />
                 ))}
               </div>
@@ -722,22 +803,32 @@ function SearchResultsViewInner({
 
           {/* ── MAP PANEL ────────────────────────────────────────────────── */}
           <div className="sr-map-panel" style={{ position: "relative", overflow: "hidden", height: "100%" }}>
-            <MapView
-              restaurants={mapRestaurants}
-              center={center}
-              zoom={11}
-              className="w-full h-full"
-              myLocation={ownLocation ? center : null}
-              selectedId={expandedId}
-              onSelectedChange={setExpandedId}
-            />
+            {mapActivated ? (
+              <LazyMapView
+                restaurants={mapRestaurants}
+                center={center}
+                zoom={11}
+                className="w-full h-full"
+                myLocation={ownLocation ? center : null}
+                selectedId={expandedId}
+                onSelectedChange={setExpandedId}
+              />
+            ) : (
+              <div className="map-loading-shell" aria-hidden />
+            )}
           </div>
         </div>
 
         {/* Mobile-only list/map toggle */}
         <button
           className="sr-mobile-toggle"
-          onClick={() => setMobileView((v) => (v === "list" ? "map" : "list"))}
+          onPointerDown={() => {
+            if (mobileView === "list") setMapActivated(true);
+          }}
+          onClick={() => {
+            if (mobileView === "list") setMapActivated(true);
+            setMobileView((v) => (v === "list" ? "map" : "list"));
+          }}
         >
           {mobileView === "list" ? <IconMap size={15} /> : <IconList size={15} />}
           {mobileView === "list" ? "Karte anzeigen" : "Liste anzeigen"}

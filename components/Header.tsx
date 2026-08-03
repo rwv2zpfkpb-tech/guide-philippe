@@ -24,6 +24,7 @@ export default async function Header() {
 
   return (
     <header
+      className="gp-header"
       style={{
         position: "sticky",
         top: 0,

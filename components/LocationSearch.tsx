@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo, useTransition } from "react";
-import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
+import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { useRouter } from "next/navigation";
 import { IconList, IconLocate } from "@/components/icons";
 
@@ -620,9 +620,5 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
 }
 
 export function LocationSearch(props: Props) {
-  return (
-    <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!} language="de" region="DE">
-      <LocationSearchInput {...props} />
-    </APIProvider>
-  );
+  return <LocationSearchInput {...props} />;
 }

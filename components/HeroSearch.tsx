@@ -3,6 +3,7 @@
 import { useState } from "react";
 import FilterBar, { EMPTY_FILTER_SELECTION, type FilterSelection } from "@/components/FilterBar";
 import { LocationSearch, type RestaurantHint } from "@/components/LocationSearch";
+import { GoogleMapsProvider } from "@/components/GoogleMapsProvider";
 
 type HeroSearchProps = {
   cuisines: string[];
@@ -40,7 +41,7 @@ export function HeroSearch({ cuisines, restaurantHints }: HeroSearchProps) {
   const clearAll = () => setSelected(EMPTY_FILTER_SELECTION);
 
   return (
-    <>
+    <GoogleMapsProvider>
       {/* Location search bar — position+zIndex ensures its dropdown stacking context
           paints above the FilterBar's own stacking context (both created by fadeUp animation) */}
       <div
@@ -69,6 +70,6 @@ export function HeroSearch({ cuisines, restaurantHints }: HeroSearchProps) {
           onClearAll={clearAll}
         />
       </div>
-    </>
+    </GoogleMapsProvider>
   );
 }

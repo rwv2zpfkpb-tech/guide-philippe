@@ -1,5 +1,6 @@
 import {
   getRestaurants,
+  getRestaurantHints,
   getCuisines,
   getRecentRestaurants,
   getFeaturedRestaurants,
@@ -78,14 +79,12 @@ export default async function Page({
   const facetFilters: RestaurantFilters = {};
   if (params.q) facetFilters.name_search = params.q;
 
-  const [restaurants, cuisines, facetRestaurants] = await Promise.all([
-    getRestaurants(filters),
-    getCuisines(),
-    isLocationSearch ? getRestaurants(facetFilters) : Promise.resolve([]),
-  ]);
-
   // ── Location search mode: split list + map ────────────────────────────────
   if (isLocationSearch) {
+    const [restaurants, facetRestaurants] = await Promise.all([
+      getRestaurants(filters),
+      getRestaurants(facetFilters),
+    ]);
     const center = { lat: Number(params.lat), lng: Number(params.lng) };
     // Straight-line-distance cutoff, not a Google-viewport-derived bbox (s.
     // lib/geo.ts) — keeps a search for one city from pulling in restaurants
@@ -128,8 +127,10 @@ export default async function Page({
   const hasFilters = !!(
     params.q || cuisineFilters.length || priceLevelFilters.length || spoonRatingFilters.length
   );
-  const restaurantHints = restaurants.map((r) => ({ id: r.id, name: r.name, cuisine: r.cuisine }));
-  const [recentRestaurants, featuredRestaurants] = await Promise.all([
+  const [restaurants, cuisines, restaurantHints, recentRestaurants, featuredRestaurants] = await Promise.all([
+    hasFilters ? getRestaurants(filters) : Promise.resolve([]),
+    getCuisines(),
+    getRestaurantHints(),
     getRecentRestaurants(),
     getFeaturedRestaurants(),
   ]);
@@ -138,11 +139,11 @@ export default async function Page({
     <>
       {/* ── HERO ─────────────────────────────────────────── */}
       <section
+        className="gp-hero"
         style={{
           position: "relative",
           // overflow intentionally NOT set here — it would clip the search dropdown.
           // The watermark uses its own clipping wrapper below.
-          padding: "72px 40px 68px",
           textAlign: "center",
           background: `linear-gradient(175deg,
             var(--hero-from) 0%,
@@ -153,6 +154,7 @@ export default async function Page({
         {/* Watermark clipping wrapper — isolates overflow:hidden so the dropdown is not clipped */}
         <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
           <div
+            className="gp-watermark"
             aria-hidden="true"
             style={{
               position: "absolute",
@@ -183,6 +185,7 @@ export default async function Page({
         >
           {/* Brand headline */}
           <h1
+            className="gp-hero-title"
             style={{
               fontFamily: "var(--font-cormorant)",
               fontWeight: 700,
@@ -193,9 +196,9 @@ export default async function Page({
             }}
           >
             <span
+              className="gp-hero-guide"
               style={{
                 display: "block",
-                fontSize: "clamp(3rem, 6vw, 5.2rem)",
                 fontWeight: 300,
                 color: "var(--c-n600)",
                 letterSpacing: "-0.02em",
@@ -204,9 +207,9 @@ export default async function Page({
               Guide
             </span>
             <span
+              className="gp-hero-philippe"
               style={{
                 display: "block",
-                fontSize: "clamp(5.5rem, 12vw, 10.5rem)",
                 color: "var(--c-burg)",
                 lineHeight: 0.82,
                 paddingBottom: "0.09em",
@@ -238,7 +241,7 @@ export default async function Page({
 
       {/* ── AUSWAHL (redaktionell kuratiert, admin-gepflegt) ── */}
       {featuredRestaurants.length > 0 && (
-        <section style={{ width: "100%", maxWidth: 1240, margin: "0 auto", padding: "8px 40px 0" }}>
+        <section className="gp-editorial-section">
           <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
             <h2
               style={{
@@ -267,7 +270,7 @@ export default async function Page({
 
       {/* ── RECENTLY ADDED (last 30 days) ─────────────────── */}
       {recentRestaurants.length > 0 && (
-        <section style={{ width: "100%", maxWidth: 1240, margin: "0 auto", padding: "8px 40px 0" }}>
+        <section className="gp-editorial-section">
           <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
             <h2
               style={{

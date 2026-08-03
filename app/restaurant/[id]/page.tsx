@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { getRestaurantById, refreshGooglePlaceDataIfStale } from "@/app/actions/restaurants";
 import { getPlaceDetails } from "@/app/actions/places";
 import { getOpeningStatus } from "@/lib/openingHours";
@@ -141,19 +142,15 @@ export default async function RestaurantPage({
     notFound();
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   // Nur noch Fotos kommen live von Google (nicht persistierbar) — Adresse/
   // Telefon/Website/Öffnungszeiten kommen aus der DB (befüllt beim
   // Bearbeiten im Admin-Panel/CSV-Import/"Von Google synchronisieren"),
   // damit nicht bei jedem Seitenaufruf ein zusätzlicher Places-Request
   // anfällt.
-  const placeDetails = restaurant.google_place_id
-    ? await getPlaceDetails(restaurant.google_place_id, { photosOnly: true }).catch(() => null)
-    : null;
+  const supabase = await createClient();
+  const placeDetailsPromise = restaurant.google_place_id
+    ? getPlaceDetails(restaurant.google_place_id, { photosOnly: true }).catch(() => null)
+    : Promise.resolve(null);
 
   // 6-Monate-Verfallsdatum (lib/googleSync.ts): sind die gespeicherten
   // Google-Daten abgelaufen, lädt dieser Aufruf Restaurant + Google-Daten
@@ -161,7 +158,15 @@ export default async function RestaurantPage({
   // Funktion in restaurants.ts, aus Sicherheitsgründen nimmt sie bewusst
   // nur die ID entgegen statt fertiger Objekte vom Aufrufer). No-op (gibt
   // `restaurant` unverändert zurück), solange die Daten noch frisch sind.
-  const refreshed = await refreshGooglePlaceDataIfStale(restaurant.id);
+  // These operations are independent once the restaurant row is available.
+  // Running them together removes avoidable server waterfalls from every
+  // detail-page navigation.
+  const [authResult, placeDetails, refreshed] = await Promise.all([
+    supabase.auth.getUser(),
+    placeDetailsPromise,
+    refreshGooglePlaceDataIfStale(restaurant.id),
+  ]);
+  const user = authResult.data.user;
   if (refreshed) restaurant = { ...restaurant, ...refreshed };
 
   const spoon = SPOON_RATINGS[restaurant.spoon_rating];
@@ -202,11 +207,13 @@ export default async function RestaurantPage({
           }}
         >
           {firstPhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={firstPhoto}
               alt={`${restaurant.name} Foto`}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              fill
+              preload
+              sizes="(max-width: 720px) 100vw, 1100px"
+              style={{ objectFit: "cover" }}
             />
           ) : (
             <div
@@ -237,11 +244,13 @@ export default async function RestaurantPage({
               }}
             >
               {placeDetails.photoUris.slice(1, 3).map((uri, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   key={i}
                   src={uri}
                   alt=""
+                  width={60}
+                  height={48}
+                  sizes="60px"
                   style={{
                     width: 60,
                     height: 48,
@@ -681,6 +690,7 @@ export default async function RestaurantPage({
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {pastReviews.map((rev) => {
                 const revSpoon = SPOON_RATINGS[rev.spoon_rating];
+                const revColors = SPOON_RATING_COLORS[rev.spoon_rating];
                 return (
                   <details
                     key={rev.id}
@@ -704,16 +714,23 @@ export default async function RestaurantPage({
                     >
                       Vorheriger Aufenthalt am{" "}
                       {new Date(rev.visited_at).toLocaleDateString("de-DE")}
-                      <span style={{ fontSize: "1.1rem" }}>{revSpoon.emoji}</span>
                       <span
                         style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 5,
                           fontSize: "0.6875rem",
                           fontWeight: 600,
-                          color: "var(--c-gold)",
+                          color: revColors.text,
+                          background: revColors.bg,
+                          border: `1px solid ${revColors.border}`,
+                          borderRadius: 9999,
+                          padding: "2px 7px",
                           textTransform: "uppercase",
                           letterSpacing: "0.08em",
                         }}
                       >
+                        <span style={{ fontSize: "1rem", lineHeight: 1 }}>{revSpoon.emoji}</span>
                         {revSpoon.labelShort}
                       </span>
                     </summary>

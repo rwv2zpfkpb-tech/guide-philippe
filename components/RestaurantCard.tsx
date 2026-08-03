@@ -107,11 +107,17 @@ export default function RestaurantCard({ restaurant }: { restaurant: Restaurant 
           )}
           <span
             style={{
+              display: "inline-flex",
+              alignItems: "center",
               fontSize: 10,
               fontWeight: 600,
               letterSpacing: "0.06em",
               textTransform: "uppercase",
               color: colors.text,
+              background: colors.bg,
+              border: `1px solid ${colors.border}`,
+              borderRadius: 9999,
+              padding: "2px 7px",
             }}
           >
             {spoon.labelShort}

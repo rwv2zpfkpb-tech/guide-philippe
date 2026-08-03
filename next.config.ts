@@ -23,6 +23,13 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "**.googleusercontent.com" },
+      { protocol: "https", hostname: "**.gstatic.com" },
+      { protocol: "https", hostname: "**.googleapis.com" },
+    ],
+  },
   async headers() {
     return [
       {

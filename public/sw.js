@@ -10,12 +10,17 @@ const PRESENTATION_NAME = `${CACHE_PREFIX}presentation-v2`;
 const OFFLINE_URL = "/offline.html";
 const PRECACHE_URLS = [OFFLINE_URL, "/icons/192", "/icons/512", "/manifest.webmanifest"];
 const MAX_PRESENTATION_ENTRIES = 80;
+const IS_LOCAL_DEVELOPMENT = ["localhost", "127.0.0.1", "[::1]"].includes(self.location.hostname);
 
 // Same-origin, non-personalized assets which may change without a hashed URL.
 const PRESENTATION_PATHS =
   /^\/(?:icons\/(?:192|512)|icon|apple-icon|manifest\.webmanifest|favicon\.ico|map-style(?:-cloud)?(?:-dark|-light)?\.json)$/;
 
 self.addEventListener("install", (event) => {
+  if (IS_LOCAL_DEVELOPMENT) {
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
   event.waitUntil(
     caches
       .open(PRECACHE_NAME)
@@ -27,8 +32,14 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      const currentCaches = new Set([PRECACHE_NAME, IMMUTABLE_NAME, PRESENTATION_NAME]);
       const keys = await caches.keys();
+      if (IS_LOCAL_DEVELOPMENT) {
+        await Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX)).map((key) => caches.delete(key)));
+        await self.registration.unregister();
+        return;
+      }
+
+      const currentCaches = new Set([PRECACHE_NAME, IMMUTABLE_NAME, PRESENTATION_NAME]);
       await Promise.all(
         keys
           .filter((key) => key.startsWith(CACHE_PREFIX) && !currentCaches.has(key))
@@ -85,6 +96,11 @@ async function staleWhileRevalidate(event, request) {
 }
 
 self.addEventListener("fetch", (event) => {
+  // Next.js development chunk names are not guaranteed to be content-hashed.
+  // A production cache-first strategy on localhost can therefore pair new
+  // server HTML with an old Client Component and trigger hydration failures.
+  if (IS_LOCAL_DEVELOPMENT) return;
+
   const { request } = event;
   if (request.method !== "GET") return;
 
