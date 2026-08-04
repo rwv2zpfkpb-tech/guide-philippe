@@ -20,6 +20,7 @@ import { BackButton } from "@/components/BackButton";
 import { IconPin, IconEmptyState, IconPhone, IconGlobe } from "@/components/icons";
 import type { ReviewWithCategories, RestaurantReviewCategory } from "@/types/database";
 import CommentForm from "./CommentForm";
+import { RestaurantPhoto } from "./RestaurantPhoto";
 
 // ── Fazit + Kategorie-Blöcke eines einzelnen Aufenthalts ───────────────────────
 // Wiederverwendet für den aktuellen Aufenthalt und jeden Eintrag in "Vorherige
@@ -206,21 +207,16 @@ export default async function RestaurantPage({
             overflow: "hidden",
             position: "relative",
             background: firstPhoto
-              ? undefined
+              ? "var(--c-n100)"
               : `repeating-linear-gradient(-45deg, var(--c-n100), var(--c-n100) 1px, var(--c-n50) 1px, var(--c-n50) 18px)`,
             border: "1px solid var(--c-n100)",
           }}
         >
           {firstPhoto ? (
-            // Google already returns a resized, short-lived CDN URL. A plain
-            // image keeps the URL in the browser request and avoids the
-            // next/image fill/optimizer regression that collapsed this hero.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <RestaurantPhoto
               src={firstPhoto}
               alt={`${restaurant.name} Foto`}
-              fetchPriority="high"
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              variant="hero"
             />
           ) : (
             <div
@@ -251,19 +247,11 @@ export default async function RestaurantPage({
               }}
             >
               {placeDetails.photoUris.slice(1, 3).map((uri, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <RestaurantPhoto
                   key={i}
                   src={uri}
                   alt=""
-                  style={{
-                    width: 60,
-                    height: 48,
-                    objectFit: "cover",
-                    borderRadius: 6,
-                    border: "2px solid white",
-                    boxShadow: "var(--s-sm)",
-                  }}
+                  variant="thumbnail"
                 />
               ))}
             </div>
