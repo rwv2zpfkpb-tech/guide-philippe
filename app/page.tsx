@@ -161,7 +161,6 @@ export default async function Page({
               left: "50%",
               transform: "translate(-50%, -50%)",
               fontFamily: "var(--font-cormorant)",
-              fontSize: "38vw",
               fontWeight: 700,
               letterSpacing: "-0.05em",
               lineHeight: 1,

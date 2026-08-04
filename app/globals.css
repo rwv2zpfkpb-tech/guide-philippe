@@ -284,7 +284,9 @@ button, [role="button"], a { touch-action: manipulation; }
 }
 .gp-watermark {
   /* Keep the monogram anchored while expandable filters change hero height. */
-  top: clamp(240px, 18vw, 320px);
+  top: clamp(248px, calc(19vw + 1px), 320px);
+  /* Width-only scaling grows taller than the hero on 4K/ultrawide desktops. */
+  font-size: min(38vw, 39.875rem);
   text-shadow: 0 1px 0 oklch(100% 0 0 / 0.12);
 }
 .gp-hero-guide { font-size: clamp(2.65rem, 6vw, 5.2rem); }
