@@ -192,16 +192,21 @@ export default async function RestaurantPage({
       </div>
 
       {/* ── HERO IMAGE ──────────────────────────────────── */}
-      <div style={{ maxWidth: 1100, margin: "18px auto 0", padding: "0 40px" }}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 1100,
+          margin: "18px auto 0",
+          padding: "0 40px",
+          boxSizing: "border-box",
+        }}
+      >
         <div
           style={{
             width: "100%",
-            // `next/image` with `fill` needs a concrete parent height when the
-            // image load event fires. In the affected layout, the ratio-only
-            // box could still measure 0 then, leaving the Google photo
-            // invisible and triggering Next's fill-height warning.
-            // Preserve the existing 16:6 crop while guaranteeing a non-zero
-            // height at every viewport width.
+            // Preserve the 16:6 crop with a definite height. Together with
+            // the explicit width on the outer flex item this prevents WebKit
+            // from resolving the percentage-sized hero to a 1px-wide box.
             height: "clamp(120px, calc((100vw - 80px) * 0.375), 383px)",
             borderRadius: 22,
             overflow: "hidden",
@@ -214,6 +219,7 @@ export default async function RestaurantPage({
         >
           {firstPhoto ? (
             <RestaurantPhoto
+              key={firstPhoto}
               src={firstPhoto}
               alt={`${restaurant.name} Foto`}
               variant="hero"
@@ -246,9 +252,9 @@ export default async function RestaurantPage({
                 gap: 6,
               }}
             >
-              {placeDetails.photoUris.slice(1, 3).map((uri, i) => (
+              {placeDetails.photoUris.slice(1, 3).map((uri) => (
                 <RestaurantPhoto
-                  key={i}
+                  key={uri}
                   src={uri}
                   alt=""
                   variant="thumbnail"

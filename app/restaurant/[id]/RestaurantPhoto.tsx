@@ -12,33 +12,24 @@ type RestaurantPhotoProps = {
   variant: "hero" | "thumbnail";
 };
 
-/**
- * Makes Google Places photos repaint when their asynchronous decode finishes.
- *
- * Safari (especially in an installed PWA) can occasionally finish decoding a
- * cross-origin image inserted by a streamed navigation without painting it
- * until an unrelated style change occurs. Tracking both the native load event
- * and the already-cached `complete` state gives the browser an explicit visual
- * update in either case.
- */
+/** Fades a Google Places photo in after it has actually loaded. */
 export function RestaurantPhoto({ src, alt, variant }: RestaurantPhotoProps) {
   const imageRef = useRef<HTMLImageElement>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const image = imageRef.current;
-    if (!image?.complete) return;
+    if (!image?.complete) return undefined;
 
-    // Covers cached images which completed before React attached `onLoad`.
-    setReady(true);
+    // A cached image may finish before React attaches `onLoad`. Waiting for
+    // the next frame guarantees that the initial state has painted, so it
+    // receives the same fade as a fresh network response.
+    const frame = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(frame);
   }, [src]);
 
   const isHero = variant === "hero";
 
-  // Google returns already resized, short-lived CDN URLs. Keep the browser
-  // request direct rather than sending it through the Next image optimizer.
-  // Explicit intrinsic dimensions also give WebKit stable layout information
-  // before the remote file has decoded.
   return (
     <img
       ref={imageRef}
@@ -57,8 +48,9 @@ export function RestaurantPhoto({ src, alt, variant }: RestaurantPhotoProps) {
         objectFit: "cover",
         display: "block",
         opacity: ready ? 1 : 0,
-        willChange: ready ? "auto" : "opacity",
-        transition: "opacity 160ms ease",
+        transform: ready ? "scale(1)" : "scale(1.012)",
+        willChange: ready ? "auto" : "opacity, transform",
+        transition: "opacity 320ms ease, transform 480ms cubic-bezier(0.16, 1, 0.3, 1)",
       } : {
         width: 60,
         height: 48,
@@ -68,8 +60,9 @@ export function RestaurantPhoto({ src, alt, variant }: RestaurantPhotoProps) {
         border: "2px solid white",
         boxShadow: "var(--s-sm)",
         opacity: ready ? 1 : 0,
-        willChange: ready ? "auto" : "opacity",
-        transition: "opacity 160ms ease",
+        transform: ready ? "scale(1)" : "scale(0.94)",
+        willChange: ready ? "auto" : "opacity, transform",
+        transition: "opacity 240ms ease, transform 320ms cubic-bezier(0.16, 1, 0.3, 1)",
       }}
     />
   );
