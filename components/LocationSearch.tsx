@@ -500,6 +500,7 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
       {/* ── Dropdown ───────────────────────────────────────────────────── */}
       {showDropdown && (
         <div
+          className="location-search-dropdown"
           style={{
             position: "absolute",
             top: "calc(100% + 8px)",

@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { getRestaurantById, refreshGooglePlaceDataIfStale } from "@/app/actions/restaurants";
 import { getPlaceDetails } from "@/app/actions/places";
 import { getOpeningStatus } from "@/lib/openingHours";
@@ -196,7 +195,13 @@ export default async function RestaurantPage({
         <div
           style={{
             width: "100%",
-            aspectRatio: "16 / 6",
+            // `next/image` with `fill` needs a concrete parent height when the
+            // image load event fires. In the affected layout, the ratio-only
+            // box could still measure 0 then, leaving the Google photo
+            // invisible and triggering Next's fill-height warning.
+            // Preserve the existing 16:6 crop while guaranteeing a non-zero
+            // height at every viewport width.
+            height: "clamp(120px, calc((100vw - 80px) * 0.375), 383px)",
             borderRadius: 22,
             overflow: "hidden",
             position: "relative",
@@ -207,13 +212,15 @@ export default async function RestaurantPage({
           }}
         >
           {firstPhoto ? (
-            <Image
+            // Google already returns a resized, short-lived CDN URL. A plain
+            // image keeps the URL in the browser request and avoids the
+            // next/image fill/optimizer regression that collapsed this hero.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={firstPhoto}
               alt={`${restaurant.name} Foto`}
-              fill
-              preload
-              sizes="(max-width: 720px) 100vw, 1100px"
-              style={{ objectFit: "cover" }}
+              fetchPriority="high"
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
             />
           ) : (
             <div
@@ -244,13 +251,11 @@ export default async function RestaurantPage({
               }}
             >
               {placeDetails.photoUris.slice(1, 3).map((uri, i) => (
-                <Image
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
                   key={i}
                   src={uri}
                   alt=""
-                  width={60}
-                  height={48}
-                  sizes="60px"
                   style={{
                     width: 60,
                     height: 48,

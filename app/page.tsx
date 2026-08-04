@@ -159,7 +159,6 @@ export default async function Page({
             style={{
               position: "absolute",
               left: "50%",
-              top: "52%",
               transform: "translate(-50%, -50%)",
               fontFamily: "var(--font-cormorant)",
               fontSize: "38vw",

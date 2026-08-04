@@ -214,6 +214,11 @@ button, [role="button"], a { touch-action: manipulation; }
   isolation: isolate;
   padding: clamp(48px, 8vw, 72px) clamp(16px, 4vw, 40px) clamp(48px, 7vw, 68px);
 }
+/* The hero is its own stacking context. Raise that whole context only while
+   location suggestions are visible so they paint above editorial cards. */
+.gp-hero:has(.location-search-dropdown) {
+  z-index: 20;
+}
 .gp-hero::before {
   content: "";
   position: absolute;
@@ -236,6 +241,8 @@ button, [role="button"], a { touch-action: manipulation; }
   opacity: 0.7;
 }
 .gp-watermark {
+  /* Keep the monogram anchored while expandable filters change hero height. */
+  top: clamp(240px, 18vw, 320px);
   text-shadow: 0 1px 0 oklch(100% 0 0 / 0.12);
 }
 .gp-hero-guide { font-size: clamp(2.65rem, 6vw, 5.2rem); }

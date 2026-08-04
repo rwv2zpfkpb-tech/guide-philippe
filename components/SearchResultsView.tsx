@@ -662,7 +662,7 @@ function SearchResultsViewInner({
               }}>
               {/* Cuisine row */}
               {cuisineOptions.length > 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <div className="cuisine-filter-result-row" style={{ display: "flex", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
                   <span style={{
                     fontSize: 10, fontWeight: 500, letterSpacing: "0.14em",
                     textTransform: "uppercase", color: "var(--c-n400)", whiteSpace: "nowrap",
@@ -675,6 +675,7 @@ function SearchResultsViewInner({
                     onToggle={toggleCuisine}
                     onClear={() => setPending((f) => ({ ...f, cuisine: [] }))}
                     counts={cuisineCounts}
+                    presentation="inline"
                   />
                 </div>
               )}

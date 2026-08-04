@@ -138,31 +138,79 @@ function RestaurantMarker({
           onCloseClick={onClose}
           headerDisabled
         >
-          <div className="gp-iw px-3 py-2.5 min-w-[220px] font-sans">
-            <p
-              className="text-lg font-semibold leading-snug mb-1"
-              style={{ color: "var(--c-ink)", fontFamily: "'Cormorant Garamond', serif" }}
-            >
-              {restaurant.name}
+          <div
+            className="gp-iw"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: 10,
+              width: 270,
+              maxWidth: "calc(100vw - 72px)",
+              padding: "12px 14px 10px",
+              boxSizing: "border-box",
+              fontFamily: "var(--font-dm-sans), sans-serif",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", width: "100%" }}>
+              <p
+                style={{
+                  minWidth: 0,
+                  margin: 0,
+                  color: "var(--c-ink)",
+                  fontFamily: "var(--font-cormorant), 'Cormorant Garamond', serif",
+                  fontSize: "1.125rem",
+                  fontWeight: 600,
+                  lineHeight: 1.2,
+                }}
+              >
+                {restaurant.name}
+              </p>
               {restaurant.status === "draft" && (
                 <span
-                  className="ml-2 align-middle rounded px-1.5 py-0.5 text-xs font-medium uppercase tracking-wider"
-                  style={{ color: "var(--c-gold)", background: "var(--c-gold-light)" }}
+                  style={{
+                    flexShrink: 0,
+                    padding: "2px 6px",
+                    borderRadius: 4,
+                    color: "var(--c-gold)",
+                    background: "var(--c-gold-light)",
+                    fontSize: "0.625rem",
+                    fontWeight: 500,
+                    letterSpacing: "0.08em",
+                    lineHeight: 1.4,
+                    textTransform: "uppercase",
+                  }}
                 >
                   Entwurf
                 </span>
               )}
-            </p>
-            <p
-              className="inline-flex items-center rounded-full border px-2 py-1 text-sm mb-3"
-              style={{ color: cfg.text, background: cfg.bg, borderColor: cfg.border }}
+            </div>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                maxWidth: "100%",
+                padding: "4px 9px",
+                border: `1px solid ${cfg.border}`,
+                borderRadius: 999,
+                color: cfg.text,
+                background: cfg.bg,
+                fontSize: "0.75rem",
+                lineHeight: 1.25,
+              }}
             >
               {cfg.emoji} {cfg.label}
-            </p>
+            </span>
             <a
               href={`/restaurant/${restaurant.id}`}
-              className="text-sm font-medium underline-offset-2 hover:underline"
-              style={{ color: "var(--c-gold)" }}
+              style={{
+                alignSelf: "flex-end",
+                color: "var(--c-gold)",
+                fontSize: "0.75rem",
+                fontWeight: 500,
+                lineHeight: 1.3,
+                textDecoration: "none",
+              }}
             >
               Details ansehen →
             </a>

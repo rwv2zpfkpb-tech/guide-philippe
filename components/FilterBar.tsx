@@ -83,7 +83,7 @@ function FilterRow({
   return (
     <div className="filter-row" style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
       <span style={rowLabel}>{label}</span>
-      <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>{children}</div>
+      <div style={{ display: "flex", gap: 7, flexWrap: "wrap", flex: 1, minWidth: 0, width: "100%" }}>{children}</div>
     </div>
   );
 }
@@ -124,7 +124,8 @@ export default function FilterBar({
             selected={selected.cuisine}
             onToggle={onToggleCuisine}
             onClear={onClearCuisine}
-            label="Alle Küchen"
+            label="Küchen auswählen"
+            presentation="inline"
           />
         </FilterRow>
       )}

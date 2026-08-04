@@ -1,185 +1,164 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { IconChevronDown } from "@/components/icons";
+import styles from "./CuisineFilterDropdown.module.css";
 
-// Cuisine values are open-ended and grow with the restaurant list (already
-// dozens of distinct values, unlike price/rating's small fixed sets) — a
-// chip row doesn't scale, so this is a searchable multi-select dropdown
-// instead. Shared between the landing page (FilterBar), the search results
-// view, and the admin dashboard's own filter panel — all three need the
-// same "many cuisines, pick a few" interaction.
-export function CuisineFilterDropdown({
-  cuisines,
-  selected,
-  onToggle,
-  onClear,
-  label = "Küche",
-  counts,
-}: {
+type Props = {
   cuisines: string[];
   selected: string[];
   onToggle: (value: string) => void;
   onClear: () => void;
   label?: string;
-  /** Optional "N matching restaurants" count shown next to each option
-   *  (e.g. search-results/admin facet counts). Omitted call sites (plain
-   *  cuisine pickers without a live result list to count against) render
-   *  unchanged. */
   counts?: Record<string, number>;
-}) {
+  presentation?: "popover" | "inline";
+};
+
+export function CuisineFilterDropdown({
+  cuisines,
+  selected,
+  onToggle,
+  onClear,
+  label = "Küchen auswählen",
+  counts,
+  presentation = "popover",
+}: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
 
+  const close = () => {
+    setOpen(false);
+    setSearch("");
+  };
+
   useEffect(() => {
     if (!open) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setSearch("");
-      }
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target as Node;
+      const isInSheet = target instanceof Element && target.closest(`.${styles.mobileLayer}`);
+      if (rootRef.current && !rootRef.current.contains(target) && !isInSheet) close();
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") close();
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [open]);
 
-  const filtered = cuisines.filter((c) => c.toLowerCase().includes(search.toLowerCase()));
+  useEffect(() => {
+    if (!open || presentation !== "inline" || !window.matchMedia("(max-width: 640px)").matches) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open, presentation]);
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase("de");
+    return cuisines.filter((cuisine) => cuisine.toLocaleLowerCase("de").includes(query));
+  }, [cuisines, search]);
 
   if (cuisines.length === 0) return null;
 
-  return (
-    <div ref={rootRef} style={{ position: "relative", display: "inline-block" }}>
+  const trigger = (
+    <div className={styles.triggerRow}>
       <button
         type="button"
-        onClick={() =>
-          setOpen((v) => {
-            if (v) setSearch("");
-            return !v;
-          })
-        }
-        aria-haspopup="listbox"
+        className={styles.trigger}
+        onClick={() => (open ? close() : setOpen(true))}
         aria-expanded={open}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          fontSize: 12,
-          fontWeight: 500,
-          letterSpacing: "0.03em",
-          padding: "6px 12px",
-          borderRadius: 9999,
-          border: `1px solid ${selected.length > 0 ? "var(--c-burg)" : "var(--c-n200)"}`,
-          background: selected.length > 0 ? "var(--c-burg)" : "var(--c-surface)",
-          color: selected.length > 0 ? "white" : "var(--c-n600)",
-          cursor: "pointer",
-          fontFamily: "inherit",
-          whiteSpace: "nowrap",
-        }}
       >
-        {label}
-        {selected.length > 0 && ` (${selected.length})`}
-        <span style={{ display: "flex", transform: open ? "rotate(180deg)" : "none", transition: "transform .18s" }}>
-          <IconChevronDown size={12} />
+        {selected.length > 0 ? `${selected.length} ausgewählt` : label}
+        <span className={styles.chevron} data-open={open}>
+          <IconChevronDown size={13} />
         </span>
       </button>
 
-      {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            left: 0,
-            zIndex: 30,
-            width: 240,
-            maxWidth: "80vw",
-            background: "var(--c-surface)",
-            border: "1px solid var(--c-n200)",
-            borderRadius: 12,
-            boxShadow: "var(--s-lg)",
-            padding: 10,
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-          }}
+      {presentation === "inline" && selected.map((cuisine) => (
+        <button
+          type="button"
+          key={cuisine}
+          className={styles.selectedChip}
+          onClick={() => onToggle(cuisine)}
+          aria-label={`${cuisine} entfernen`}
         >
-          <input
-            type="text"
-            autoFocus
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Küche suchen…"
-            style={{
-              fontSize: 13,
-              padding: "7px 10px",
-              borderRadius: 8,
-              border: "1px solid var(--c-n200)",
-              background: "var(--c-bg)",
-              color: "var(--c-ink)",
-              fontFamily: "inherit",
-              outline: "none",
-            }}
-          />
+          <span>{cuisine}</span><span aria-hidden>×</span>
+        </button>
+      ))}
+    </div>
+  );
 
-          <div style={{ display: "flex", flexDirection: "column", maxHeight: 240, overflowY: "auto" }}>
-            {filtered.length === 0 && (
-              <p style={{ fontSize: 12, color: "var(--c-n400)", padding: "6px 4px" }}>Keine Treffer.</p>
-            )}
-            {filtered.map((c) => {
-              const isSelected = selected.includes(c);
-              return (
-                <label
-                  key={c}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    fontSize: 13,
-                    color: "var(--c-ink)",
-                    padding: "6px 4px",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                  }}
-                  className="cuisine-dropdown-row"
-                >
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => onToggle(c)}
-                    style={{ accentColor: "var(--c-burg)" }}
-                  />
-                  <span style={{ flex: 1 }}>{c}</span>
-                  {counts && (
-                    <span style={{ fontSize: 11, color: "var(--c-n400)" }}>
-                      {counts[c] ?? 0}
-                    </span>
-                  )}
-                </label>
-              );
-            })}
-          </div>
+  const panelContent = (
+    <>
+      <input
+        type="search"
+        className={styles.search}
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        placeholder="Küche suchen…"
+      />
 
+      <div className={styles.options} role="group" aria-label="Küchen">
+        {filtered.length === 0 && <p className={styles.empty}>Keine Küche gefunden.</p>}
+        {filtered.map((cuisine) => {
+          const active = selected.includes(cuisine);
+          return (
+            <label key={cuisine} className={styles.option} data-selected={active}>
+              <input type="checkbox" checked={active} onChange={() => onToggle(cuisine)} />
+              <span className={styles.optionName}>{cuisine}</span>
+              {counts && <span className={styles.count}>{counts[cuisine] ?? 0}</span>}
+            </label>
+          );
+        })}
+      </div>
+
+      <div className={styles.footer}>
+        <span>{selected.length} {selected.length === 1 ? "Küche" : "Küchen"}</span>
+        <div className={styles.footerActions}>
           {selected.length > 0 && (
-            <button
-              type="button"
-              onClick={onClear}
-              style={{
-                fontSize: 11,
-                fontWeight: 500,
-                color: "var(--c-burg)",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                textAlign: "left",
-                padding: "4px 4px 0",
-                fontFamily: "inherit",
-                borderTop: "1px solid var(--c-n100)",
-              }}
-            >
-              Auswahl zurücksetzen
-            </button>
+            <button type="button" className={styles.reset} onClick={onClear}>Zurücksetzen</button>
           )}
+          <button type="button" className={styles.done} onClick={close}>Fertig</button>
         </div>
+      </div>
+    </>
+  );
+
+  return (
+    <div
+      ref={rootRef}
+      className={`${styles.root} ${presentation === "inline" ? styles.inlineRoot : styles.popoverRoot}`}
+      data-open={open}
+    >
+      {trigger}
+
+      {open && presentation === "inline" && (
+        <div className={styles.inlinePanel}>{panelContent}</div>
+      )}
+
+      {open && presentation === "popover" && (
+        <div className={styles.popover}>{panelContent}</div>
+      )}
+
+      {open && presentation === "inline" && createPortal(
+        <div className={styles.mobileLayer}>
+          <button type="button" className={styles.backdrop} onClick={close} aria-label="Schließen" />
+          <div className={styles.sheet} role="dialog" aria-modal="true" aria-label="Küchen auswählen">
+            <div className={styles.sheetHeading}>
+              <strong>Küchen auswählen</strong>
+              <button type="button" onClick={close} aria-label="Schließen">×</button>
+            </div>
+            {panelContent}
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
