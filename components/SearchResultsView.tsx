@@ -138,7 +138,7 @@ function ResultCard({
         className="result-card-row"
       >
         {/* Number */}
-        <span style={{
+        <span className="result-card-number" style={{
           fontFamily: "var(--font-cormorant)", fontSize: "0.875rem",
           fontWeight: 300, color: "var(--c-n300)", letterSpacing: "0.02em",
         }}>
@@ -146,8 +146,8 @@ function ResultCard({
         </span>
 
         {/* Info */}
-        <div style={{ minWidth: 0 }}>
-          <div style={{
+        <div className="result-card-info" style={{ minWidth: 0 }}>
+          <div className="result-card-name" style={{
             fontFamily: "var(--font-cormorant)", fontSize: "1.1rem", fontWeight: 600,
             color: "var(--c-ink)", lineHeight: 1.2, marginBottom: 3,
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
@@ -173,22 +173,27 @@ function ResultCard({
             )}
           </div>
           {restaurant.cuisine && (
-            <div style={{
+            <div className="result-card-cuisine" style={{
               fontSize: "0.75rem", fontWeight: 500, letterSpacing: "0.10em",
               textTransform: "uppercase", color: "var(--c-gold)",
             }}>
               {restaurant.cuisine}
             </div>
           )}
+          {distanceKm != null && (
+            <div className="result-card-distance-mobile">
+              {formatDistanceKm(distanceKm)} entfernt
+            </div>
+          )}
         </div>
 
         {/* Meta */}
-        <div style={{ textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+        <div className="result-card-meta" style={{ textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.8125rem", fontWeight: 500, letterSpacing: "0.02em" }}>
             <span style={{ fontSize: "1rem", lineHeight: 1 }}>{rt.emoji}</span>
             <PriceLevelDots level={restaurant.price_level} />
           </div>
-          <div style={{
+          <div className="result-card-rating" style={{
             display: "inline-flex",
             alignItems: "center",
             padding: "2px 7px",
@@ -206,14 +211,14 @@ function ResultCard({
             {rt.labelShort}
           </div>
           {distanceKm != null && (
-            <div style={{ fontSize: "0.6875rem", color: "var(--c-n400)", whiteSpace: "nowrap" }}>
+            <div className="result-card-distance-desktop" style={{ fontSize: "0.6875rem", color: "var(--c-n400)", whiteSpace: "nowrap" }}>
               {formatDistanceKm(distanceKm)}
             </div>
           )}
         </div>
 
         {/* Expand indicator */}
-        <span style={{ color: "var(--c-n300)", display: "flex", transform: expanded ? "rotate(180deg)" : "none", transition: "transform .18s" }}>
+        <span className="result-card-chevron" style={{ color: "var(--c-n300)", display: "flex", transform: expanded ? "rotate(180deg)" : "none", transition: "transform .18s" }}>
           <IconChevronDown size={14} />
         </span>
       </button>
@@ -286,17 +291,20 @@ function Chip({
   onClick,
   colors,
   title,
+  disabled = false,
 }: {
   label: string;
   active: boolean;
   onClick: () => void;
   colors?: { text: string; bg: string; border: string };
   title?: string;
+  disabled?: boolean;
 }) {
   const activeBorder = colors?.border ?? "var(--c-burg)";
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       title={title}
       aria-label={title}
       className={`${active ? "filter-chip is-active" : "filter-chip"}${colors ? " rating-filter-chip" : ""}`}
@@ -307,7 +315,8 @@ function Chip({
         background: colors?.bg ?? (active ? "var(--c-burg)" : "var(--c-surface)"),
         color: colors?.text ?? (active ? "white" : "var(--c-n600)"),
         boxShadow: active && colors ? `inset 0 0 0 1px ${activeBorder}` : "none",
-        cursor: "pointer", fontFamily: "inherit",
+        cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit",
+        opacity: disabled ? 0.45 : 1,
         transition: "all .18s var(--ease)", whiteSpace: "nowrap",
         ...(colors ? { "--rating-border": activeBorder } : {}),
       }}
@@ -563,8 +572,10 @@ function SearchResultsViewInner({
                 <LocationSearch defaultValue={locationParams.location} size="compact" />
               </div>
               <button
+                className="search-results-close"
                 onClick={() => startNavTransition(() => router.push("/"))}
                 disabled={isNavigating}
+                aria-label="Suche schließen"
                 style={{
                   fontSize: "0.8125rem", color: "var(--c-n400)", background: "none",
                   border: "none", cursor: isNavigating ? "default" : "pointer", padding: "4px 2px",
@@ -624,6 +635,7 @@ function SearchResultsViewInner({
                 first filter row. */}
             <div style={{ borderBottom: "1px solid var(--c-n100)", flexShrink: 0 }}>
               <button
+                className="filter-panel-toggle"
                 onClick={() => setFiltersOpen((v) => !v)}
                 style={{
                   width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -693,6 +705,7 @@ function SearchResultsViewInner({
                     key={p.value} label={`${p.label} (${priceCounts[p.value] ?? 0})`}
                     active={pending.price_level.includes(p.value)}
                     onClick={() => togglePrice(p.value)}
+                    disabled={(priceCounts[p.value] ?? 0) === 0 && !pending.price_level.includes(p.value)}
                   />
                 ))}
               </div>
@@ -712,13 +725,14 @@ function SearchResultsViewInner({
                     onClick={() => toggleSpoon(s.value)}
                     colors={s.colors}
                     title={s.title}
+                    disabled={(spoonCounts[s.value] ?? 0) === 0 && !pending.spoon_rating.includes(s.value)}
                   />
                 ))}
               </div>
 
               {/* Apply / reset — filter chip changes are staged until "Übernehmen" is pressed */}
               {(filtersDirty || hasPendingFilters) && (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                <div className="filter-apply-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                   {hasPendingFilters ? (
                     <button
                       onClick={resetFilters}

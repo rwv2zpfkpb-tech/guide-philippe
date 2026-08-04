@@ -46,6 +46,7 @@ export function ThemeToggle() {
 
   return (
     <button
+      className="gp-header-icon-button"
       onClick={toggle}
       aria-label={isDark ? "Hellmodus aktivieren" : "Dunkelmodus aktivieren"}
       title={isDark ? "Hellmodus" : "Dunkelmodus"}

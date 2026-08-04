@@ -76,8 +76,8 @@
     --c-n50:         oklch(16% 0.018 30);
     --c-n100:        oklch(22% 0.018 30);
     --c-n200:        oklch(30% 0.014 35);
-    --c-n300:        oklch(41% 0.008 78);
-    --c-n400:        oklch(55% 0.007 78);
+    --c-n300:        oklch(49% 0.008 78);
+    --c-n400:        oklch(63% 0.007 78);
     --c-n500:        oklch(67% 0.007 78);
     --c-n600:        oklch(79% 0.006 78);
     --c-n700:        oklch(88% 0.006 78);
@@ -114,8 +114,8 @@
   --c-n50:         oklch(16% 0.018 30);
   --c-n100:        oklch(22% 0.018 30);
   --c-n200:        oklch(30% 0.014 35);
-  --c-n300:        oklch(41% 0.008 78);
-  --c-n400:        oklch(55% 0.007 78);
+  --c-n300:        oklch(49% 0.008 78);
+  --c-n400:        oklch(63% 0.007 78);
   --c-n500:        oklch(67% 0.007 78);
   --c-n600:        oklch(79% 0.006 78);
   --c-n700:        oklch(88% 0.006 78);
@@ -206,6 +206,48 @@ button, [role="button"], a { touch-action: manipulation; }
     backdrop-filter: blur(10px) !important;
     -webkit-backdrop-filter: blur(10px) !important;
   }
+  .gp-header-admin-link,
+  .gp-user-label {
+    display: none !important;
+  }
+  .filter-chip,
+  .gp-header-icon-button,
+  .gp-location-button,
+  .search-results-close,
+  .filter-panel-toggle {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+  .gp-admin-root button,
+  .gp-admin-root select,
+  .gp-admin-root input[type="text"],
+  .gp-admin-root input[type="search"] {
+    min-height: 44px;
+  }
+  .gp-admin-root input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+  }
+  .gp-admin-root label:has(input[type="checkbox"]) { min-height: 44px; }
+}
+
+.gp-user-menu-admin-link {
+  display: none;
+  padding: 9px 10px;
+  border-radius: 6px;
+  color: var(--c-ink);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+.gp-user-menu-admin-link:hover { background: var(--c-n50); }
+
+@media (max-width: 640px) {
+  .gp-user-menu-admin-link { display: block; }
+}
+
+.filter-chip:disabled:hover {
+  transform: none;
 }
 
 /* Editorial hero: depth comes from static gradients and typography, so the
@@ -478,8 +520,8 @@ gmp-placeautocomplete::part(input) {
    button (bottom: 20px, ~35px tall) never permanently covers it — the row
    can still be scrolled up past the button instead of being stuck behind it. */
 .sr-results-list {
-  padding-bottom: calc(20px + 35px + 20px + env(safe-area-inset-bottom, 0px));
-  scroll-padding-bottom: calc(20px + 35px + 20px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(36px + 44px + 24px + env(safe-area-inset-bottom, 0px));
+  scroll-padding-bottom: calc(36px + 44px + 24px + env(safe-area-inset-bottom, 0px));
 }
 .sr-results-list {
   overscroll-behavior-y: contain;
@@ -507,6 +549,7 @@ gmp-placeautocomplete::part(input) {
   grid-template-rows: 1fr;
   opacity: 1;
 }
+.result-card-distance-mobile { display: none; }
 .filter-panel-content {
   animation: filterReveal 0.25s var(--ease) both;
   transform-origin: top;
@@ -561,20 +604,131 @@ gmp-placeautocomplete::part(input) {
   .gp-hero-philippe { font-size: clamp(4rem, 21vw, 5.5rem); }
   .gp-watermark { font-size: 62vw !important; }
   .result-card-row {
-    grid-template-columns: 20px minmax(0, 1fr) auto 16px !important;
-    gap: 8px !important;
+    grid-template-columns: minmax(0, 1fr) auto 16px !important;
+    gap: 10px !important;
     padding-inline: 14px !important;
+  }
+  .result-card-number { display: none; }
+  .result-card-name { font-size: 1.16rem !important; }
+  .result-card-meta { max-width: 132px; }
+  .result-card-rating { max-width: 128px; overflow: hidden; text-overflow: ellipsis; }
+  .result-card-distance-desktop { display: none; }
+  .result-card-distance-mobile {
+    display: block;
+    margin-top: 5px;
+    color: var(--c-n500);
+    font-size: 0.75rem;
   }
   .result-card-details > div { padding-inline: 42px 14px !important; }
   .sr-mobile-toggle {
-    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(36px + env(safe-area-inset-bottom, 0px));
+  }
+  .filter-apply-row {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    margin: 2px -12px -8px;
+    padding: 10px 12px 8px;
+    border-top: 1px solid var(--c-n100);
+    background: var(--c-surface);
   }
 }
 
 @media (pointer: coarse) {
-  .filter-chip { min-height: 40px; }
+  .filter-chip,
+  .gp-header-icon-button,
+  .gp-location-button,
+  .search-results-close,
+  .filter-panel-toggle { min-width: 44px !important; min-height: 44px !important; }
   .gp-horizontal-row { scrollbar-width: none; }
   .gp-horizontal-row::-webkit-scrollbar { display: none; }
+  .gp-admin-root button,
+  .gp-admin-root select,
+  .gp-admin-root input[type="text"],
+  .gp-admin-root input[type="search"] {
+    min-height: 44px;
+  }
+  .gp-admin-root input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+  }
+  .gp-admin-root label:has(input[type="checkbox"]) { min-height: 44px; }
+}
+
+.admin-bulk-bar {
+  position: sticky;
+  top: calc(var(--header-height, 64px) + 8px);
+  z-index: 40;
+  box-shadow: var(--s-md);
+}
+
+.comment-rating-row { flex-wrap: wrap; }
+.comment-star-button { flex: 0 0 44px; }
+
+@media (max-width: 560px) {
+  .comment-form-footer {
+    align-items: stretch !important;
+    flex-direction: column;
+  }
+  .comment-submit { width: 100%; min-height: 48px; }
+}
+
+.gp-install-hint {
+  width: min(560px, calc(100% - 32px));
+  margin: 20px auto 64px;
+  padding: 18px 20px;
+  border: 1px solid var(--c-n100);
+  border-radius: 16px;
+  background: var(--c-surface);
+  box-shadow: var(--s-sm);
+}
+.gp-install-hint-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.gp-install-hint h2 {
+  color: var(--c-ink);
+  font-family: var(--font-cormorant);
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+.gp-install-hint p { color: var(--c-n500); font-size: 0.8125rem; }
+.gp-install-hint-heading > button {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--c-n200);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--c-n500);
+  cursor: pointer;
+  font-size: 1.25rem;
+}
+.gp-install-hint details { margin-top: 12px; }
+.gp-install-hint summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--c-burg);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.gp-install-hint ol { display: grid; gap: 10px; padding-top: 8px; }
+.gp-install-hint li { display: flex; align-items: flex-start; gap: 10px; }
+.gp-install-hint li > span {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c-ink);
+  color: var(--c-bg);
+  font-size: 0.6875rem;
+  font-weight: 600;
 }
 
 /* Motion remains expressive by default, while respecting users who request a

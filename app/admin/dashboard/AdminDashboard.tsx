@@ -66,6 +66,15 @@ const PRICE_OPTIONS: { value: PriceLevel; label: string }[] = [
 ];
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+type AdminSortMode = "newest" | "oldest" | "name" | "status" | "price" | "rating";
+
+function formatRestaurantDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  });
+}
 
 // ── Form state ────────────────────────────────────────────────────────────────
 
@@ -1631,6 +1640,7 @@ export function AdminDashboard({
   const [priceFilter, setPriceFilter] = useState<PriceLevel[]>([]);
   const [ratingFilter, setRatingFilter] = useState<SpoonRating[]>([]);
   const [cuisineFilter, setCuisineFilter] = useState<string[]>([]);
+  const [sortMode, setSortMode] = useState<AdminSortMode>("newest");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -2277,6 +2287,18 @@ export function AdminDashboard({
       );
     });
 
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    if (sortMode === "oldest") return Date.parse(a.created_at) - Date.parse(b.created_at);
+    if (sortMode === "name") return a.name.localeCompare(b.name, "de");
+    if (sortMode === "status") {
+      const statusOrder = Number(a.status === "published") - Number(b.status === "published");
+      return statusOrder || a.name.localeCompare(b.name, "de");
+    }
+    if (sortMode === "price") return (a.price_level ?? 99) - (b.price_level ?? 99) || a.name.localeCompare(b.name, "de");
+    if (sortMode === "rating") return b.spoon_rating - a.spoon_rating || a.name.localeCompare(b.name, "de");
+    return Date.parse(b.created_at) - Date.parse(a.created_at);
+  });
+
   const activeFilterCount = priceFilter.length + ratingFilter.length + cuisineFilter.length;
 
   function toggleFilterValue<T>(list: T[], setList: (v: T[]) => void, value: T) {
@@ -2291,7 +2313,7 @@ export function AdminDashboard({
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const pageStart = (currentPage - 1) * pageSize;
-  const pageItems = filtered.slice(pageStart, pageStart + pageSize);
+  const pageItems = sortedFiltered.slice(pageStart, pageStart + pageSize);
 
   // Header/"Alle auswählen"-Checkbox wirkt bewusst nur auf die aktuell
   // sichtbare Seite (Standardverhalten paginierter Tabellen, z.B.
@@ -2308,7 +2330,7 @@ export function AdminDashboard({
 
   return (
     <GoogleMapsProvider>
-      <div className="min-h-screen bg-[var(--c-bg)]">
+      <div className="gp-admin-root min-h-screen bg-[var(--c-bg)]">
         {/* No local header here — the global <Header> (app/layout.tsx) already
             renders on every route, including this one; a second admin-only
             header used to render right below it, showing the same site
@@ -2436,6 +2458,27 @@ export function AdminDashboard({
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <label
+                htmlFor="admin-sort"
+                className="text-xs font-medium uppercase tracking-wider text-[var(--c-n400)] w-20 shrink-0 whitespace-nowrap"
+              >
+                Sortierung
+              </label>
+              <select
+                id="admin-sort"
+                value={sortMode}
+                onChange={(e) => { setSortMode(e.target.value as AdminSortMode); setPage(1); }}
+                className="rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2 text-sm text-[var(--c-ink)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40"
+              >
+                <option value="newest">Neueste zuerst</option>
+                <option value="oldest">Älteste zuerst</option>
+                <option value="name">Name A–Z</option>
+                <option value="status">Entwürfe zuerst</option>
+                <option value="price">Preis aufsteigend</option>
+                <option value="rating">Bewertung absteigend</option>
+              </select>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-medium uppercase tracking-wider text-[var(--c-n400)] w-20 shrink-0 whitespace-nowrap">
                 Status
               </span>
@@ -2533,7 +2576,7 @@ export function AdminDashboard({
 
           {/* ── Bulk-Auswahl-Leiste ── */}
           {selectedIds.size > 0 && (
-            <div className="mb-3 flex items-center gap-3 rounded-lg border border-[var(--c-burg)]/30 bg-[var(--c-burg-light)] px-4 py-2.5">
+            <div className="admin-bulk-bar mb-3 flex items-center gap-3 rounded-lg border border-[var(--c-burg)]/30 bg-[var(--c-burg-light)] px-4 py-2.5">
               <span className="text-sm font-medium text-[var(--c-ink)]">
                 {selectedIds.size} ausgewählt
               </span>
@@ -2635,6 +2678,9 @@ export function AdminDashboard({
                     </div>
                   </div>
                 </div>
+                <div className="mt-2 text-xs text-[var(--c-n400)]">
+                  Hinzugefügt am {formatRestaurantDate(r.created_at)}
+                </div>
 
                 <div className="mt-3 flex items-center gap-2 border-t border-[var(--c-n50)] pt-3">
                   <button
@@ -2674,13 +2720,14 @@ export function AdminDashboard({
                   <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider hidden md:table-cell">Küche</th>
                   <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">Preis</th>
                   <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider">Bewertung</th>
+                  <th className="px-4 py-3 text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider hidden lg:table-cell">Hinzugefügt</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--c-n50)]">
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-[var(--c-n400)]">
+                    <td colSpan={7} className="px-4 py-10 text-center text-sm text-[var(--c-n400)]">
                       {query ? "Keine Restaurants entsprechen deiner Suche." : "Noch keine Restaurants. Füge eins hinzu!"}
                     </td>
                   </tr>
@@ -2720,6 +2767,9 @@ export function AdminDashboard({
                     </td>
                     <td className="px-4 py-3">
                       <SpoonBadge rating={r.spoon_rating} />
+                    </td>
+                    <td className="px-4 py-3 text-xs text-[var(--c-n500)] hidden lg:table-cell">
+                      {formatRestaurantDate(r.created_at)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">

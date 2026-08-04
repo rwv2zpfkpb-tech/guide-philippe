@@ -190,7 +190,7 @@ export default async function Page({
               fontWeight: 700,
               lineHeight: 0.86,
               letterSpacing: "-0.04em",
-              marginBottom: 22,
+              marginBottom: 32,
               animation: "fadeUp 0.85s var(--ease) 0.05s both",
             }}
           >
@@ -217,20 +217,6 @@ export default async function Page({
               Philippe
             </span>
           </h1>
-
-          <p
-            style={{
-              fontFamily: "var(--font-cormorant)",
-              fontSize: "1.15rem",
-              fontWeight: 300,
-              fontStyle: "italic",
-              color: "oklch(38% 0.040 17)",
-              marginBottom: 36,
-              animation: "fadeUp 0.8s var(--ease) 0.25s both",
-            }}
-          >
-            An honest, curated guide to exceptional dining.
-          </p>
 
           {/* Location search + filter chips: filters are staged locally and only
               take effect once "Suchen" is pressed (see HeroSearch) */}

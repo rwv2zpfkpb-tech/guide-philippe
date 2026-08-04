@@ -4,11 +4,12 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { signOut, requestPasswordReset } from "@/app/actions/auth";
 import type { RequestPasswordResetState } from "@/app/actions/auth";
 import { IconDotsVertical } from "@/components/icons";
+import Link from "next/link";
 
 // Sign-out + change-password are tucked behind a kebab menu instead of
 // sitting as separate buttons in the header — keeps the header itself down
 // to just the username on narrow viewports.
-export function UserMenu({ email, label }: { email: string; label: string }) {
+export function UserMenu({ email, label, isAdmin = false }: { email: string; label: string; isAdmin?: boolean }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -31,6 +32,7 @@ export function UserMenu({ email, label }: { email: string; label: string }) {
   return (
     <div ref={rootRef} style={{ position: "relative", display: "flex", alignItems: "center", gap: 4 }}>
       <span
+        className="gp-user-label"
         style={{
           fontSize: "0.8125rem",
           color: "var(--c-n500)",
@@ -44,6 +46,7 @@ export function UserMenu({ email, label }: { email: string; label: string }) {
         {label}
       </span>
       <button
+        className="gp-header-icon-button"
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
@@ -81,6 +84,16 @@ export function UserMenu({ email, label }: { email: string; label: string }) {
             zIndex: 50,
           }}
         >
+          {isAdmin && (
+            <Link
+              href="/admin/dashboard"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="gp-user-menu-admin-link"
+            >
+              Admin-Dashboard
+            </Link>
+          )}
           {resetState && "success" in resetState ? (
             <div style={{ fontSize: "0.8125rem", color: "var(--c-success)", padding: "8px 10px", lineHeight: 1.4 }}>
               E-Mail mit Link verschickt — bitte Postfach prüfen.

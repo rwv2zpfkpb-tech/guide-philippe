@@ -55,6 +55,9 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
     >
       {/* Star rating (0–5) */}
       <div
+        className="comment-rating-row"
+        role="group"
+        aria-label="Bewertung auswählen"
         style={{
           display: "flex",
           alignItems: "center",
@@ -67,6 +70,8 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
           onClick={() => setRating(0)}
           onMouseEnter={() => setHover(0)}
           onMouseLeave={() => setHover(null)}
+          aria-pressed={rating === 0}
+          className="comment-star-button comment-zero-rating"
           style={{
             fontSize: "0.6875rem",
             fontWeight: 600,
@@ -75,8 +80,8 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
             border: `1.5px solid ${active === 0 ? "var(--c-gold)" : "var(--c-n200)"}`,
             color: active === 0 ? "var(--c-gold)" : "var(--c-n400)",
             borderRadius: "50%",
-            width: 22,
-            height: 22,
+            width: 44,
+            height: 44,
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
@@ -98,18 +103,22 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
             onClick={() => setRating(i)}
             onMouseEnter={() => setHover(i)}
             onMouseLeave={() => setHover(null)}
+            aria-pressed={rating === i}
+            className="comment-star-button"
             style={{
               fontSize: "1.375rem",
               lineHeight: 1,
               background: "none",
               border: "none",
               color: active !== null && i <= active ? "var(--c-gold)" : "var(--c-n200)",
-              padding: "2px 3px",
+              width: 44,
+              height: 44,
+              padding: 0,
               cursor: "pointer",
               transition: "color 0.1s, transform 0.1s",
               transform: active !== null && i <= active ? "scale(1.05)" : "scale(1)",
             }}
-            aria-label={`${i} Sterne`}
+            aria-label={i === 1 ? "1 Stern" : `${i} Sterne`}
           >
             ★
           </button>
@@ -173,6 +182,7 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
 
       {/* Footer */}
       <div
+        className="comment-form-footer"
         style={{
           display: "flex",
           alignItems: "center",
@@ -193,6 +203,7 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
           <em style={{ fontStyle: "normal", color: "var(--c-gold)" }}>Spoon-Score</em>.
         </span>
         <button
+          className="comment-submit"
           type="submit"
           disabled={isPending || rating === null}
           style={{

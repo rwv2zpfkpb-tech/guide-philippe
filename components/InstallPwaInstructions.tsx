@@ -24,97 +24,46 @@ const STEPS: Record<"ios" | "android", string[]> = {
   ],
 };
 
-// Purely informational — no beforeinstallprompt handling, just tailored
-// step-by-step instructions with the detected platform highlighted first.
 export function InstallPwaInstructions() {
   const [platform, setPlatform] = useState<Platform>("other");
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    const detected = detectPlatform();
+    const installed = window.matchMedia("(display-mode: standalone)").matches ||
+      ("standalone" in navigator && (navigator as Navigator & { standalone?: boolean }).standalone === true);
+    const dismissed = localStorage.getItem("gp-install-hint-dismissed") === "1";
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPlatform(detectPlatform());
+    setPlatform(detected);
+    setVisible((detected === "ios" || detected === "android") && !installed && !dismissed);
   }, []);
 
-  const order: ("ios" | "android")[] =
-    platform === "android" ? ["android", "ios"] : ["ios", "android"];
+  if (!visible || platform === "other") return null;
+
+  const dismiss = () => {
+    localStorage.setItem("gp-install-hint-dismissed", "1");
+    setVisible(false);
+  };
+
+  const title = platform === "ios" ? "Auf iPhone oder iPad installieren" : "Auf Android installieren";
 
   return (
-    <section style={{ maxWidth: 1240, margin: "0 auto", padding: "8px clamp(16px, 4vw, 40px) 72px" }}>
-      <div style={{ borderTop: "1px solid var(--c-n100)", paddingTop: 48 }}>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <h2
-            style={{
-              fontFamily: "var(--font-cormorant)",
-              fontSize: "1.75rem",
-              fontWeight: 600,
-              color: "var(--c-ink)",
-              marginBottom: 8,
-            }}
-          >
-            Als App installieren
-          </h2>
-          <p style={{ fontSize: "0.875rem", color: "var(--c-n500)", maxWidth: 480, margin: "0 auto" }}>
-            Guide Philippe lässt sich auf dem Homescreen installieren — schneller Zugriff, wie eine native App.
-          </p>
+    <section className="gp-install-hint" aria-labelledby="gp-install-title">
+      <div className="gp-install-hint-heading">
+        <div>
+          <h2 id="gp-install-title">{title}</h2>
+          <p>Schneller Zugriff direkt vom Homescreen.</p>
         </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))",
-            gap: 20,
-            maxWidth: 760,
-            margin: "0 auto",
-          }}
-        >
-          {order.map((p) => (
-            <div
-              key={p}
-              style={{
-                borderRadius: 16,
-                border: `1px solid ${platform === p ? "var(--c-gold)" : "var(--c-n100)"}`,
-                background: platform === p ? "var(--c-gold-light)" : "var(--c-surface)",
-                padding: "22px 24px",
-              }}
-            >
-              <h3
-                style={{
-                  fontFamily: "var(--font-cormorant)",
-                  fontSize: "1.1rem",
-                  fontWeight: 600,
-                  color: "var(--c-ink)",
-                  marginBottom: 14,
-                }}
-              >
-                {p === "ios" ? "iPhone / iPad (Safari)" : "Android (Chrome)"}
-              </h3>
-              <ol style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: "0.8125rem", color: "var(--c-n600)", lineHeight: 1.5 }}>
-                {STEPS[p].map((step, i) => (
-                  <li key={i} style={{ display: "flex", gap: 10 }}>
-                    <span
-                      style={{
-                        flexShrink: 0,
-                        width: 20,
-                        height: 20,
-                        borderRadius: "50%",
-                        background: "var(--c-ink)",
-                        color: "var(--c-bg)",
-                        fontSize: 10,
-                        fontWeight: 600,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      {i + 1}
-                    </span>
-                    <span>{step}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          ))}
-        </div>
+        <button type="button" onClick={dismiss} aria-label="Installationshinweis ausblenden">×</button>
       </div>
+      <details>
+        <summary>Anleitung anzeigen</summary>
+        <ol>
+          {STEPS[platform].map((step, i) => (
+            <li key={step}><span>{i + 1}</span><p>{step}</p></li>
+          ))}
+        </ol>
+      </details>
     </section>
   );
 }

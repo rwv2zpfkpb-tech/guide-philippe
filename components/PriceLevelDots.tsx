@@ -5,12 +5,14 @@ export function PriceLevelDots({ level }: { level: number | null }) {
   if (level == null) return null;
   if (level === 0) return <span style={{ color: "var(--c-n400)" }}>Kostenlos</span>;
   return (
-    <>
-      {[1, 2, 3, 4].map((i) => (
-        <span key={i} style={{ color: i <= level ? "var(--c-ink)" : "var(--c-n200)" }}>
-          €
-        </span>
-      ))}
-    </>
+    <span role="img" aria-label={`Preisklasse ${level} von 4`} style={{ whiteSpace: "nowrap" }}>
+      <span aria-hidden="true">
+        {[1, 2, 3, 4].map((i) => (
+          <span key={i} style={{ color: i <= level ? "var(--c-ink)" : "var(--c-n200)" }}>
+            €
+          </span>
+        ))}
+      </span>
+    </span>
   );
 }

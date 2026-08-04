@@ -68,6 +68,7 @@ export default async function Header() {
           {isAdmin && (
             <Link
               href="/admin/dashboard"
+              className="gp-header-admin-link"
               style={{
                 fontSize: "0.8125rem",
                 fontWeight: 500,
@@ -82,7 +83,11 @@ export default async function Header() {
           )}
           {user ? (
             user.email && (
-              <UserMenu email={user.email} label={profile?.username ?? user.email} />
+              <UserMenu
+                email={user.email}
+                label={profile?.username ?? user.email}
+                isAdmin={isAdmin}
+              />
             )
           ) : (
             <Link

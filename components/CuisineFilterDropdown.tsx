@@ -109,9 +109,20 @@ export function CuisineFilterDropdown({
         {filtered.length === 0 && <p className={styles.empty}>Keine Küche gefunden.</p>}
         {filtered.map((cuisine) => {
           const active = selected.includes(cuisine);
+          const unavailable = counts !== undefined && (counts[cuisine] ?? 0) === 0 && !active;
           return (
-            <label key={cuisine} className={styles.option} data-selected={active}>
-              <input type="checkbox" checked={active} onChange={() => onToggle(cuisine)} />
+            <label
+              key={cuisine}
+              className={styles.option}
+              data-selected={active}
+              data-unavailable={unavailable}
+            >
+              <input
+                type="checkbox"
+                checked={active}
+                disabled={unavailable}
+                onChange={() => onToggle(cuisine)}
+              />
               <span className={styles.optionName}>{cuisine}</span>
               {counts && <span className={styles.count}>{counts[cuisine] ?? 0}</span>}
             </label>

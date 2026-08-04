@@ -441,6 +441,7 @@ function LocationSearchInput({ defaultValue = "", size = "large", restaurants = 
             Suchen button (large only) this acts immediately, there's
             nothing to stage first. */}
         <button
+          className="gp-location-button"
           type="button"
           onClick={useMyLocation}
           disabled={locating || busy}
