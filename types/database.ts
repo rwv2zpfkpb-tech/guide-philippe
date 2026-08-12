@@ -120,14 +120,15 @@ export interface Database {
       }
 
       // restaurant_reviews: ein redaktioneller Aufenthalt/Review.
-      // restaurants.spoon_rating wird per DB-Trigger immer aus dem Review mit
-      // dem höchsten (visited_at, created_at) für dieses Restaurant synchronisiert.
+      // restaurants.spoon_rating wird per DB-Trigger aus dem chronologisch
+      // letzten Review mit rating_changed=true synchronisiert.
       restaurant_reviews: {
         Row: {
           id: string
           restaurant_id: string
           visited_at: string
           spoon_rating: SpoonRating
+          rating_changed: boolean
           fazit: string
           created_at: string
         }
@@ -136,6 +137,7 @@ export interface Database {
           restaurant_id: string
           visited_at?: string
           spoon_rating: SpoonRating
+          rating_changed?: boolean
           fazit?: string
           created_at?: string
         }
@@ -144,6 +146,7 @@ export interface Database {
           restaurant_id?: string
           visited_at?: string
           spoon_rating?: SpoonRating
+          rating_changed?: boolean
           fazit?: string
           created_at?: string
         }

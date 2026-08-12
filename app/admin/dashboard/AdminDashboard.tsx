@@ -109,6 +109,7 @@ type FormData = {
 };
 
 type ContactField = "phone" | "website" | "opening_hours";
+type VisitRatingMode = "keep" | "change";
 
 // ── Autosave-Entwurf (localStorage) ──────────────────────────────────────────
 // Schützt vor Datenverlust bei einem versehentlichen Reload/Schließen des Tabs
@@ -950,14 +951,22 @@ function EditPanel({
 function NewVisitPanel({
   restaurant,
   text,
+  ratingMode,
+  rating,
   onTextChange,
+  onRatingModeChange,
+  onRatingChange,
   onSave,
   onClose,
   saving,
 }: {
   restaurant: Restaurant | null;
   text: string;
+  ratingMode: VisitRatingMode;
+  rating: SpoonRating;
   onTextChange: (value: string) => void;
+  onRatingModeChange: (mode: VisitRatingMode) => void;
+  onRatingChange: (rating: SpoonRating) => void;
   onSave: () => void;
   onClose: () => void;
   saving: boolean;
@@ -995,7 +1004,7 @@ function NewVisitPanel({
             rows={10}
             autoFocus
             placeholder="Was ist dir bei diesem Besuch aufgefallen?"
-            className="w-full resize-none rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:border-[var(--c-gold)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40"
+            className="w-full resize-none rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-base sm:text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:border-[var(--c-gold)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40"
           />
           <p className="mt-1.5 text-xs text-[var(--c-n400)]">
             Der erste Satz wird in der Restaurantvorschau und auf der Detailseite fett hervorgehoben.
@@ -1007,6 +1016,69 @@ function NewVisitPanel({
               {preview.rest && <p className="mt-1 text-xs leading-relaxed text-[var(--c-n600)]">{preview.rest}</p>}
             </div>
           )}
+
+          <div className="mt-6 border-t border-[var(--c-n100)] pt-5">
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-[var(--c-n500)]">
+              Restaurantbewertung
+            </label>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className={`cursor-pointer rounded-lg border px-3 py-3 ${ratingMode === "keep" ? "border-[var(--c-gold)] bg-[var(--c-gold-light)]" : "border-[var(--c-n200)] bg-[var(--c-surface)]"}`}>
+                <input
+                  type="radio"
+                  name="visit_rating_mode"
+                  checked={ratingMode === "keep"}
+                  onChange={() => onRatingModeChange("keep")}
+                  className="sr-only"
+                />
+                <span className="block text-sm font-medium text-[var(--c-ink)]">Bewertung beibehalten</span>
+                <span className="mt-1 block text-xs text-[var(--c-n500)]">
+                  Aktuell: {SPOON_RATINGS[restaurant?.spoon_rating ?? rating].emoji} {SPOON_RATINGS[restaurant?.spoon_rating ?? rating].labelShort}
+                </span>
+              </label>
+              <label className={`cursor-pointer rounded-lg border px-3 py-3 ${ratingMode === "change" ? "border-[var(--c-gold)] bg-[var(--c-gold-light)]" : "border-[var(--c-n200)] bg-[var(--c-surface)]"}`}>
+                <input
+                  type="radio"
+                  name="visit_rating_mode"
+                  checked={ratingMode === "change"}
+                  onChange={() => onRatingModeChange("change")}
+                  className="sr-only"
+                />
+                <span className="block text-sm font-medium text-[var(--c-ink)]">Bewertung anpassen</span>
+                <span className="mt-1 block text-xs text-[var(--c-n500)]">Neue Wertung vergeben</span>
+              </label>
+            </div>
+
+            {ratingMode === "change" && (
+              <div className="mt-3 space-y-2" aria-label="Neue Restaurantbewertung">
+                {SPOON_OPTIONS.map(({ value, emoji, label }) => {
+                  const colors = SPOON_RATING_COLORS[value];
+                  const selected = rating === value;
+                  return (
+                    <label
+                      key={value}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5"
+                      style={{
+                        borderColor: colors.border,
+                        background: colors.bg,
+                        boxShadow: selected ? `inset 0 0 0 1px ${colors.border}` : "none",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="new_visit_spoon_rating"
+                        value={value}
+                        checked={selected}
+                        onChange={() => onRatingChange(value)}
+                        className="sr-only"
+                      />
+                      <span className="text-lg">{emoji}</span>
+                      <span className="text-sm font-medium" style={{ color: colors.text }}>{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
         <div className="border-t border-[var(--c-n100)] px-6 py-4">
           <div className="flex gap-3">
@@ -1731,6 +1803,8 @@ export function AdminDashboard({
   const [duplicateNotice, setDuplicateNotice] = useState<Restaurant | null>(null);
   const [visitRestaurant, setVisitRestaurant] = useState<Restaurant | null>(null);
   const [visitText, setVisitText] = useState("");
+  const [visitRatingMode, setVisitRatingMode] = useState<VisitRatingMode>("keep");
+  const [visitRating, setVisitRating] = useState<SpoonRating>(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -2006,11 +2080,14 @@ export function AdminDashboard({
     setPanelOpen(false);
     setVisitRestaurant(restaurant);
     setVisitText("");
+    setVisitRatingMode("keep");
+    setVisitRating(restaurant.spoon_rating);
   }
 
   function closeNewVisit() {
     setVisitRestaurant(null);
     setVisitText("");
+    setVisitRatingMode("keep");
   }
 
   async function openEdit(r: Restaurant) {
@@ -2155,6 +2232,7 @@ export function AdminDashboard({
       // EditPanel) — die DB-Spalte ist aber NOT NULL, daher hier derselbe
       // Platzhalter-Fallback wie bei `confirmCsvImport`.
       spoon_rating: form.review.spoon_rating ?? 1,
+      rating_changed: true,
       fazit: form.review.fazit,
       categories: form.review.categories,
     };
@@ -2189,7 +2267,9 @@ export function AdminDashboard({
                 ? {
                     ...updated,
                     spoon_rating:
-                      pastReviews.length > 0 ? r.spoon_rating : reviewPayload.spoon_rating,
+                      pastReviews.some((review) => review.rating_changed)
+                        ? r.spoon_rating
+                        : reviewPayload.spoon_rating,
                   }
                 : r
             )
@@ -2210,15 +2290,23 @@ export function AdminDashboard({
     if (!visitRestaurant || !visitText.trim()) return;
     const restaurant = visitRestaurant;
     const text = visitText.trim();
+    const ratingChanged = visitRatingMode === "change";
+    const rating = ratingChanged ? visitRating : restaurant.spoon_rating;
     startTransition(async () => {
       try {
         await createReview(restaurant.id, {
           visited_at: todayISO(),
-          spoon_rating: restaurant.spoon_rating,
+          spoon_rating: rating,
+          rating_changed: ratingChanged,
           fazit: text,
           categories: {},
         });
         setFazitById((prev) => ({ ...prev, [restaurant.id]: text }));
+        if (ratingChanged) {
+          setRestaurants((prev) =>
+            prev.map((item) => item.id === restaurant.id ? { ...item, spoon_rating: rating } : item)
+          );
+        }
         closeNewVisit();
         showToast("Neuer Besuch angelegt");
       } catch (err) {
@@ -3000,7 +3088,11 @@ export function AdminDashboard({
         <NewVisitPanel
           restaurant={visitRestaurant}
           text={visitText}
+          ratingMode={visitRatingMode}
+          rating={visitRating}
           onTextChange={setVisitText}
+          onRatingModeChange={setVisitRatingMode}
+          onRatingChange={setVisitRating}
           onSave={handleSaveVisit}
           onClose={closeNewVisit}
           saving={isPending}

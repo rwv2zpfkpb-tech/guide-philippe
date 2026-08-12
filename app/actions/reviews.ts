@@ -17,6 +17,7 @@ export type ReviewCategoryPayload = {
 export type ReviewPayload = {
   visited_at: string; // yyyy-mm-dd
   spoon_rating: SpoonRating;
+  rating_changed: boolean;
   fazit: string;
   categories: Partial<Record<ReviewCategory, ReviewCategoryPayload>>;
 };
@@ -51,6 +52,7 @@ export async function createReview(
       restaurant_id: restaurantId,
       visited_at: payload.visited_at,
       spoon_rating: payload.spoon_rating,
+      rating_changed: payload.rating_changed,
       fazit: payload.fazit,
     })
     .select()
@@ -84,6 +86,7 @@ export async function updateReview(
     .update({
       visited_at: payload.visited_at,
       spoon_rating: payload.spoon_rating,
+      rating_changed: payload.rating_changed,
       fazit: payload.fazit,
     })
     .eq("id", reviewId)

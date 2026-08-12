@@ -136,6 +136,12 @@ function VisitHeading({
 }) {
   const spoon = SPOON_RATINGS[review.spoon_rating];
   const colors = SPOON_RATING_COLORS[review.spoon_rating];
+  const ratingLabel =
+    number === 1
+      ? "Erste Bewertung"
+      : review.rating_changed
+        ? "Neu bewertet"
+        : "Bewertung beibehalten";
   return (
     <div
       style={{
@@ -161,25 +167,36 @@ function VisitHeading({
           {new Date(review.visited_at).toLocaleDateString("de-DE")}
         </p>
       </div>
-      <span
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 5,
-          fontSize: "0.6875rem",
-          fontWeight: 600,
-          color: colors.text,
-          background: colors.bg,
-          border: `1px solid ${colors.border}`,
-          borderRadius: 9999,
-          padding: "2px 7px",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-        }}
-      >
-        <span style={{ fontSize: "1rem", lineHeight: 1 }}>{spoon.emoji}</span>
-        {spoon.labelShort}
-      </span>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5 }}>
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            fontSize: "0.6875rem",
+            fontWeight: 600,
+            color: colors.text,
+            background: colors.bg,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 9999,
+            padding: "2px 7px",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+          }}
+        >
+          <span style={{ fontSize: "1rem", lineHeight: 1 }}>{spoon.emoji}</span>
+          {spoon.labelShort}
+        </span>
+        <span
+          style={{
+            fontSize: "0.6875rem",
+            fontWeight: 500,
+            color: review.rating_changed || number === 1 ? "var(--c-burg)" : "var(--c-n500)",
+          }}
+        >
+          {ratingLabel}
+        </span>
+      </div>
     </div>
   );
 }

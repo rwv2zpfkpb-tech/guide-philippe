@@ -243,6 +243,7 @@ export async function confirmCsvImport(
       restaurant_id: restaurant.id,
       visited_at: today,
       spoon_rating: spoonRating,
+      rating_changed: true,
       fazit: s.note ?? "",
     });
     if (reviewError) throw new Error(reviewError.message);
