@@ -40,6 +40,7 @@ import {
   REVIEW_CATEGORY_LABELS,
 } from "@/lib/ratings";
 import { RatingDots } from "@/components/RatingDots";
+import { splitReviewText } from "@/lib/reviewText";
 import type {
   Restaurant,
   SpoonRating,
@@ -87,7 +88,6 @@ type ReviewFormData = {
   // Rating, s. `restaurant_reviews`-Invariante).
   spoon_rating: SpoonRating | null;
   fazit: string;
-  asNewVisit: boolean;
   categories: Record<ReviewCategory, CategoryFormData>;
 };
 
@@ -175,13 +175,10 @@ function getMissingRequiredFields(form: FormData): Set<RequiredField> {
 
 // ── Fazit-Headline-Vorschau ───────────────────────────────────────────────────
 // Muss deckungsgleich mit `ReviewContent` auf der Restaurant-Detailseite
-// (app/restaurant/[id]/page.tsx) bleiben: erster Satz (bis zum ersten Punkt)
+// (app/restaurant/[id]/page.tsx) bleiben: erster Satz (bis . ! oder ?)
 // wird dort groß als Überschrift gerendert, der Rest als normaler Fließtext.
 function splitFazit(fazit: string): { headline: string; rest: string } {
-  const trimmed = fazit.trim();
-  const firstStop = trimmed.indexOf(".");
-  if (firstStop === -1) return { headline: trimmed, rest: "" };
-  return { headline: trimmed.slice(0, firstStop + 1), rest: trimmed.slice(firstStop + 1).trim() };
+  return splitReviewText(fazit);
 }
 
 function todayISO(): string {
@@ -212,14 +209,13 @@ const emptyForm = (): FormData => ({
     visited_at: todayISO(),
     spoon_rating: null,
     fazit: "",
-    asNewVisit: false,
     categories: emptyCategories(),
   },
 });
 
-function formFromRestaurant(r: Restaurant, latest: ReviewWithCategories | null): FormData {
+function formFromRestaurant(r: Restaurant, firstReview: ReviewWithCategories | null): FormData {
   const categories = emptyCategories();
-  for (const c of latest?.categories ?? []) {
+  for (const c of firstReview?.categories ?? []) {
     categories[c.category] = { heading: c.heading ?? "", body: c.body ?? "", rating: c.rating };
   }
 
@@ -238,10 +234,9 @@ function formFromRestaurant(r: Restaurant, latest: ReviewWithCategories | null):
     price_level: r.price_level,
     status: r.status,
     review: {
-      visited_at: latest?.visited_at ?? todayISO(),
-      spoon_rating: latest?.spoon_rating ?? r.spoon_rating,
-      fazit: latest?.fazit ?? "",
-      asNewVisit: false,
+      visited_at: firstReview?.visited_at ?? todayISO(),
+      spoon_rating: firstReview?.spoon_rating ?? r.spoon_rating,
+      fazit: firstReview?.fazit ?? "",
       categories,
     },
   };
@@ -743,28 +738,11 @@ function EditPanel({
             </label>
           </div>
 
-          {/* ── Aktuelle Bewertung (aktuellster Aufenthalt) ── */}
+          {/* ── Erster Besuch / Bewertung ── */}
           <div>
             <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
-              Aktuelle Bewertung
+              {isNew ? "Bewertung" : "1. Besuch"}
             </label>
-
-            {!isNew && (
-              <label className="flex items-center gap-2 mb-3 text-xs text-[var(--c-n600)]">
-                <input
-                  type="checkbox"
-                  checked={form.review.asNewVisit}
-                  onChange={(e) =>
-                    onReviewChange({
-                      asNewVisit: e.target.checked,
-                      visited_at: e.target.checked ? todayISO() : form.review.visited_at,
-                    })
-                  }
-                  className="rounded border-[var(--c-n300)]"
-                />
-                Als neuen Aufenthalt speichern (bisherige Bewertung wird archiviert)
-              </label>
-            )}
 
             <div className="mb-3">
               <label className="block text-xs text-[var(--c-n500)] mb-1">Datum</label>
@@ -836,13 +814,13 @@ function EditPanel({
               value={form.review.fazit}
               onChange={(e) => onReviewChange({ fazit: e.target.value })}
               rows={5}
-              placeholder="Fazit dieses Aufenthalts…"
+              placeholder="Fazit des ersten Besuchs…"
               className={`w-full rounded-lg border ${
                 missing.has("fazit") ? "border-[var(--c-burg)]" : "border-[var(--c-n200)]"
               } bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40 focus:border-[var(--c-gold)] resize-none`}
             />
             <p className="mt-1.5 text-xs text-[var(--c-n400)]">
-              Der erste Satz (bis zum ersten Punkt) erscheint auf der Restaurant-Seite groß als Überschrift, der Rest als normaler Fließtext.
+              Der erste Satz erscheint auf der Restaurant-Seite groß als Überschrift, der Rest als normaler Fließtext.
             </p>
             {form.review.fazit.trim() && (
               <div className="mt-2 rounded-lg border border-[var(--c-n100)] bg-[var(--c-n50)] px-3 py-2.5">
@@ -904,22 +882,23 @@ function EditPanel({
             </div>
           </div>
 
-          {/* ── Bisherige Aufenthalte (read-only) ── */}
+          {/* ── Weitere Besuche (read-only; eigener Hinzufügen-Ablauf) ── */}
           {!isNew && pastReviews.length > 0 && (
             <>
               <hr className="border-[var(--c-n100)]" />
               <div>
                 <label className="block text-xs font-medium text-[var(--c-n500)] uppercase tracking-wider mb-1.5">
-                  Bisherige Aufenthalte
+                  Weitere Besuche
                 </label>
                 <ul className="space-y-2">
-                  {pastReviews.map((rev) => (
+                  {pastReviews.map((rev, index) => (
                     <li
                       key={rev.id}
                       className="rounded-lg border border-[var(--c-n100)] px-3 py-2 text-xs text-[var(--c-n500)]"
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium text-[var(--c-n700)]">
+                          {pastReviews.length - index + 1}. Besuch ·{" "}
                           {new Date(rev.visited_at).toLocaleDateString("de-DE")}
                         </span>
                         <SpoonBadge rating={rev.spoon_rating} />
@@ -966,14 +945,96 @@ function EditPanel({
   );
 }
 
-// ── Delete modal ──────────────────────────────────────────────────────────────
+// ── Neuer Besuch: bewusst schlanker Text-Editor ohne Detailblöcke ────────────
+
+function NewVisitPanel({
+  restaurant,
+  text,
+  onTextChange,
+  onSave,
+  onClose,
+  saving,
+}: {
+  restaurant: Restaurant | null;
+  text: string;
+  onTextChange: (value: string) => void;
+  onSave: () => void;
+  onClose: () => void;
+  saving: boolean;
+}) {
+  const preview = splitFazit(text);
+  const open = restaurant !== null;
+
+  return (
+    <>
+      {open && <div className="fixed inset-0 z-30 bg-black/20" onClick={onClose} />}
+      <aside
+        className={`fixed inset-y-0 right-0 z-40 flex w-full max-w-lg flex-col bg-[var(--c-bg)] shadow-2xl transition-transform duration-300 ease-in-out ${open ? "translate-x-0" : "translate-x-full"}`}
+        aria-hidden={!open}
+      >
+        <div className="flex items-center justify-between border-b border-[var(--c-n100)] px-6 py-4">
+          <div>
+            <h2 className="font-serif text-lg font-semibold text-[var(--c-ink)]">
+              Neuen Besuch anlegen
+            </h2>
+            {restaurant && <p className="mt-0.5 text-xs text-[var(--c-n500)]">{restaurant.name}</p>}
+          </div>
+          <button type="button" onClick={onClose} aria-label="Schließen" className="text-[var(--c-n400)] hover:text-[var(--c-n700)]">
+            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22z" />
+            </svg>
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[var(--c-n500)]">
+            Besuchsnotiz<span className="ml-1 text-[var(--c-burg)]">*</span>
+          </label>
+          <textarea
+            value={text}
+            onChange={(event) => onTextChange(event.target.value)}
+            rows={10}
+            autoFocus
+            placeholder="Was ist dir bei diesem Besuch aufgefallen?"
+            className="w-full resize-none rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] px-3 py-2.5 text-sm text-[var(--c-ink)] placeholder:text-[var(--c-n400)] focus:border-[var(--c-gold)] focus:outline-none focus:ring-2 focus:ring-[var(--c-gold)]/40"
+          />
+          <p className="mt-1.5 text-xs text-[var(--c-n400)]">
+            Der erste Satz wird in der Restaurantvorschau und auf der Detailseite fett hervorgehoben.
+          </p>
+          {text.trim() && (
+            <div className="mt-3 rounded-lg border border-[var(--c-n100)] bg-[var(--c-n50)] px-3 py-2.5">
+              <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-[var(--c-n400)]">Vorschau</p>
+              <p className="font-serif text-base font-semibold leading-tight text-[var(--c-ink)]">{preview.headline}</p>
+              {preview.rest && <p className="mt-1 text-xs leading-relaxed text-[var(--c-n600)]">{preview.rest}</p>}
+            </div>
+          )}
+        </div>
+        <div className="border-t border-[var(--c-n100)] px-6 py-4">
+          <div className="flex gap-3">
+            <button type="button" onClick={onClose} className="flex-1 rounded-lg border border-[var(--c-n200)] bg-[var(--c-surface)] py-2.5 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)]">
+              Abbrechen
+            </button>
+            <button type="button" onClick={onSave} disabled={saving || !text.trim()} className="flex-1 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
+              {saving ? "Speichert…" : "Besuch speichern"}
+            </button>
+          </div>
+        </div>
+      </aside>
+    </>
+  );
+}
+
+// ── Duplicate / delete modals ────────────────────────────────────────────────
 
 function DuplicateModal({
   restaurant,
   onClose,
+  onEdit,
+  onNewVisit,
 }: {
   restaurant: Restaurant | null;
   onClose: () => void;
+  onEdit: (restaurant: Restaurant) => void;
+  onNewVisit: (restaurant: Restaurant) => void;
 }) {
   if (!restaurant) return null;
 
@@ -999,17 +1060,19 @@ function DuplicateModal({
         </h3>
         <p id="duplicate-description" className="mt-2 text-sm leading-6 text-[var(--c-n600)]">
           <span className="font-semibold text-[var(--c-ink)]">„{restaurant.name}“</span>{" "}
-          ist bereits vorhanden. Es wurde kein neuer Eintrag erstellt. Stattdessen ist jetzt
-          der bestehende Eintrag zum Bearbeiten geöffnet.
+          ist bereits vorhanden. Möchtest du stattdessen einen neuen Besuch anlegen?
         </p>
-        <button
-          type="button"
-          onClick={onClose}
-          autoFocus
-          className="mt-6 w-full rounded-lg bg-[var(--c-burg)] px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
-        >
-          Zum bestehenden Eintrag
-        </button>
+        <div className="mt-6 flex flex-col gap-2">
+          <button type="button" onClick={() => onNewVisit(restaurant)} autoFocus className="w-full rounded-lg bg-[var(--c-burg)] px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90">
+            Neuen Besuch anlegen
+          </button>
+          <button type="button" onClick={() => onEdit(restaurant)} className="w-full rounded-lg border border-[var(--c-n200)] px-4 py-2.5 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)]">
+            Bestehenden Eintrag bearbeiten
+          </button>
+          <button type="button" onClick={onClose} className="py-2 text-sm text-[var(--c-n500)] hover:text-[var(--c-n700)]">
+            Abbrechen
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1666,6 +1729,8 @@ export function AdminDashboard({
   const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
   const [deleteTargets, setDeleteTargets] = useState<Restaurant[]>([]);
   const [duplicateNotice, setDuplicateNotice] = useState<Restaurant | null>(null);
+  const [visitRestaurant, setVisitRestaurant] = useState<Restaurant | null>(null);
+  const [visitText, setVisitText] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -1936,16 +2001,28 @@ export function AdminDashboard({
     setPanelOpen(true);
   }
 
+  function openNewVisit(restaurant: Restaurant) {
+    setDuplicateNotice(null);
+    setPanelOpen(false);
+    setVisitRestaurant(restaurant);
+    setVisitText("");
+  }
+
+  function closeNewVisit() {
+    setVisitRestaurant(null);
+    setVisitText("");
+  }
+
   async function openEdit(r: Restaurant) {
     setLoadingEditId(r.id);
     try {
       const full = await getRestaurantById(r.id);
-      const [latest, ...past] = full.reviews;
+      const first = full.reviews.at(-1) ?? null;
       setIsNew(false);
       setEditingId(r.id);
-      setCurrentReviewId(latest?.id ?? null);
-      setPastReviews(past);
-      setForm(formFromRestaurant(r, latest ?? null));
+      setCurrentReviewId(first?.id ?? null);
+      setPastReviews(full.reviews.slice(0, -1));
+      setForm(formFromRestaurant(r, first));
       // Restaurants without a google_place_id were (or need to be) entered
       // manually — default straight to the manual fields in that case.
       setManualEntry(!r.google_place_id);
@@ -1984,7 +2061,6 @@ export function AdminDashboard({
         } catch {
           // ignore
         }
-        await openEdit(existing);
         setDuplicateNotice(existing);
         return;
       }
@@ -2093,7 +2169,6 @@ export function AdminDashboard({
             } catch {
               // ignore
             }
-            await openEdit(result.restaurant);
             setDuplicateNotice(result.restaurant);
             return;
           }
@@ -2103,22 +2178,49 @@ export function AdminDashboard({
           showToast("Restaurant hinzugefügt");
         } else if (editingId) {
           const updated = await updateRestaurant(editingId, restaurantPayload);
-          if (form.review.asNewVisit) {
-            await createReview(editingId, reviewPayload);
-          } else if (currentReviewId) {
+          if (currentReviewId) {
             await updateReview(currentReviewId, editingId, reviewPayload);
           } else {
             await createReview(editingId, reviewPayload);
           }
           setRestaurants((prev) =>
             prev.map((r) =>
-              r.id === updated.id ? { ...updated, spoon_rating: reviewPayload.spoon_rating } : r
+              r.id === updated.id
+                ? {
+                    ...updated,
+                    spoon_rating:
+                      pastReviews.length > 0 ? r.spoon_rating : reviewPayload.spoon_rating,
+                  }
+                : r
             )
           );
-          setFazitById((prev) => ({ ...prev, [updated.id]: reviewPayload.fazit }));
+          if (pastReviews.length === 0) {
+            setFazitById((prev) => ({ ...prev, [updated.id]: reviewPayload.fazit }));
+          }
           showToast("Änderungen gespeichert");
         }
         closePanel();
+      } catch (err) {
+        showToast((err as Error).message);
+      }
+    });
+  }
+
+  function handleSaveVisit() {
+    if (!visitRestaurant || !visitText.trim()) return;
+    const restaurant = visitRestaurant;
+    const text = visitText.trim();
+    startTransition(async () => {
+      try {
+        await createReview(restaurant.id, {
+          visited_at: todayISO(),
+          spoon_rating: restaurant.spoon_rating,
+          fazit: text,
+          categories: {},
+        });
+        setFazitById((prev) => ({ ...prev, [restaurant.id]: text }));
+        closeNewVisit();
+        showToast("Neuer Besuch angelegt");
       } catch (err) {
         showToast((err as Error).message);
       }
@@ -2684,6 +2786,12 @@ export function AdminDashboard({
 
                 <div className="mt-3 flex items-center gap-2 border-t border-[var(--c-n50)] pt-3">
                   <button
+                    onClick={() => openNewVisit(r)}
+                    className="flex-1 rounded-lg bg-[var(--c-burg)] px-2.5 py-2 text-xs font-medium text-white hover:opacity-90 transition-opacity"
+                  >
+                    Neuer Besuch
+                  </button>
+                  <button
                     onClick={() => openEdit(r)}
                     disabled={loadingEditId === r.id}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-[var(--c-n200)] px-2.5 py-2 text-xs font-medium text-[var(--c-n600)] hover:bg-[var(--c-n100)] transition-colors disabled:opacity-50"
@@ -2786,6 +2894,12 @@ export function AdminDashboard({
                           <IconStar size={16} filled={r.featured} />
                         </button>
                         <button
+                          onClick={() => openNewVisit(r)}
+                          className="rounded bg-[var(--c-burg)] px-2.5 py-1.5 text-xs font-medium text-white hover:opacity-90 transition-opacity"
+                        >
+                          Neuer Besuch
+                        </button>
+                        <button
                           onClick={() => openEdit(r)}
                           disabled={loadingEditId === r.id}
                           className="inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium text-[var(--c-n600)] hover:bg-[var(--c-n100)] transition-colors disabled:opacity-50"
@@ -2883,9 +2997,23 @@ export function AdminDashboard({
           onDiscardDraft={discardDraft}
         />
 
+        <NewVisitPanel
+          restaurant={visitRestaurant}
+          text={visitText}
+          onTextChange={setVisitText}
+          onSave={handleSaveVisit}
+          onClose={closeNewVisit}
+          saving={isPending}
+        />
+
         <DuplicateModal
           restaurant={duplicateNotice}
           onClose={() => setDuplicateNotice(null)}
+          onNewVisit={openNewVisit}
+          onEdit={(restaurant) => {
+            setDuplicateNotice(null);
+            void openEdit(restaurant);
+          }}
         />
 
         {/* ── Delete modal ── */}

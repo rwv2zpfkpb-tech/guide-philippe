@@ -1,12 +1,12 @@
 import Link from "next/link";
-import type { Restaurant } from "@/types/database";
+import type { RestaurantWithVisitPreview } from "@/app/actions/restaurants";
 import { SPOON_RATINGS, SPOON_RATING_COLORS } from "@/lib/ratings";
 import { PriceLevelDots } from "@/components/PriceLevelDots";
 
 // No image — restaurant photos are only shown on the detail page (live from
 // Google Places). Cards here are text-first; the top accent bar + label
 // color-code the spoon rating tier (SPOON_RATING_COLORS) instead.
-export default function RestaurantCard({ restaurant }: { restaurant: Restaurant }) {
+export default function RestaurantCard({ restaurant }: { restaurant: RestaurantWithVisitPreview }) {
   const spoon = SPOON_RATINGS[restaurant.spoon_rating];
   const colors = SPOON_RATING_COLORS[restaurant.spoon_rating];
 
@@ -87,6 +87,21 @@ export default function RestaurantCard({ restaurant }: { restaurant: Restaurant 
           >
             {restaurant.cuisine}
           </div>
+        )}
+
+        {restaurant.visit_preview && (
+          <p
+            style={{
+              fontFamily: "var(--font-cormorant)",
+              fontSize: "1rem",
+              fontWeight: 600,
+              lineHeight: 1.35,
+              color: "var(--c-ink)",
+              margin: "0 0 14px",
+            }}
+          >
+            {restaurant.visit_preview}
+          </p>
         )}
 
         <div

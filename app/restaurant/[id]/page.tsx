@@ -21,6 +21,7 @@ import { IconPin, IconEmptyState, IconPhone, IconGlobe } from "@/components/icon
 import type { ReviewWithCategories, RestaurantReviewCategory } from "@/types/database";
 import CommentForm from "./CommentForm";
 import { RestaurantPhoto } from "./RestaurantPhoto";
+import { splitReviewText } from "@/lib/reviewText";
 
 // ── Fazit + Kategorie-Blöcke eines einzelnen Aufenthalts ───────────────────────
 // Wiederverwendet für den aktuellen Aufenthalt und jeden Eintrag in "Vorherige
@@ -34,9 +35,7 @@ function ReviewContent({ review }: { review: ReviewWithCategories }) {
   // remainder. Previously the full fazit was repeated verbatim below the
   // headline, so the first sentence appeared twice on the page.
   const fazit = review.fazit?.trim() ?? "";
-  const firstStop = fazit.indexOf(".");
-  const headline = firstStop === -1 ? fazit : fazit.slice(0, firstStop + 1);
-  const rest = firstStop === -1 ? "" : fazit.slice(firstStop + 1).trim();
+  const { headline, rest } = splitReviewText(fazit);
 
   return (
     <div>
@@ -46,7 +45,7 @@ function ReviewContent({ review }: { review: ReviewWithCategories }) {
             style={{
               fontFamily: "var(--font-cormorant)",
               fontSize: "clamp(1.5rem, 2.5vw, 2rem)",
-              fontWeight: 500,
+              fontWeight: 600,
               lineHeight: 1.15,
               letterSpacing: "-0.01em",
               color: "var(--c-ink)",
@@ -128,6 +127,63 @@ function ReviewContent({ review }: { review: ReviewWithCategories }) {
   );
 }
 
+function VisitHeading({
+  number,
+  review,
+}: {
+  number: number;
+  review: ReviewWithCategories;
+}) {
+  const spoon = SPOON_RATINGS[review.spoon_rating];
+  const colors = SPOON_RATING_COLORS[review.spoon_rating];
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        marginBottom: 20,
+      }}
+    >
+      <div>
+        <h2
+          style={{
+            fontFamily: "var(--font-cormorant)",
+            fontSize: "1.35rem",
+            fontWeight: 600,
+            color: "var(--c-ink)",
+          }}
+        >
+          {number}. Besuch
+        </h2>
+        <p style={{ marginTop: 2, fontSize: "0.75rem", color: "var(--c-n400)" }}>
+          {new Date(review.visited_at).toLocaleDateString("de-DE")}
+        </p>
+      </div>
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 5,
+          fontSize: "0.6875rem",
+          fontWeight: 600,
+          color: colors.text,
+          background: colors.bg,
+          border: `1px solid ${colors.border}`,
+          borderRadius: 9999,
+          padding: "2px 7px",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+        }}
+      >
+        <span style={{ fontSize: "1rem", lineHeight: 1 }}>{spoon.emoji}</span>
+        {spoon.labelShort}
+      </span>
+    </div>
+  );
+}
+
 export default async function RestaurantPage({
   params,
 }: {
@@ -181,7 +237,10 @@ export default async function RestaurantPage({
     lng: restaurant.lng,
   });
 
-  const [currentReview, ...pastReviews] = restaurant.reviews;
+  const visitCount = restaurant.reviews.length;
+  const currentReview = restaurant.reviews[0];
+  const firstReview = visitCount > 1 ? restaurant.reviews[visitCount - 1] : currentReview;
+  const middleReviews = visitCount > 2 ? restaurant.reviews.slice(1, -1) : [];
   const averageRating = computeAverageRating(restaurant.comments.map((c) => c.secondary_rating));
 
   return (
@@ -641,7 +700,9 @@ export default async function RestaurantPage({
           </div>
         )}
 
-        {/* Editorial review — aktuellster Aufenthalt */}
+        {/* Redaktionelle Besuche: aktuellster oben, erster unten. Ab dem
+            dritten Besuch bleiben die dazwischenliegenden Einträge gemeinsam
+            einklappbar, damit die Seite auch bei vielen Besuchen ruhig bleibt. */}
         {currentReview && (currentReview.fazit || currentReview.categories.length > 0) && (
           <article style={{ padding: "64px 0 56px" }}>
             <div
@@ -666,33 +727,17 @@ export default async function RestaurantPage({
               />
             </div>
 
-            <ReviewContent review={currentReview} />
-          </article>
-        )}
+            {visitCount === 1 ? (
+              <ReviewContent review={currentReview} />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
+                <section aria-label={`${visitCount}. Besuch`}>
+                  <VisitHeading number={visitCount} review={currentReview} />
+                  <ReviewContent review={currentReview} />
+                </section>
 
-        {/* Vorherige Aufenthalte — ausklappbar, vor den Nutzerbewertungen */}
-        {pastReviews.length > 0 && (
-          <section style={{ padding: "0 0 56px" }} aria-label="Vorherige Aufenthalte">
-            <div
-              style={{
-                fontSize: 10,
-                fontWeight: 500,
-                letterSpacing: "0.22em",
-                textTransform: "uppercase",
-                color: "var(--c-n400)",
-                marginBottom: 18,
-              }}
-            >
-              Vorherige Aufenthalte
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {pastReviews.map((rev) => {
-                const revSpoon = SPOON_RATINGS[rev.spoon_rating];
-                const revColors = SPOON_RATING_COLORS[rev.spoon_rating];
-                return (
+                {middleReviews.length > 0 && (
                   <details
-                    key={rev.id}
                     style={{
                       border: "1px solid var(--c-n100)",
                       borderRadius: 14,
@@ -703,44 +748,41 @@ export default async function RestaurantPage({
                     <summary
                       style={{
                         cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
                         fontSize: "0.9375rem",
-                        fontWeight: 500,
+                        fontWeight: 600,
                         color: "var(--c-ink)",
                       }}
                     >
-                      Vorheriger Aufenthalt am{" "}
-                      {new Date(rev.visited_at).toLocaleDateString("de-DE")}
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 5,
-                          fontSize: "0.6875rem",
-                          fontWeight: 600,
-                          color: revColors.text,
-                          background: revColors.bg,
-                          border: `1px solid ${revColors.border}`,
-                          borderRadius: 9999,
-                          padding: "2px 7px",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.08em",
-                        }}
-                      >
-                        <span style={{ fontSize: "1rem", lineHeight: 1 }}>{revSpoon.emoji}</span>
-                        {revSpoon.labelShort}
-                      </span>
+                      {middleReviews.length === 1
+                        ? "1 weiterer Besuch"
+                        : `${middleReviews.length} weitere Besuche`}
                     </summary>
-                    <div style={{ marginTop: 22 }}>
-                      <ReviewContent review={rev} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 32, marginTop: 28 }}>
+                      {middleReviews.map((review, index) => {
+                        const number = visitCount - index - 1;
+                        return (
+                          <section key={review.id} aria-label={`${number}. Besuch`}>
+                            <VisitHeading number={number} review={review} />
+                            <ReviewContent review={review} />
+                          </section>
+                        );
+                      })}
                     </div>
                   </details>
-                );
-              })}
-            </div>
-          </section>
+                )}
+
+                {firstReview && (
+                  <section
+                    aria-label="1. Besuch"
+                    style={{ borderTop: "1px solid var(--c-n100)", paddingTop: 36 }}
+                  >
+                    <VisitHeading number={1} review={firstReview} />
+                    <ReviewContent review={firstReview} />
+                  </section>
+                )}
+              </div>
+            )}
+          </article>
         )}
 
         {/* Comments ornament */}

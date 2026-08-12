@@ -8,6 +8,7 @@ import { createReview, type ReviewPayload } from "@/app/actions/reviews";
 import { getPlaceDetails } from "@/app/actions/places";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { isGoogleDataStale } from "@/lib/googleSync";
+import { firstSentence } from "@/lib/reviewText";
 import type {
   Restaurant,
   RestaurantWithComments,
@@ -24,6 +25,26 @@ export type RestaurantFilters = {
   spoon_rating?: SpoonRating[];
   name_search?: string;
 };
+
+export type RestaurantWithVisitPreview = Restaurant & {
+  /** First sentence of the newest review, but only once a repeat visit exists. */
+  visit_preview: string | null;
+};
+
+type PreviewReview = { fazit: string; visited_at: string; created_at: string };
+
+function withVisitPreview<T extends Restaurant & { reviews?: PreviewReview[] | null }>(
+  row: T
+): RestaurantWithVisitPreview {
+  const reviews = [...(row.reviews ?? [])].sort(
+    (a, b) => b.visited_at.localeCompare(a.visited_at) || b.created_at.localeCompare(a.created_at)
+  );
+  const latestText = reviews.length > 1 ? reviews[0]?.fazit.trim() : "";
+  const visit_preview = latestText ? firstSentence(latestText) : null;
+  const { reviews: _reviews, ...restaurant } = row;
+  void _reviews;
+  return { ...restaurant, visit_preview } as RestaurantWithVisitPreview;
+}
 
 // image_url removed — served live from Google Places API. address is
 // persisted (Places-Autocomplete selection or manual entry) so restaurants
@@ -77,7 +98,7 @@ async function shouldIncludeDrafts(): Promise<boolean> {
 
 export async function getRestaurants(
   filters?: RestaurantFilters
-): Promise<Restaurant[]> {
+): Promise<RestaurantWithVisitPreview[]> {
   const supabase = await createClient();
   const includeDrafts = await shouldIncludeDrafts();
 
@@ -88,7 +109,7 @@ export async function getRestaurants(
   // has explicitly opted into exactly that via the toggle above.
   let query = supabase
     .from("restaurants")
-    .select("*")
+    .select("*, reviews:restaurant_reviews(fazit, visited_at, created_at)")
     .order("created_at", { ascending: false });
   if (!includeDrafts) query = query.eq("status", "published");
 
@@ -101,7 +122,7 @@ export async function getRestaurants(
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return (data ?? []).map(withVisitPreview);
 }
 
 /** Lightweight data for the landing-page's in-guide autocomplete. */
@@ -125,40 +146,40 @@ export async function getRestaurantHints(): Promise<Array<Pick<Restaurant, "id" 
 // 30-day cutoff — a small/inactive guide would otherwise show an empty or
 // near-empty strip for months). Drafts are excluded explicitly (not just
 // via RLS) — see getRestaurants() above for why.
-export async function getRecentRestaurants(limit = 6): Promise<Restaurant[]> {
+export async function getRecentRestaurants(limit = 6): Promise<RestaurantWithVisitPreview[]> {
   const supabase = await createClient();
   const includeDrafts = await shouldIncludeDrafts();
 
   let query = supabase
     .from("restaurants")
-    .select("*")
+    .select("*, reviews:restaurant_reviews(fazit, visited_at, created_at)")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (!includeDrafts) query = query.eq("status", "published");
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return (data ?? []).map(withVisitPreview);
 }
 
 // Handverlesene "Auswahl"-Reihe auf der Landing-Page — unabhängig von
 // "Neu hinzugefügt" (zeitbasiert), Admins schalten restaurants.featured
 // gezielt frei (s. setFeatured unten). Entwürfe werden explizit ausgefiltert
 // (nicht nur per RLS) — s. getRestaurants() oben.
-export async function getFeaturedRestaurants(): Promise<Restaurant[]> {
+export async function getFeaturedRestaurants(): Promise<RestaurantWithVisitPreview[]> {
   const supabase = await createClient();
   const includeDrafts = await shouldIncludeDrafts();
 
   let query = supabase
     .from("restaurants")
-    .select("*")
+    .select("*, reviews:restaurant_reviews(fazit, visited_at, created_at)")
     .eq("featured", true)
     .order("name", { ascending: true });
   if (!includeDrafts) query = query.eq("status", "published");
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return (data ?? []).map(withVisitPreview);
 }
 
 export async function getCuisines(): Promise<string[]> {

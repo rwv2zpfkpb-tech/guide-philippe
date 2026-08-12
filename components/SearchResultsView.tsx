@@ -14,6 +14,7 @@ import { SPOON_RATINGS, SPOON_RATING_COLORS, SPOON_RATING_ORDER } from "@/lib/ra
 import { haversineDistanceKm, formatDistanceKm } from "@/lib/geo";
 import { getOpeningStatus } from "@/lib/openingHours";
 import type { Restaurant } from "@/types/database";
+import type { RestaurantWithVisitPreview } from "@/app/actions/restaurants";
 import type { MapRestaurant } from "@/components/map/MapView";
 
 const LazyMapView = dynamic(
@@ -44,14 +45,14 @@ type LocationParams = {
 };
 
 type Props = {
-  restaurants:   Restaurant[];
+  restaurants:   RestaurantWithVisitPreview[];
   /** Same location's restaurants but WITHOUT the cuisine/price/spoon_rating
    *  filters applied (only the radius cutoff) — the facet base used to
    *  compute the cuisine dropdown's option list and the "(N)" counts next
    *  to every price/rating/cuisine filter option below. Kept separate from
    *  `restaurants` (the actually-displayed, fully-filtered list) so a
    *  filter never zeroes out its own sibling options. */
-  allRestaurants: Restaurant[];
+  allRestaurants: RestaurantWithVisitPreview[];
   center:        { lat: number; lng: number };
   locationParams: LocationParams;
   activeFilters: ActiveFilters;
@@ -83,7 +84,7 @@ function ResultCard({
   onToggle,
   center,
 }: {
-  restaurant: Restaurant;
+  restaurant: RestaurantWithVisitPreview;
   index: number;
   expanded: boolean;
   onToggle: () => void;
@@ -178,6 +179,23 @@ function ResultCard({
               textTransform: "uppercase", color: "var(--c-gold)",
             }}>
               {restaurant.cuisine}
+            </div>
+          )}
+          {restaurant.visit_preview && (
+            <div
+              style={{
+                marginTop: 5,
+                fontFamily: "var(--font-cormorant)",
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                lineHeight: 1.25,
+                color: "var(--c-ink)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {restaurant.visit_preview}
             </div>
           )}
           {distanceKm != null && (
