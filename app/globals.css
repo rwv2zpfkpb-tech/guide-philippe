@@ -665,7 +665,13 @@ gmp-placeautocomplete::part(input) {
   box-shadow: var(--s-md);
 }
 
-.comment-rating-row { flex-wrap: wrap; }
+.comment-rating-row { min-width: 0; }
+.comment-stars {
+  display: flex;
+  flex-wrap: nowrap;
+  width: max-content;
+  max-width: 100%;
+}
 .comment-star-button { flex: 0 0 44px; }
 
 @media (max-width: 560px) {

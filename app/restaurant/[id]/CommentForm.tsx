@@ -3,14 +3,13 @@
 import { useTransition, useRef, useState } from "react";
 import { addComment } from "@/app/actions/comments";
 
-const STAR_LABELS = [
-  "Nicht empfehlenswert",
-  "Schlecht",
-  "Unterdurchschnittlich",
-  "Gut",
-  "Sehr gut",
-  "Ausgezeichnet",
-];
+const STAR_LABELS: Record<number, string> = {
+  1: "Schlecht",
+  2: "Unterdurchschnittlich",
+  3: "Gut",
+  4: "Sehr gut",
+  5: "Ausgezeichnet",
+};
 
 const MAX_LENGTH = 150;
 
@@ -53,81 +52,50 @@ export default function CommentForm({ restaurantId }: CommentFormProps) {
         boxShadow: "var(--s-sm)",
       }}
     >
-      {/* Star rating (0–5) */}
+      {/* Star rating (1–5) */}
       <div
         className="comment-rating-row"
         role="group"
         aria-label="Bewertung auswählen"
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 3,
           marginBottom: 16,
         }}
       >
-        <button
-          type="button"
-          onClick={() => setRating(0)}
-          onMouseEnter={() => setHover(0)}
-          onMouseLeave={() => setHover(null)}
-          aria-pressed={rating === 0}
-          className="comment-star-button comment-zero-rating"
-          style={{
-            fontSize: "0.6875rem",
-            fontWeight: 600,
-            lineHeight: 1,
-            background: "none",
-            border: `1.5px solid ${active === 0 ? "var(--c-gold)" : "var(--c-n200)"}`,
-            color: active === 0 ? "var(--c-gold)" : "var(--c-n400)",
-            borderRadius: "50%",
-            width: 44,
-            height: 44,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 0,
-            cursor: "pointer",
-            marginRight: 5,
-            transition: "color 0.1s, border-color 0.1s, transform 0.1s",
-            transform: active === 0 ? "scale(1.05)" : "scale(1)",
-          }}
-          aria-label="0 Sterne – nicht empfehlenswert"
-        >
-          0
-        </button>
-
-        {[1, 2, 3, 4, 5].map((i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => setRating(i)}
-            onMouseEnter={() => setHover(i)}
-            onMouseLeave={() => setHover(null)}
-            aria-pressed={rating === i}
-            className="comment-star-button"
-            style={{
-              fontSize: "1.375rem",
-              lineHeight: 1,
-              background: "none",
-              border: "none",
-              color: active !== null && i <= active ? "var(--c-gold)" : "var(--c-n200)",
-              width: 44,
-              height: 44,
-              padding: 0,
-              cursor: "pointer",
-              transition: "color 0.1s, transform 0.1s",
-              transform: active !== null && i <= active ? "scale(1.05)" : "scale(1)",
-            }}
-            aria-label={i === 1 ? "1 Stern" : `${i} Sterne`}
-          >
-            ★
-          </button>
-        ))}
+        <div className="comment-stars">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setRating(i)}
+              onMouseEnter={() => setHover(i)}
+              onMouseLeave={() => setHover(null)}
+              aria-pressed={rating === i}
+              className="comment-star-button"
+              style={{
+                fontSize: "1.375rem",
+                lineHeight: 1,
+                background: "none",
+                border: "none",
+                color: active !== null && i <= active ? "var(--c-gold)" : "var(--c-n200)",
+                width: 44,
+                height: 44,
+                padding: 0,
+                cursor: "pointer",
+                transition: "color 0.1s, transform 0.1s",
+                transform: active !== null && i <= active ? "scale(1.05)" : "scale(1)",
+              }}
+              aria-label={i === 1 ? "1 Stern" : `${i} Sterne`}
+            >
+              ★
+            </button>
+          ))}
+        </div>
         <span
           style={{
             fontSize: "0.75rem",
             color: rating !== null ? "var(--c-gold)" : "var(--c-n400)",
-            marginLeft: 10,
+            display: "block",
+            marginTop: 4,
             letterSpacing: "0.04em",
             transition: "color 0.15s",
           }}

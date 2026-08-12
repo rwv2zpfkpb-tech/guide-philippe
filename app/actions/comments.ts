@@ -10,15 +10,15 @@ import type { Comment } from "@/types/database";
 export async function addComment(
   restaurantId: string,
   content: string,
-  secondaryRating: number // 0–5
+  secondaryRating: number // 1–5
 ): Promise<Comment> {
   const { user } = await requireApproved();
 
   const trimmed = content.trim();
   if (!trimmed) throw new Error("Comment content cannot be empty");
   if (trimmed.length > 150) throw new Error("Comment content must be 150 characters or fewer");
-  if (secondaryRating < 0 || secondaryRating > 5) {
-    throw new Error("Secondary rating must be between 0 and 5");
+  if (secondaryRating < 1 || secondaryRating > 5) {
+    throw new Error("Secondary rating must be between 1 and 5");
   }
 
   const supabase = await createClient();
@@ -53,8 +53,8 @@ export async function updateComment(
   const trimmed = content.trim();
   if (!trimmed) throw new Error("Comment content cannot be empty");
   if (trimmed.length > 150) throw new Error("Comment content must be 150 characters or fewer");
-  if (secondaryRating < 0 || secondaryRating > 5) {
-    throw new Error("Secondary rating must be between 0 and 5");
+  if (secondaryRating < 1 || secondaryRating > 5) {
+    throw new Error("Secondary rating must be between 1 and 5");
   }
 
   const supabase = await createClient();
