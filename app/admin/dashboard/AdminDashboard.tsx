@@ -13,7 +13,7 @@ import {
   syncGooglePlaceData,
 } from "@/app/actions/restaurants";
 import { getPlaceDetails } from "@/app/actions/places";
-import { createReview, updateReview, type ReviewPayload } from "@/app/actions/reviews";
+import { createReview, updateReview, deleteReview, type ReviewPayload } from "@/app/actions/reviews";
 import {
   previewCsvImport,
   confirmCsvImport,
@@ -364,6 +364,8 @@ function EditPanel({
   onFormChange,
   onReviewChange,
   onCategoryChange,
+  onEditVisit,
+  onDeleteVisit,
   onPlaceSelect,
   onSave,
   onClose,
@@ -387,6 +389,8 @@ function EditPanel({
   onFormChange: (patch: Partial<FormData>) => void;
   onReviewChange: (patch: Partial<ReviewFormData>) => void;
   onCategoryChange: (category: ReviewCategory, patch: Partial<CategoryFormData>) => void;
+  onEditVisit: (review: ReviewWithCategories) => void;
+  onDeleteVisit: (review: ReviewWithCategories) => void;
   onPlaceSelect: (place: PlaceSelection) => void;
   onSave: () => void;
   onClose: () => void;
@@ -883,7 +887,7 @@ function EditPanel({
             </div>
           </div>
 
-          {/* ── Weitere Besuche (read-only; eigener Hinzufügen-Ablauf) ── */}
+          {/* ── Weitere Besuche ── */}
           {!isNew && pastReviews.length > 0 && (
             <>
               <hr className="border-[var(--c-n100)]" />
@@ -897,12 +901,30 @@ function EditPanel({
                       key={rev.id}
                       className="rounded-lg border border-[var(--c-n100)] px-3 py-2 text-xs text-[var(--c-n500)]"
                     >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-[var(--c-n700)]">
-                          {pastReviews.length - index + 1}. Besuch ·{" "}
-                          {new Date(rev.visited_at).toLocaleDateString("de-DE")}
-                        </span>
-                        <SpoonBadge rating={rev.spoon_rating} />
+                      <div className="flex items-start justify-between gap-3 mb-1">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="font-medium text-[var(--c-n700)]">
+                            {pastReviews.length - index + 1}. Besuch ·{" "}
+                            {new Date(rev.visited_at).toLocaleDateString("de-DE")}
+                          </span>
+                          <SpoonBadge rating={rev.spoon_rating} />
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => onEditVisit(rev)}
+                            className="rounded px-2 py-1 font-medium text-[var(--c-n600)] hover:bg-[var(--c-n100)]"
+                          >
+                            Bearbeiten
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteVisit(rev)}
+                            className="rounded px-2 py-1 font-medium text-[var(--c-burg)] hover:bg-[var(--c-burg-light)]"
+                          >
+                            Löschen
+                          </button>
+                        </div>
                       </div>
                       <p className="line-clamp-2">{rev.fazit || "—"}</p>
                     </li>
@@ -950,6 +972,7 @@ function EditPanel({
 
 function NewVisitPanel({
   restaurant,
+  editing,
   text,
   ratingMode,
   rating,
@@ -961,6 +984,7 @@ function NewVisitPanel({
   saving,
 }: {
   restaurant: Restaurant | null;
+  editing: boolean;
   text: string;
   ratingMode: VisitRatingMode;
   rating: SpoonRating;
@@ -984,7 +1008,7 @@ function NewVisitPanel({
         <div className="flex items-center justify-between border-b border-[var(--c-n100)] px-6 py-4">
           <div>
             <h2 className="font-serif text-lg font-semibold text-[var(--c-ink)]">
-              Neuen Besuch anlegen
+              {editing ? "Besuch bearbeiten" : "Neuen Besuch anlegen"}
             </h2>
             {restaurant && <p className="mt-0.5 text-xs text-[var(--c-n500)]">{restaurant.name}</p>}
           </div>
@@ -1032,7 +1056,7 @@ function NewVisitPanel({
                 />
                 <span className="block text-sm font-medium text-[var(--c-ink)]">Bewertung beibehalten</span>
                 <span className="mt-1 block text-xs text-[var(--c-n500)]">
-                  Aktuell: {SPOON_RATINGS[restaurant?.spoon_rating ?? rating].emoji} {SPOON_RATINGS[restaurant?.spoon_rating ?? rating].labelShort}
+                  Beibehalten: {SPOON_RATINGS[rating].emoji} {SPOON_RATINGS[rating].labelShort}
                 </span>
               </label>
               <label className={`cursor-pointer rounded-lg border px-3 py-3 ${ratingMode === "change" ? "border-[var(--c-gold)] bg-[var(--c-gold-light)]" : "border-[var(--c-n200)] bg-[var(--c-surface)]"}`}>
@@ -1086,7 +1110,7 @@ function NewVisitPanel({
               Abbrechen
             </button>
             <button type="button" onClick={onSave} disabled={saving || !text.trim()} className="flex-1 rounded-lg bg-[var(--c-burg)] py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
-              {saving ? "Speichert…" : "Besuch speichern"}
+              {saving ? "Speichert…" : editing ? "Änderungen speichern" : "Besuch speichern"}
             </button>
           </div>
         </div>
@@ -1196,6 +1220,42 @@ function DeleteModal({
           >
             {deleting && <span className="gp-spinner-sm" />}
             {deleting ? "Löscht…" : "Ja, löschen"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeleteVisitModal({
+  review,
+  visitNumber,
+  onClose,
+  onConfirm,
+  deleting,
+}: {
+  review: ReviewWithCategories | null;
+  visitNumber: number | null;
+  onClose: () => void;
+  onConfirm: () => void;
+  deleting: boolean;
+}) {
+  if (!review) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="alertdialog" aria-modal="true">
+      <div className="w-full max-w-sm rounded-2xl bg-[var(--c-surface)] p-6 shadow-xl">
+        <h3 className="font-serif text-lg font-semibold text-[var(--c-ink)]">
+          {visitNumber}. Besuch löschen?
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-[var(--c-n500)]">
+          Der Besuch vom {new Date(review.visited_at).toLocaleDateString("de-DE")} wird dauerhaft entfernt. Falls dort eine neue Bewertung vergeben wurde, wird wieder die letzte davor vergebene Restaurantwertung aktiv.
+        </p>
+        <div className="mt-6 flex gap-3">
+          <button type="button" onClick={onClose} disabled={deleting} className="flex-1 rounded-lg border border-[var(--c-n200)] px-4 py-2.5 text-sm font-medium text-[var(--c-n700)] hover:bg-[var(--c-n50)] disabled:opacity-50">
+            Abbrechen
+          </button>
+          <button type="button" onClick={onConfirm} disabled={deleting} className="flex-1 rounded-lg bg-[var(--c-burg)] px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
+            {deleting ? "Löscht…" : "Besuch löschen"}
           </button>
         </div>
       </div>
@@ -1805,6 +1865,10 @@ export function AdminDashboard({
   const [visitText, setVisitText] = useState("");
   const [visitRatingMode, setVisitRatingMode] = useState<VisitRatingMode>("keep");
   const [visitRating, setVisitRating] = useState<SpoonRating>(1);
+  const [visitKeepRating, setVisitKeepRating] = useState<SpoonRating>(1);
+  const [editingVisit, setEditingVisit] = useState<ReviewWithCategories | null>(null);
+  const [returnToRestaurantEdit, setReturnToRestaurantEdit] = useState(false);
+  const [deleteVisitTarget, setDeleteVisitTarget] = useState<ReviewWithCategories | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -2082,12 +2146,54 @@ export function AdminDashboard({
     setVisitText("");
     setVisitRatingMode("keep");
     setVisitRating(restaurant.spoon_rating);
+    setVisitKeepRating(restaurant.spoon_rating);
+    setEditingVisit(null);
+    setReturnToRestaurantEdit(false);
   }
 
   function closeNewVisit() {
     setVisitRestaurant(null);
     setVisitText("");
     setVisitRatingMode("keep");
+    setEditingVisit(null);
+    if (returnToRestaurantEdit) setPanelOpen(true);
+    setReturnToRestaurantEdit(false);
+  }
+
+  function openVisitEdit(review: ReviewWithCategories) {
+    if (!editingId) return;
+    const restaurant = restaurants.find((item) => item.id === editingId);
+    if (!restaurant) return;
+
+    const reviewIndex = pastReviews.findIndex((item) => item.id === review.id);
+    const priorExplicit = pastReviews
+      .slice(reviewIndex + 1)
+      .find((item) => item.rating_changed);
+    const inheritedRating = priorExplicit?.spoon_rating ?? form.review.spoon_rating ?? restaurant.spoon_rating;
+
+    setPanelOpen(false);
+    setVisitRestaurant(restaurant);
+    setVisitText(review.fazit);
+    setVisitRatingMode(review.rating_changed ? "change" : "keep");
+    setVisitRating(review.rating_changed ? review.spoon_rating : inheritedRating);
+    setVisitKeepRating(inheritedRating);
+    setEditingVisit(review);
+    setReturnToRestaurantEdit(true);
+  }
+
+  function changeVisitRatingMode(mode: VisitRatingMode) {
+    setVisitRatingMode(mode);
+    if (mode === "keep") setVisitRating(visitKeepRating);
+  }
+
+  async function refreshEditedRestaurant(restaurantId: string) {
+    const full = await getRestaurantById(restaurantId);
+    const latest = full.reviews[0];
+    setPastReviews(full.reviews.slice(0, -1));
+    setRestaurants((prev) =>
+      prev.map((item) => item.id === restaurantId ? { ...item, spoon_rating: full.spoon_rating } : item)
+    );
+    setFazitById((prev) => ({ ...prev, [restaurantId]: latest?.fazit ?? "" }));
   }
 
   async function openEdit(r: Restaurant) {
@@ -2294,21 +2400,40 @@ export function AdminDashboard({
     const rating = ratingChanged ? visitRating : restaurant.spoon_rating;
     startTransition(async () => {
       try {
-        await createReview(restaurant.id, {
+        const payload: ReviewPayload = {
           visited_at: todayISO(),
           spoon_rating: rating,
           rating_changed: ratingChanged,
           fazit: text,
           categories: {},
-        });
-        setFazitById((prev) => ({ ...prev, [restaurant.id]: text }));
-        if (ratingChanged) {
-          setRestaurants((prev) =>
-            prev.map((item) => item.id === restaurant.id ? { ...item, spoon_rating: rating } : item)
-          );
+        };
+        if (editingVisit) {
+          await updateReview(editingVisit.id, restaurant.id, {
+            ...payload,
+            visited_at: editingVisit.visited_at,
+          });
+        } else {
+          await createReview(restaurant.id, payload);
         }
+        await refreshEditedRestaurant(restaurant.id);
         closeNewVisit();
-        showToast("Neuer Besuch angelegt");
+        showToast(editingVisit ? "Besuch aktualisiert" : "Neuer Besuch angelegt");
+      } catch (err) {
+        showToast((err as Error).message);
+      }
+    });
+  }
+
+  function handleDeleteVisit() {
+    if (!deleteVisitTarget || !editingId) return;
+    const target = deleteVisitTarget;
+    const restaurantId = editingId;
+    startTransition(async () => {
+      try {
+        await deleteReview(target.id, restaurantId);
+        await refreshEditedRestaurant(restaurantId);
+        setDeleteVisitTarget(null);
+        showToast("Besuch gelöscht");
       } catch (err) {
         showToast((err as Error).message);
       }
@@ -3072,6 +3197,8 @@ export function AdminDashboard({
           onFormChange={patchForm}
           onReviewChange={patchReview}
           onCategoryChange={patchCategory}
+          onEditVisit={openVisitEdit}
+          onDeleteVisit={setDeleteVisitTarget}
           onPlaceSelect={handlePlaceSelect}
           onSave={handleSave}
           onClose={closePanel}
@@ -3083,11 +3210,12 @@ export function AdminDashboard({
 
         <NewVisitPanel
           restaurant={visitRestaurant}
+          editing={editingVisit !== null}
           text={visitText}
           ratingMode={visitRatingMode}
           rating={visitRating}
           onTextChange={setVisitText}
-          onRatingModeChange={setVisitRatingMode}
+          onRatingModeChange={changeVisitRatingMode}
           onRatingChange={setVisitRating}
           onSave={handleSaveVisit}
           onClose={closeNewVisit}
@@ -3109,6 +3237,18 @@ export function AdminDashboard({
           restaurants={deleteTargets}
           onClose={() => setDeleteTargets([])}
           onConfirm={handleDelete}
+          deleting={isPending}
+        />
+
+        <DeleteVisitModal
+          review={deleteVisitTarget}
+          visitNumber={
+            deleteVisitTarget
+              ? pastReviews.length - pastReviews.findIndex((review) => review.id === deleteVisitTarget.id) + 1
+              : null
+          }
+          onClose={() => setDeleteVisitTarget(null)}
+          onConfirm={handleDeleteVisit}
           deleting={isPending}
         />
 

@@ -105,3 +105,34 @@ export async function updateReview(
   revalidatePath(`/restaurant/${restaurantId}`);
   return review;
 }
+
+// ── Delete a repeat visit ────────────────────────────────────────────────────
+
+export async function deleteReview(reviewId: string, restaurantId: string): Promise<void> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  // Never allow the restaurant's first/only review to be removed through this
+  // repeat-visit action. It owns the structured base review and is edited in
+  // the main restaurant form instead.
+  const { data: reviews, error: lookupError } = await supabase
+    .from("restaurant_reviews")
+    .select("id")
+    .eq("restaurant_id", restaurantId)
+    .order("visited_at", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (lookupError) throw new Error(lookupError.message);
+  if (!reviews || reviews.length <= 1 || reviews[0].id === reviewId) {
+    throw new Error("Der erste Besuch kann nicht als Wiederholungsbesuch gelöscht werden.");
+  }
+
+  const { error } = await supabase
+    .from("restaurant_reviews")
+    .delete()
+    .eq("id", reviewId)
+    .eq("restaurant_id", restaurantId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/", "layout");
+  revalidatePath(`/restaurant/${restaurantId}`);
+}
