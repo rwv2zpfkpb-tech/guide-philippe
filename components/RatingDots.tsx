@@ -25,17 +25,15 @@ export function RatingDots({
   const dots = Array.from({ length: max - min + 1 }, (_, i) => min + i);
 
   return (
-    <div style={{ display: "flex", gap: Math.max(4, Math.round(size * 0.75)) }}>
+    <div style={{ display: "flex", gap: onChange ? 0 : Math.max(4, Math.round(size * 0.75)) }}>
       {dots.map((i) => {
         const filled = value != null && i <= value;
-        const style: CSSProperties = {
+        const dotStyle: CSSProperties = {
           width: size,
           height: size,
           borderRadius: "50%",
           background: filled ? (color ?? "var(--c-gold)") : "var(--c-n200)",
           flexShrink: 0,
-          padding: 0,
-          border: "none",
         };
 
         return onChange ? (
@@ -44,10 +42,23 @@ export function RatingDots({
             type="button"
             aria-label={`${i} von ${max}`}
             onClick={() => onChange(i)}
-            style={{ ...style, cursor: "pointer" }}
-          />
+            style={{
+              width: Math.max(28, size),
+              height: Math.max(28, size),
+              flex: `0 0 ${Math.max(28, size)}px`,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 0,
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+            }}
+          >
+            <span aria-hidden style={dotStyle} />
+          </button>
         ) : (
-          <span key={i} aria-hidden style={style} />
+          <span key={i} aria-hidden style={dotStyle} />
         );
       })}
     </div>

@@ -418,7 +418,7 @@ function EditPanel({
 
       {/* Panel */}
       <aside
-        className={`fixed inset-y-0 right-0 z-40 flex flex-col w-full max-w-lg sm:max-w-xl lg:max-w-2xl bg-[var(--c-bg)] shadow-2xl transition-transform duration-300 ease-in-out ${open ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed inset-y-0 right-0 z-40 flex w-full max-w-lg flex-col overflow-x-hidden bg-[var(--c-bg)] shadow-2xl transition-transform duration-300 ease-in-out sm:max-w-xl lg:max-w-2xl ${open ? "translate-x-0" : "translate-x-full"}`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--c-n100)]">
@@ -437,7 +437,7 @@ function EditPanel({
         </div>
 
         {/* Body — scrollable */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+        <div className="min-w-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none px-6 py-5 space-y-5">
 
           {/* ── Autosave-Entwurf gefunden ── */}
           {draftBanner && (
