@@ -2821,10 +2821,8 @@ export function AdminDashboard({
                   <div className="min-w-0 flex-1">
                     <Link
                       href={`/restaurant/${r.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className="font-medium text-[var(--c-ink)] hover:text-[var(--c-burg)] hover:underline transition-colors"
-                      title="Öffentliche Seite in neuem Tab ansehen"
+                      title="Öffentliche Seite ansehen"
                     >
                       {r.name}
                     </Link>
@@ -2942,10 +2940,8 @@ export function AdminDashboard({
                     <td className="px-4 py-3">
                       <Link
                         href={`/restaurant/${r.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
                         className="font-medium text-[var(--c-ink)] hover:text-[var(--c-burg)] hover:underline transition-colors"
-                        title="Öffentliche Seite in neuem Tab ansehen"
+                        title="Öffentliche Seite ansehen"
                       >
                         {r.name}
                       </Link>

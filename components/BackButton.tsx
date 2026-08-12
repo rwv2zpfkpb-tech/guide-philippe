@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IconBack } from "@/components/icons";
 
@@ -12,19 +10,12 @@ type Props = {
   label?: string;
 };
 
-// router.back() only makes sense when the previous history entry is actually
-// this app (e.g. coming from the search results list) — a direct link/new
-// tab has no useful "back" target, so we fall back to a normal link instead.
+// Always mirror the browser's real Back action so navigation returns to the
+// actual previous route instead of guessing from a potentially stale referrer.
+// A directly opened page has no previous history entry and uses the explicit
+// route fallback instead.
 export function BackButton({ fallbackHref, label = "Zurück" }: Props) {
   const router = useRouter();
-  const [hasInAppHistory, setHasInAppHistory] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setHasInAppHistory(
-      window.history.length > 1 && document.referrer.startsWith(window.location.origin)
-    );
-  }, []);
 
   const style: React.CSSProperties = {
     display: "inline-flex",
@@ -41,19 +32,17 @@ export function BackButton({ fallbackHref, label = "Zurück" }: Props) {
     cursor: "pointer",
   };
 
-  if (hasInAppHistory) {
-    return (
-      <button type="button" onClick={() => router.back()} style={style}>
-        <IconBack size={14} />
-        {label}
-      </button>
-    );
-  }
-
   return (
-    <Link href={fallbackHref} style={style}>
+    <button
+      type="button"
+      onClick={() => {
+        if (window.history.length > 1) router.back();
+        else router.push(fallbackHref);
+      }}
+      style={style}
+    >
       <IconBack size={14} />
       {label}
-    </Link>
+    </button>
   );
 }
